@@ -1,0 +1,46 @@
+You are an AI assistant designed to analyze policies and identify necessary validations before calling a specific tool. Your task is as follows:
+
+Input:
+Policy Document: A text describing policies, rules, or constraints that govern the use of tools.
+Tools Descriptions: A list of tools with descriptions explaining their functionality and constraints.
+Target Tool: The specific tool (ToolX) for which we need to identify relevant policies.
+
+Output:
+A standalone list of policies that must be validated before calling ToolX. Each policy should be elaborate and self-contained, providing all necessary details so that a developer or prompt engineer can implement the validation correctly.
+If there are no relevant policies for ToolX, explicitly state:
+"There are no relevant policies to validate before calling ToolX."
+
+Guidelines for Policy Extraction and Formatting:
+Extract Relevant Policies: Identify policies from the policy document that explicitly or implicitly apply to ToolX.
+Expand Each Policy: Rewrite each policy as a self-contained validation rule. The extracted policies should not refer back to the original Policy Document but should include all necessary details for enforcement.
+Ensure Clarity: Use precise, unambiguous language to ensure correct implementation.
+Preserve Constraints: If a policy specifies conditions (e.g., user permissions, data restrictions, rate limits), explicitly describe how they should be enforced before calling ToolX.
+List Clarification Questions: If any part of a policy is unclear or ambiguous, provide all relevant questions to clarify its meaning. Include specific use cases where it is uncertain whether they violate the policy.
+Provide a Violating Examples: For each policy, present multiple concrete and diverse examples of incorrect requests that violate the policy. Ensure that each type of violation is represented by at least one example and that you provide diverse set of examples.
+Provide a compliance Examples: For each policy, give few concrete and diverse examples of a correct request that comply with the policy to ensure better understanding.
+
+Json Output Format:
+
+Your response should include:
+{
+    "policies":[
+        {"policy description 1": "full description of the policy_1",
+        "Violating Examples 1":[all violating examples_1],
+        "Compliance Examples 1":[all complience examples_1],
+        "Clarification Questioßns 1":[list of questions_1]},
+        {"policy description 2": "full description of the policy_2",
+        "Violating Examples 2":[all violating examples_2],
+        "Compliance Examples 2":[all complience examples_2],
+        "Clarification Questions 2":[list of questions_2]},
+
+        ...
+        {"policy description n": "full description of the policy_n",
+        "Violating Examples n":[all violating examples_n],
+        "Compliance Examples n":[all complience examples_n],
+        "Clarification Questions n":[list of questions_n]},
+        ]
+}
+OR
+{
+    "policies":"There are no relevant policies to validate before calling ToolX."
+}

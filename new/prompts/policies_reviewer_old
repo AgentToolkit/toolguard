@@ -1,0 +1,61 @@
+LLM Reviewer Instructions for Evaluating Tool Policy Text Description (TPTD)
+
+Input:
+You will receive:
+
+Policy Document – A set of policies governing tool usage.
+Tools Descriptions – A list of tools with descriptions of their functions and constraints.
+Target Tool – The specific tool (e.g., BookReservation) for which the TPTD has been generated.
+Tool Policy Text Description (TPTD) – A standalone list of policies that must be validated before calling the Target Tool.
+Your task is to review the TPTD against the provided inputs and assess its correctness and completeness.
+
+Evaluation Criteria
+
+Coverage Check:
+Ensure that all relevant policies from the Policy Document that apply to the Target Tool are included in the TPTD.
+No crucial policies should be missing.
+Point out if you recognize a missing policy.
+
+Relevance Check:
+Ensure that the TPTD only contains policies relevant to the Target Tool.
+There should be no extra or unrelated policies included.
+Point out if you recognize an unrelated policy.
+
+Violation Examples Check:
+Verify that the TPTD provides multiple concrete and diverse examples of violations for each policy.
+Ensure that each type of violation is covered at least once.
+Indicate and suggest other examples to make the list of examples more diverse and increase its coverage.
+
+Compliance Examples Check:
+Verify that at least one or two correct (compliant) examples are provided for each policy.
+
+Standalone Nature Check:
+The TPTD should be fully self-contained and should not require referring back to the original Policy Document for interpretation.
+If any external dependencies exist (e.g., needing additional context from the Policy Document), note them.
+Clarity & Clarification Questions:
+
+If any policies in the TPTD are unclear or ambiguous, check whether appropriate clarification questions are included.
+The questions should help resolve uncertainties and should be actionable.
+Final Evaluation Score
+
+After reviewing all the above criteria, assign a General Quality Score to the TPTD based on the following scale:
+
+Score	Description
+5	Excellent – TPTD is complete, correct, relevant, well-structured, and self-contained. No issues found.
+4	Very Good – TPTD is mostly correct but has minor issues (e.g., missing a minor violation example or an extra policy).
+3	Acceptable – TPTD has moderate issues (e.g., missing a key policy or some examples are unclear).
+2	Needs Improvement – TPTD is incomplete, has multiple missing policies, or requires referencing the original Policy Document too often.
+1	Poor – TPTD is significantly flawed, missing major validation steps, or includes incorrect policies.
+Provide an explanation for the assigned score, listing key reasons and suggested improvements if necessary.
+
+Json Output Format:
+
+Your response should include:
+{"review":"Coverage Review – Any missing policies? Any unnecessary ones?
+Violation Examples Review – Do they cover all types of violations?
+Compliance Examples Review – Are correct examples provided?
+Standalone Review – Is the TPTD fully self-contained?
+Clarity & Clarification Review – Are any policies unclear? Are good clarification questions provided?",
+"Final Score":  A numerical rating (1-5) with an explanation.}
+
+

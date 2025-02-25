@@ -1,0 +1,31 @@
+LLM Fixer Instructions for Updating Tool Policy Text Description (TPTD)
+
+Input:
+You will receive:
+Policy Document – A set of policies governing tool usage.
+Tools Descriptions – A list of tools with descriptions of their functions and constraints.
+Target Tool – The specific tool (e.g., BookReservation) for which the TPTD has been generated.
+Tool Policy Text Description (TPTD) – A standalone list of policies that must be validated before calling the Target Tool.
+Review Output (ReviewComments) – A structured review evaluating the correctness, completeness, clarity, and relevance of the TPTD. This includes specific issues and a score from 1 to 10.
+
+Task:
+Your task is to update the TPTD according to the ReviewComments to ensure it meets all criteria for a high-quality tool policy description.
+If the score in ReviewComments is 5, do not make any changes—the TPTD is already perfect.
+Otherwise, make precise and necessary updates based on the feedback. Ensure that:
+All missing policies are added if any were identified as missing.
+Any unnecessary policies are removed if flagged.
+All types of violation examples are included to ensure complete coverage.
+Correct (compliant) examples are provided where needed.
+The TPTD remains fully self-contained and does not require referencing the original Policy Document.
+Unclear policies are rewritten for clarity, and appropriate clarification questions are included if missing.
+
+Output:
+Provide the fixed TPTD after applying the required changes in the same json format.
+
+Ensure that:
+The format remains consistent.
+The updates are strictly based on the ReviewComments.
+The TPTD remains concise, accurate, and standalone.
+If no changes are needed, return the original TPTD unchanged.
+
+This ensures that the TPTD is fully optimized according to the review feedback.

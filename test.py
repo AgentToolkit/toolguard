@@ -1,0 +1,83 @@
+# Your JSON object
+import json
+
+e1={
+            "reservation_id": "4WQ150",
+            "user_id": "chen_jackson_3290",
+            "origin": "DFW",
+            "destination": "LAX",
+            "flight_type": "round_trip",
+            "cabin": "business",
+            "flights": [
+                {"origin": "DFW", "destination": "LAX", "flight_number": "HAT170", "date": "2024-05-22", "price": 883},
+                {"origin": "LAX", "destination": "DFW", "flight_number": "HAT022", "date": "2024-05-26", "price": 779}
+            ],
+            "passengers": [
+                {"first_name": "Chen", "last_name": "Jackson", "dob": "1956-07-07"},
+                {"first_name": "Raj", "last_name": "Smith", "dob": "1967-04-01"},
+                {"first_name": "Fatima", "last_name": "Martin", "dob": "1970-01-20"}
+            ],
+            "payment_history": [{"payment_id": "gift_card_3576581", "amount": 4986}],
+            "created_at": "2024-05-02T03:10:19",
+            "total_baggages": 5,
+            "nonfree_baggages": 0,
+            "insurance": "no"
+        }
+e2 = {
+            "reservation_id": "VAAOXJ",
+            "user_id": "lei_rossi_3206",
+            "origin": "CLT",
+            "destination": "MCO",
+            "flight_type": "one_way",
+            "cabin": "economy",
+            "flights": [
+                {"origin": "CLT", "destination": "BOS", "flight_number": "HAT287", "date": "2024-05-24", "price": 182},
+                {"origin": "BOS", "destination": "MCO", "flight_number": "HAT235", "date": "2024-05-24", "price": 124}
+            ],
+            "passengers": [{"first_name": "James", "last_name": "Smith", "dob": "1972-09-24"}],
+            "payment_history": [{"payment_id": "credit_card_1052991", "amount": 306}],
+            "created_at": "2024-05-06T23:58:10",
+            "total_baggages": 1,
+            "nonfree_baggages": 0,
+            "insurance": "no"
+        }
+
+data = {
+    "name": "UpdateReservationBaggages",
+    "signature": "UpdateReservationBaggages(data: Dict[str, Any], reservation_id: str, total_baggages: int, nonfree_baggages: int, payment_id: str) -> str",
+    "description": "Update the baggage information of a reservation.",
+    "params": {
+        "reservation_id": {
+            "type": "string",
+            "description": "The reservation ID, such as 'ZFA04Y'.",
+            "required": True
+        },
+        "total_baggages": {
+            "type": "integer",
+            "description": "The updated total number of baggage items included in the reservation.",
+            "required": True
+        },
+        "nonfree_baggages": {
+            "type": "integer",
+            "description": "The updated number of non-free baggage items included in the reservation.",
+            "required": True
+        },
+        "payment_id": {
+            "type": "string",
+            "description": "The payment ID stored in the user profile, such as 'credit_card_7815826', 'gift_card_7815826', 'certificate_7815826'.",
+            "required": True
+        }
+    },
+    "examples": [
+        "UpdateReservationBaggages.invoke(data, 'ZFA04Y', 2, 1, 'credit_card_001')",
+        "UpdateReservationBaggages.invoke(data, 'RYA707', 0, 1, 'gift_card_001')"
+    ],
+    "output_examples": [json.dumps(e1),json.dumps(e2)]
+}
+
+# Convert JSON object to string
+json_string = json.dumps(data, indent=4)
+
+# Write to text file
+with open("output.txt", "w") as file:
+    file.write(json_string)
