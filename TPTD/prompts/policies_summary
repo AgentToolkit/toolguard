@@ -12,6 +12,7 @@ If there are no relevant policies for ToolX, explicitly state:
 
 Guidelines for Policy Extraction and Formatting:
 Extract Relevant Policies: Identify policies from the policy document that explicitly or implicitly apply to ToolX.
+Focus only on policies that must be verified before invoking ToolX, excluding general, global policies.
 Expand Each Policy: Rewrite each policy as a self-contained validation rule. The extracted policies should not refer back to the original Policy Document but should include all necessary details for enforcement.
 Ensure Clarity: Use precise, unambiguous language to ensure correct implementation.
 Preserve Constraints: If a policy specifies conditions (e.g., user permissions, data restrictions, rate limits), explicitly describe how they should be enforced before calling ToolX.

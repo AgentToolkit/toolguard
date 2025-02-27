@@ -55,7 +55,6 @@ class Phase2:
 		tools = state["tools"]
 		target_tool = state["target_tool"]
 		tool_desc = state["target_tool_description"]
-		#todo: add more details about target tool
 		outdir = state["outdir"]
 		
 		sys_prompt_file = os.path.join(os.path.dirname(__file__), "prompts", "policies_summary")
@@ -73,7 +72,7 @@ class Phase2:
 		#res = json.loads(res)
 		state["TPTD"] = response
 		state["iteration"] = 0
-		with open(os.path.join(outdir,target_tool+"_"+str(state["iteration"])+".txt"), "w") as outfile:
+		with open(os.path.join(outdir,target_tool+"_"+str(state["iteration"])+".json"), "w") as outfile:
 			outfile.write(json.dumps(response))
 		
 		return state
@@ -103,10 +102,11 @@ class Phase2:
 		state["review_score"] = response["Final Score"]
 		state["review_comments"] = response["review"]
 		state["iteration"] = state["iteration"]+1
-		with open(os.path.join(outdir, target_tool + "_review_" + str(state["iteration"]) + ".txt"), "w") as outfile:
+		with open(os.path.join(outdir, target_tool + "_review_" + str(state["iteration"]) + ".json"), "w") as outfile:
 			outfile.write(json.dumps(response))
 		
-		if state["review_score"] == 5:
+		review_score = state["review_score"]
+		if review_score["score"] == 5:
 			state["next_step"] = "final"
 		else:
 			state["next_step"] = "fixer"
@@ -133,7 +133,7 @@ class Phase2:
 		messages.append({"role": "system", "content": system_prompt})
 		messages.append({"role": "user",
 						 "content": "Policy Document:" + policy_text + "\nTools Descriptions:" + json.dumps(
-							 tools) + "\nTarget Tool:" + json.dumps(tool_desc) + "\nTPTD: " + json.dumps(tptd)+ "\nReview Comments: " + review_comments})
+							 tools) + "\nTarget Tool:" + json.dumps(tool_desc) + "\nTPTD: " + json.dumps(tptd)+ "\nReview Comments: " + json.dumps(review_comments)})
 		
 		response = llm.chat_json(messages)
 		print(response)
@@ -141,7 +141,7 @@ class Phase2:
 		#res = response.strip("```json").strip("```").strip()
 		#res = json.loads(res)
 		state["TPTD"] = response
-		with open(os.path.join(outdir, target_tool + "_fix_" + str(state["iteration"]) + ".txt"), "w") as outfile:
+		with open(os.path.join(outdir, target_tool + "_fix_" + str(state["iteration"]) + ".json"), "w") as outfile:
 			outfile.write(json.dumps(response))
 	
 		# Ensure a valid next step
@@ -194,5 +194,5 @@ if __name__ == '__main__':
 		outcontent = final_output["TPTD"]
 		
 		#out = json.loads(outcontent)
-		with open(os.path.join(tmpoutdir, fname +  ".txt"), "w") as outfile:
+		with open(os.path.join(tmpoutdir, fname +  ".json"), "w") as outfile:
 			outfile.write(json.dumps(outcontent))
