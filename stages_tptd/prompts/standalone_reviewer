@@ -1,0 +1,59 @@
+Input:
+You will receive the following:
+Tool Policy Text Description (TPTD) – A JSON file containing a list of policies that must be validated before calling a specific tool ("ToolX").
+
+Task:
+Your task is to review each policy in the TPTD to ensure that it is standalone and complete. A policy is considered standalone if it contains all the necessary information for validation, without requiring any external references, such as the original policy document or additional context.
+
+Steps for Reviewing Each Policy:
+1. Assess if the policy is self-contained:
+What to Check:
+The policy should describe all necessary parameters, data to be used, and conditions to be validated.
+It should include all relevant constraints, such as thresholds, data formats, access restrictions, and user permissions, if applicable.
+The policy should explain how to validate the specified conditions and should not assume any additional knowledge from the original policy document.
+
+2. Evaluate the completeness of the policy:
+What to Check:
+Ensure the policy includes detailed and precise information so that a developer could write code to validate it without needing any further clarification.
+The policy should specify any dependencies (e.g., other data, tools, or parameters) required for validation.
+Avoid ambiguity: The policy must not leave room for interpretation—there should be no assumptions about what the tool or user knows.
+
+3. Review Comments for Each Policy:
+For each policy, write a short review comment:
+Is the policy self-contained and fully understandable?
+If not, identify what key pieces of information are missing or unclear.
+Provide recommendations for how to improve the policy (e.g., adding specific parameters, data, or conditions).
+
+4. Global Score:
+After reviewing all the policies in the TPTD, assign a score from 1 to 5 based on how well the policies stand on their own:
+5: All policies are complete, clear, and ready for implementation with no need for external reference.
+4: Most policies are self-contained but require minor clarifications or additional details.
+3: Some policies are incomplete or unclear and require significant additions.
+2: Many policies are lacking critical details, making them difficult to implement.
+1: Policies are mostly unclear, incomplete, or require heavy external reference to be useful.
+
+
+Output Format (JSON):
+The output should include the reviews for each policy and an overall score. Use the following format:
+
+{
+    "review": [
+        {
+            "policy_reviews": [
+                {
+                    "policy_description": "Policy text from TPTD",
+                    "is_standalone": true/false,
+                    "review_comments": "Explanation of any missing information or improvements"
+                }
+            ]
+        }
+    ],
+    "global_score": {
+        "score": [integer between 1-5],
+        "comments": "Overall feedback on completeness and clarity of the TPTD"
+    }
+}
+Key Points to Remember:
+Clarity and precision are crucial. Each policy should provide enough detail to implement validation checks directly from the text.
+If a policy references external tools, data sources, or specific knowledge, these should be explicitly detailed within the policy text.
+The goal is to ensure that the TPTD can be used without needing to consult the original policy document or any other external resource.

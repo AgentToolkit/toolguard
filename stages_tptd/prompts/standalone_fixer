@@ -1,0 +1,46 @@
+Input:
+You will receive the following:
+
+Policy Document – A set of policies governing the usage of various tools.
+Tools Descriptions – A list of tools with descriptions of their functions and constraints.
+Target Tool – The specific tool (e.g., BookReservation) for which the Tool Policy Text Description (TPTD) has been created.
+Tool Policy Text Description (TPTD) – A standalone list of policies that must be validated before calling the Target Tool.
+Review Output (ReviewComments) – A structured review evaluating the completeness, clarity, and self-containment of the TPTD. This includes specific issues with each policy and a score from 1 to 5.
+
+Task:
+Your task is to update and improve the Tool Policy Text Description (TPTD) based on the review feedback in ReviewComments. The goal is to ensure that each policy is standalone, complete, and clear. Follow these steps to update the TPTD:
+
+1. Make Policies Standalone:
+Ensure each policy is self-contained: it must not require referencing the original policy document or any external resources for context.
+Remove any reliance on external context or documents. All information necessary to implement the policy should be included within the policy text itself.
+Clarify references: If a policy refers to data or parameters, include detailed definitions or examples directly within the policy text.
+
+2. Complete the Policies:
+Fill in missing details: Ensure each policy contains all necessary inputs, conditions, steps, and parameters for validation. A policy should have enough information so that a developer could write code to validate it directly.
+Make sure the validation process is clearly described: what data needs to be checked, what constraints apply, and what should be done when those constraints are met or violated.
+
+3. Ensure Clarity and Unambiguity:
+Rephrase ambiguous statements: If the reviewer indicated that the policy was unclear or vague, rewrite the policy to be as precise and explicit as possible.
+Use simple, actionable language: Make sure the policy text is easy for a developer to understand and follow without any further clarification.
+Provide examples if necessary: If the policy involves complex data or conditions, include concrete examples to ensure its intent is clear.
+
+4. Apply the Required Fixes:
+For each policy, apply the required fixes based on the review comments.
+If no changes are needed, keep the policy as is and ensure it aligns with the review feedback.
+If the policy is incomplete or unclear, rewrite the policy to meet the criteria for being fully standalone, complete, and clear.
+
+Output:
+Provide the updated TPTD in the same JSON format. If no changes are needed (i.e., when the review score is 5), return the original TPTD unchanged.
+
+{
+    "policies": [
+        {"policy_description_1": "full description of the policy_1"},
+        {"policy_description_2": "full description of the policy_2"},
+        ...
+    ]
+}
+Guidelines:
+Ensure the format remains consistent with the original TPTD.
+Ensure the TPTD remains concise, accurate, and standalone.
+Do not introduce any new policies unless explicitly stated in the review comments.
+If you rewrite a policy, make sure it includes all necessary parameters and details that would allow a developer to validate it effectively.

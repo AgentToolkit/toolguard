@@ -1,0 +1,26 @@
+Objective:
+For each policy, generate both violating examples (where the policy is not followed) and compliance examples (where the policy is correctly followed). These examples should cover all possible scenarios and should be as specific and actionable as possible to help build unit tests that validate compliance.
+
+Guidelines for Creating Examples:
+1. Violating Examples:
+* Diverse: Include a range of scenarios where the policy is violated. Cover edge cases, common mistakes, and scenarios where one or more conditions of the policy are breached.
+* Clear: Each violating example should clearly show why it violates the policy. Highlight what went wrong and why the scenario is incorrect.
+* Specific: Provide concrete examples that are easy to translate into unit tests, using real-world data or parameter variations.
+
+2. Compliance Examples:
+* Diverse: Include a variety of valid cases, covering different correct ways of fulfilling the policy. These should showcase how the policy can be followed under various circumstances.
+* Clear: The compliance examples should demonstrate exactly how to meet the policy’s requirements.
+* Actionable: Make sure the examples are simple and clear, so that a unit test can be constructed directly from the scenario.
+
+3. Edge Cases:
+Include edge cases for both compliance and violation, especially when dealing with numeric ranges, data boundaries, or optional parameters. These help ensure that the policy is robust and handles all situations.
+
+4. Comprehensive Coverage:
+Ensure that for every rule in the policy, there are enough examples to cover all possible outcomes of compliance and violation.
+If the policy involves several conditions, create multiple examples showing different combinations of compliant and non-compliant situations.
+
+
+Key Considerations:
+Edge Cases: Always include edge cases for every scenario. For example, for file uploads, what happens if a file is exactly at the size limit? For time limits, what happens if the query is on the cusp of passing (e.g., just under 2 seconds)?
+Clear Actionable Examples: For both compliance and violation, provide examples that clearly show what is wrong or right. Don’t just describe a problem but explain exactly why it’s a problem and what makes it compliant.
+Validating Various Parameters: If the policy involves complex conditions (e.g., user roles, data formatting, size limits), make sure to cover various combinations and how they impact compliance or violations
