@@ -2,8 +2,8 @@ from enum import StrEnum
 from pydantic import BaseModel, Field, HttpUrl
 from typing import List, Dict, Optional, Any, Union
 
-from policy_check_generation.common.array import not_none
-from policy_check_generation.common.http import MEDIA_TYPE_APP_JSON
+from policy_adherence.common.array import not_none
+from policy_adherence.common.http import MEDIA_TYPE_APP_JSON
 
 class JSONSchemaTypes(StrEnum):
     string = "string"

@@ -6,7 +6,7 @@ from litellm import completion
 from litellm.types.utils import ModelResponse
 import openai
 
-from policy_check_generation.llm.llm_model import LLM_model
+from policy_adherence.llm.llm_model import LLM_model
 
 class AzureLitellm(LLM_model):
     def chat_json(self, messages: List[Dict])->ModelResponse:

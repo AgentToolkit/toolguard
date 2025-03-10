@@ -6,13 +6,13 @@ from typing import Dict, List, Optional, Literal
 
 import yaml
 
-from policy_check_generation.common.dict import substitute_refs
-from policy_check_generation.llm.azure_wrapper import AzureLitellm, AzureWrepper
-from policy_check_generation.llm.llm_model import LLM_model
-# from policy_check_generation.jschema.json_schema import JSONSchemaModel
-from policy_check_generation.oas.OAS import OpenAPI, Operation, PathItem, Schema
-# from policy_check_generation.oas.oas_dom import OASModel
-# from policy_check_generation.oas.remove_orphan_comps import remove_orphan_components
+from policy_adherence.common.dict import substitute_refs
+from policy_adherence.llm.azure_wrapper import AzureLitellm, AzureWrepper
+from policy_adherence.llm.llm_model import LLM_model
+# from policy_adherence.jschema.json_schema import JSONSchemaModel
+from policy_adherence.oas.OAS import OpenAPI, Operation, PathItem, Schema
+# from policy_adherence.oas.oas_dom import OASModel
+# from policy_adherence.oas.remove_orphan_comps import remove_orphan_components
 
 load_dotenv()
 
