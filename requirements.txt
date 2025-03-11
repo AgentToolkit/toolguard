@@ -2,3 +2,5 @@ pydantic
 litellm
 pytest
 pytest-json-report
+loguru
+astor
