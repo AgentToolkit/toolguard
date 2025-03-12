@@ -15,6 +15,19 @@ class ToolPolicyItem(BaseModel):
 
 ToolsPolicies = Dict[str, List[ToolPolicyItem]]
 
+MAX_TOOL_IMPROVEMENTS = 3
+
+class ToolChecksCodeResult(BaseModel):
+    tool_name: str
+    check_file_name: str
+    tests_file_name: str
+    policies: List[ToolPolicyItem]
+
+class ToolChecksCodeGenerationResult(BaseModel):
+    output_path: str
+    domain_file: str
+    tools: Dict[str, ToolChecksCodeResult]
+
 class PolicyAdherenceCodeGenerator():
     llm: LLM_model
     output_path: str
@@ -23,37 +36,45 @@ class PolicyAdherenceCodeGenerator():
         self.llm = llm
         self.output_path = output_path
 
-    def generate_tools_check_fns(self, oas: OpenAPI, tool_policies: ToolsPolicies, domain:Optional[Code] = None, retries=2)->List[Code]:
+    def generate_tools_check_fns(self, oas: OpenAPI, tool_policies: ToolsPolicies, domain:Optional[Code] = None, retries=2)->ToolChecksCodeGenerationResult:
         logger.debug(f"Starting... will save into {self.output_path}")
-
         if not domain:
             domain = self.generate_domain(oas)
         domain.save(self.output_path)
         logger.debug(f"domain created")
-        # symlink_force(output_path, os.path.join(output_dir, "LAST"))
-
+        tools_result: Dict[str, ToolChecksCodeResult] = {}
         for tool_name, tool_poilcies in tool_policies.items():
-            logger.debug(f"Tool {tool_name}")
             if len(tool_poilcies) == 0: continue
-            # op_oas = op_only_oas(oas, tool_name)
-            op = oas.get_operation_by_operationId(tool_name)
-            assert op
+            logger.debug(f"Tool {tool_name}")
             
-            code, tests = self.generate_tool_check_fn(domain, tool_name, tool_poilcies, self.output_path)
-        return []
+            tool_check_fn, tool_check_tests = self.generate_tool_check_fn(domain, tool_name, tool_poilcies, self.output_path)
+            tools_result[tool_name] = ToolChecksCodeResult(
+                tool_name=tool_name,
+                check_file_name=tool_check_fn.file_name, 
+                tests_file_name=tool_check_tests.file_name,
+                policies=tool_poilcies
+            )
+        
+        return ToolChecksCodeGenerationResult(
+            output_path=self.output_path,
+            domain_file=domain.file_name,
+            tools=tools_result
+        )
 
     def generate_domain(self, oas: OpenAPI, retries=2)->Code:
         logger.debug(f"Generating domain... (retry = {retries})")
-        prompt = f"""Given an OpenAPI Spec, generate Python code that include all the data types as pydantic classes. 
-For data-classes, make all fields optional.
+        prompt = f"""Given an OpenAPI Spec, generate Python code that include all the data-types as Pydantic data-classes. 
+For data-classes fields, make all fields optional with default `None`.
 For each operation, create a function stub.
 The function name comes from the operation operationId.
 The function argument names and types come from the operation parameters and requestBody.
 The function return-type comes from the operation 200 response.
+Both, the function arguments and return-type, should be specific (avoid Dict), and should refer to the generated data-classes.
 Add the operation description as the function documentation.
 
+```
 {oas.model_dump_json(indent=2)}
-    """
+```"""
         res_content = self._call_llm(prompt)
         code = self._extract_code_from_response(res_content)
 
@@ -66,19 +87,21 @@ Add the operation description as the function documentation.
                 return self.generate_domain(oas, retries=retries-1) #retry
             raise ex
 
+    def _bulltets(self, items: List[str])->str:
+        s = ""
+        for item in items:
+            s+=f"* {item}\n"
+        return s
+    
     def _policy_statements(self, policies:List[ToolPolicyItem]):
         s = ""
         for i, item in enumerate(policies):
             s+= f"## Policy item {i+1}"
             s+=f"{item.policy}\n"
             if item.compliance_examples:
-                s+="### Positive examples\n"
-                for pos_ex in item.compliance_examples:
-                    s+=f"* {pos_ex}\n"
+                s+=f"### Positive examples\n{self._bulltets(item.compliance_examples)}"
             if item.violation_examples:
-                s+="### Negative examples\n"
-                for neg_ex in item.violation_examples:
-                    s+=f"* {neg_ex}\n"
+                s+=f"### Negative examples\n{self._bulltets(item.violation_examples)}"
             s+="\n"
         return s
 
@@ -102,7 +125,7 @@ Add the operation description as the function documentation.
         src= astor.to_source(module)
         return Code(file_name=f"{new_fn_name}.py", content=src)
 
-    def generate_tool_tests(self, checker_fn:Code, tool_name:str, policies:List[ToolPolicyItem], retries=2)-> Code:
+    def generate_tool_tests(self, checker_fn:Code, tool_name:str, policies:List[ToolPolicyItem], retries=2)-> Tuple[Code, List[str]]:
         logger.debug(f"Generating Tests... (retries={retries})")
         prompt = f"""You are given a function stub in Python. This function is under test:
 ```
@@ -127,36 +150,60 @@ Indicate test failures using a meaningful message that also contain the policy s
         
         try:
             ast.parse(code)
-            return Code(file_name=f"test_check_{tool_name}.py", content=code)
+            tests = Code(file_name=f"test_check_{tool_name}.py", content=code)
         except Exception as ex:
-            logger.warning(f"Generated tests have invalid syntax. {str(ex)}")
+            logger.warning(f"Generated tests with syntax errors. {str(ex)}")
             if retries>0:
                 return self.generate_tool_tests(checker_fn, tool_name, policies, retries=retries-1)
             raise ex
+        
+        #syntax ok, try to run it...
+        logger.debug(f"Generated Tests... (retries={retries})")
+        tests.save(self.output_path)
+        #still running against a stub. the tests should fail, but the collector should not fail.
+        report = run_unittests(self.output_path)
+        if not report.all_tests_collected_successfully():
+            logger.debug(f"Tool {tool_name} unit tests error")
+            return self.generate_tool_tests(checker_fn, tool_name, policies, retries=retries-1)
+        
+        return tests, report.list_errors()
 
-    def _improve_check_fn(self, domain: Code, tool_name: str, policies:List[ToolPolicyItem], retries=2)->Code:
-        logger.debug(f"Generated function... (retry = {retries})")
+    def _improve_check_fn(self, domain: Code, tool_name: str, tool_policies:List[ToolPolicyItem], previous_version:Code, review_comments: List[str], retries=2)->Code:
+        logger.debug(f"Improving check function... (retry = {retries})")
         check_fn_name = f"check_{tool_name}"
-        fn_signature = self._copy_check_fn_stub(domain, tool_name, check_fn_name)
-        prompt = f"""You are given a function signature:
-```
-### {check_fn_name}.py
-{fn_signature}
-```
-You are given domain with data classes and functions.
-You are also given with a list of policy items. Policy items have a list of positive and negative examples. 
+        prompt = f"""You are given:
+* a Python file describing the domain. It contains data classes and functions you may use.
+* a list of policy items. Policy items have a list of positive and negative examples. 
+* current implementation of a Python function, `{check_fn_name}()`.
+* a list of review comments on issues that need to be improved in the current implementation.
 
-Implement the function `{check_fn_name}()`.
-The function implementation should check that all the policy items hold. 
-In particular, it should support the positive examples, and raise meaningful exception in the negative examples.
+The goal of the function is to check that all the policy items hold on the given input. 
+In particular, all positive examples should pass silently.
+For all negative examples, the function should raise a meaningful exception.
 If you need to retrieve additional data (that is not in the function arguments), you can call functions defined in the domain.
+You need to generate code that improve the current implementation, according to the review comments.
+The code must be simple and well documented.
+
+# Domain:
 ```
 ### domain.file_name
 {domain.content}
 ```
 
 # Policy Items:
-{self._policy_statements(policies)}
+{self._policy_statements(tool_policies)}
+
+
+# Current implemtnation
+```
+### {previous_version.file_name}
+{previous_version.content}
+```
+
+# Review commnets:
+```
+{self._bulltets(review_comments)}
+```
     """
         res_content = self._call_llm(prompt)
         code = self._extract_code_from_response(res_content)
@@ -167,31 +214,26 @@ If you need to retrieve additional data (that is not in the function arguments),
         except Exception as ex:
             logger.warning(f"Generated function failed. Syntax error. {str(ex)}")
             if retries>0:
-                return self._improve_check_fn(domain, tool_name, policies, retries-1)
+                return self._improve_check_fn(domain, tool_name, tool_policies, code, [str(ex)], retries-1)
             raise ex
 
-    def generate_tool_check_fn(self, domain: Code, tool_name:str, policies:List[ToolPolicyItem], output_path:str, retries=3)->Tuple[Code, Code]:
-        valid_fn_code = self._copy_check_fn_stub(domain, tool_name, f"check_{tool_name}")
-        valid_fn_code.save(output_path)
+    def generate_tool_check_fn(self, domain: Code, tool_name:str, policies:List[ToolPolicyItem], output_path:str, trial_no=0)->Tuple[Code, Code]:
+        check_fn = self._copy_check_fn_stub(domain, tool_name, f"check_{tool_name}")
+        check_fn.save(output_path)
         logger.debug(f"Tool {tool_name} function draft created")
 
-        tests = self.generate_tool_tests(valid_fn_code, tool_name, policies)
-        tests.save(output_path)
-        report = run_unittests(output_path) #still running against a stub. the tests should fail, but the collector should not fail.
-        if not report.all_tests_collected():
-            logger.debug(f"Tool {tool_name} unit tests error")
-            # TODO retry
-        logger.debug(f"Tool {tool_name} unit tests created")
+        tests = self.generate_tool_tests(check_fn, tool_name, policies)
+        logger.debug(f"Tool {tool_name} unit tests successfully created")
 
-        valid_fn = lambda: self._check_fn_is_ok(valid_fn_code, domain, tests, output_path)
-        logger.debug(f"Tool {tool_name} function is {'valid' if valid_fn() else 'invalid'}")
-        while retries > 0 and not valid_fn():
+        valid_fn = lambda: self._check_fn_is_ok(check_fn, domain, tests, output_path)
+        # logger.debug(f"Tool {tool_name} function is {'valid' if valid_fn() else 'invalid'}")
+        while trial_no < MAX_TOOL_IMPROVEMENTS and not valid_fn():
             logger.debug(f"Tool {tool_name} function is invalid. Retrying...")
-            valid_fn_code = self._improve_check_fn(domain, tool_name, policies)
-            valid_fn_code.save(output_path)
-            retries -=1
+            check_fn = self._improve_check_fn(domain, tool_name, policies, check_fn, review_comments)
+            check_fn.save(output_path)
+            trial_no +=1
         
-        return valid_fn_code, tests
+        return check_fn, tests
 
     def _check_fn_is_ok(self, fn_code: Code, domain: Code, test_cases:Code, output_path:str):
         report = run_unittests(output_path)

@@ -69,8 +69,15 @@ class TestReport(BaseModel):
     def all_tests_passed(self)->bool:
         return all([test.outcome == TestOutcome.passed for test in self.tests])
     
-    def all_tests_collected(self)->bool:
+    def all_tests_collected_successfully(self)->bool:
         return all([col.outcome == TestOutcome.passed for col in self.collectors])
+    
+    def list_errors(self)->List[str]:
+        errors = []
+        for test in self.tests:
+            if test.outcome == TestOutcome.failed:
+                errors.append(test.call.crash.message)
+        return errors
 
 def run_unittests(folder:str)->TestReport:
     report_file = "pytest_report.json"

@@ -14,9 +14,6 @@ from policy_adherence.code_generator import ToolPolicyItem, PolicyAdherenceCodeG
 from policy_adherence.llm.azure_wrapper import AzureLitellm
 from policy_adherence.oas import OpenAPI, Operation, PathItem
     
-logger.remove()
-logger.add(sys.stdout, colorize=True, format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> <level>{message}</level>")
-
 def read_oas(file_path:str)->OpenAPI:
     with open(file_path, "r") as file:
         d = yaml.safe_load(file)
@@ -93,10 +90,15 @@ def main():
     llm = AzureLitellm(model)
     generator = PolicyAdherenceCodeGenerator(llm, output_path)
     domain = None
-    domain = load_domain(f"tau_airline/input/domain.py")
-    all_codes = generator.generate_tools_check_fns(oas, policies, domain)
+    # domain = load_domain(f"tau_airline/input/domain.py")
+    result = generator.generate_tools_check_fns(oas, policies, domain)
+    print(f"Domain: {result.domain_file}")
+    for tool_name, tool in result.tools.items():
+        print(f"\t{tool_name}\t{tool.check_file_name}\t{tool.tests_file_name}")
     
 
 if __name__ == '__main__':
     load_dotenv()
+    logger.remove()
+    logger.add(sys.stdout, colorize=True, format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> <level>{message}</level>")
     main()
