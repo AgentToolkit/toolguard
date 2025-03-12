@@ -52,7 +52,7 @@ class Collector(BaseModel):
     result: List[ResultEntry]
 
 class Summary(BaseModel):
-    failed: Optional[int]
+    failed: Optional[int] = 0
     total: int
     collected: int
 
@@ -66,6 +66,12 @@ class TestReport(BaseModel):
     collectors: List[Collector]
     tests: List[TestResult]
 
+    def all_tests_passed(self)->bool:
+        return all([test.outcome == TestOutcome.passed for test in self.tests])
+    
+    def all_tests_collected(self)->bool:
+        return all([col.outcome == TestOutcome.passed for col in self.collectors])
+
 def run_unittests(folder:str)->TestReport:
     report_file = "pytest_report.json"
     subprocess.run([
@@ -74,9 +80,12 @@ def run_unittests(folder:str)->TestReport:
             f"--json-report-file={report_file}"
         ], 
         cwd=folder)
+    return read_test_report(os.path.join(folder, report_file))
 
-    with open(os.path.join(folder, report_file), "r") as file:
+def read_test_report(file_path:str)->TestReport:
+    with open(file_path, "r") as file:
         data = json.load(file)
-    return TestReport.model_validate_json(data, strict=False)
-    
-    
+    return TestReport.model_validate(data, strict=False)
+
+# report = read_test_report("/Users/davidboaz/Documents/GitHub/gen_policy_validator/tau_airline/output/2025-03-12 08:54:16/pytest_report.json")
+# print(report.summary.failed)

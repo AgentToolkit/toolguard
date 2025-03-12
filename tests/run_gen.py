@@ -10,7 +10,7 @@ from loguru import logger
 
 from policy_adherence.code import Code
 from policy_adherence.common.dict import substitute_refs
-from policy_adherence.gen_tool_validator import ToolPolicyItem
+from policy_adherence.code_generator import ToolPolicyItem, PolicyAdherenceCodeGenerator
 from policy_adherence.llm.azure_wrapper import AzureLitellm
 from policy_adherence.oas import OpenAPI, Operation, PathItem
     
@@ -86,30 +86,16 @@ def main():
     now = datetime.now()
     output_path = os.path.join(output_dir, now.strftime("%Y-%m-%d %H:%M:%S"))
 
-    policies = [load_policy(path) for path in policy_paths]
+    policies = {tool_name:load_policy(path) 
+        for tool_name, path 
+        in zip(tool_names, policy_paths)}
     oas = read_oas(oas_path)
     llm = AzureLitellm(model)
-
-    logger.debug(f"Starting... will save into {output_path}")
-    # domain = generate_domain(oas, llm)
+    generator = PolicyAdherenceCodeGenerator(llm, output_path)
+    domain = None
     domain = load_domain(f"tau_airline/input/domain.py")
-    domain.save(output_path)
-    logger.debug(f"domain created")
-    # symlink_force(output_path, os.path.join(output_dir, "LAST"))
-
-    for tool_name, tool_poilcy_items in zip(tool_names, policies):
-        logger.debug(f"Tool {tool_name}")
-        if len(tool_poilcy_items) == 0: continue
-        # op_oas = op_only_oas(oas, tool_name)
-        op = oas.get_operation_by_operationId(tool_name)
-        assert op
-        tool_info = ToolInfo(
-            tool_name=tool_name, 
-            tool_description=op.description,
-            policy_items=tool_poilcy_items
-        )
-
-        code, tests = generate_function(domain, tool_info, llm, output_path)
+    all_codes = generator.generate_tools_check_fns(oas, policies, domain)
+    
 
 if __name__ == '__main__':
     load_dotenv()

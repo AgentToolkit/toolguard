@@ -8,7 +8,7 @@
             "name": "Run gen py",
             "type": "debugpy",
             "request": "launch",
-            "program": "run_gen.py",
+            "program": "tests/run_gen.py",
             "console": "integratedTerminal",
             "args": [],
             "justMyCode": false
