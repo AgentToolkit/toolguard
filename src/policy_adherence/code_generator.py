@@ -6,7 +6,10 @@ from loguru import logger
 from policy_adherence.code import Code
 from policy_adherence.llm.llm_model import LLM_model
 from policy_adherence.oas import OpenAPI
-from policy_adherence.unittests import TestOutcome, run_unittests
+# from policy_adherence.pylint import run_pylint
+
+from policy_adherence.pyright import run_pyright
+from policy_adherence.pytest import TestOutcome, run_unittests
 
 class ToolPolicyItem(BaseModel):
     policy: str = Field(..., description="Policy item")
@@ -76,16 +79,16 @@ Add the operation description as the function documentation.
 {oas.model_dump_json(indent=2)}
 ```"""
         res_content = self._call_llm(prompt)
-        code = self._extract_code_from_response(res_content)
-
-        try:
-            ast.parse(code) #check syntax
-            return Code(file_name="domain.py", content=code)
-        except Exception as ex:
-            logger.warning(f"Generated domain have invalid syntax. {str(ex)}")
+        body = self._extract_code_from_response(res_content)
+        domain = Code(file_name="domain.py", content=body)
+        domain.save(self.output_path)
+        lint_report = run_pyright(self.output_path, domain.file_name)
+        if lint_report.list_errors():
+            logger.warning(f"Generated domain have Python errors.")
             if retries>1:
                 return self.generate_domain(oas, retries=retries-1) #retry
-            raise ex
+            raise Exception("Failed to generate domain from OpenAPI spec")
+        return domain
 
     def _bulltets(self, items: List[str])->str:
         s = ""
@@ -96,12 +99,12 @@ Add the operation description as the function documentation.
     def _policy_statements(self, policies:List[ToolPolicyItem]):
         s = ""
         for i, item in enumerate(policies):
-            s+= f"## Policy item {i+1}"
+            s+= f"#### Policy item {i+1}\n"
             s+=f"{item.policy}\n"
             if item.compliance_examples:
-                s+=f"### Positive examples\n{self._bulltets(item.compliance_examples)}"
+                s+=f"##### Positive examples\n{self._bulltets(item.compliance_examples)}"
             if item.violation_examples:
-                s+=f"### Negative examples\n{self._bulltets(item.violation_examples)}"
+                s+=f"##### Negative examples\n{self._bulltets(item.violation_examples)}"
             s+="\n"
         return s
 
@@ -146,27 +149,26 @@ Indicate test failures using a meaningful message that also contain the policy s
 {self._policy_statements(policies)}
     """
         res_content = self._call_llm(prompt)
-        code = self._extract_code_from_response(res_content)
+        body = self._extract_code_from_response(res_content)
         
-        try:
-            ast.parse(code)
-            tests = Code(file_name=f"test_check_{tool_name}.py", content=code)
-        except Exception as ex:
-            logger.warning(f"Generated tests with syntax errors. {str(ex)}")
+        tests = Code(file_name=f"test_check_{tool_name}.py", content=body)
+        tests.save(self.output_path)
+        lint_report = run_pyright(self.output_path, tests.file_name)
+        if lint_report.list_errors():
+            logger.warning(f"Generated tests with Python errors.")
             if retries>0:
                 return self.generate_tool_tests(checker_fn, tool_name, policies, retries=retries-1)
-            raise ex
-        
+            raise Exception("Generated tests contain errors")
+    
         #syntax ok, try to run it...
         logger.debug(f"Generated Tests... (retries={retries})")
-        tests.save(self.output_path)
         #still running against a stub. the tests should fail, but the collector should not fail.
-        report = run_unittests(self.output_path)
-        if not report.all_tests_collected_successfully():
+        test_report = run_unittests(self.output_path)
+        if not test_report.all_tests_collected_successfully():
             logger.debug(f"Tool {tool_name} unit tests error")
             return self.generate_tool_tests(checker_fn, tool_name, policies, retries=retries-1)
         
-        return tests, report.list_errors()
+        return tests, test_report.list_errors()
 
     def _improve_check_fn(self, domain: Code, tool_name: str, tool_policies:List[ToolPolicyItem], previous_version:Code, review_comments: List[str], retries=2)->Code:
         logger.debug(f"Improving check function... (retry = {retries})")
@@ -184,60 +186,62 @@ If you need to retrieve additional data (that is not in the function arguments),
 You need to generate code that improve the current implementation, according to the review comments.
 The code must be simple and well documented.
 
-# Domain:
+### Domain:
 ```
-### domain.file_name
+### {domain.file_name}
+
 {domain.content}
 ```
 
-# Policy Items:
+### Policy Items:
+
 {self._policy_statements(tool_policies)}
 
 
-# Current implemtnation
+### Current implemtnation
 ```
 ### {previous_version.file_name}
+
 {previous_version.content}
 ```
 
-# Review commnets:
-```
-{self._bulltets(review_comments)}
-```
-    """
-        res_content = self._call_llm(prompt)
-        code = self._extract_code_from_response(res_content)
+### Review commnets:
 
-        try:
-            ast.parse(code)
-            return Code(file_name=f"{check_fn_name}.py", content=code)
-        except Exception as ex:
-            logger.warning(f"Generated function failed. Syntax error. {str(ex)}")
+{self._bulltets(review_comments)}
+"""
+        res_content = self._call_llm(prompt)
+        body = self._extract_code_from_response(res_content)
+        check_fn = Code(file_name=f"{check_fn_name}.py", content=body)
+        check_fn.save(self.output_path)
+        lint_report = run_pyright(self.output_path, check_fn.file_name)
+        if lint_report.list_errors():
+            logger.warning(f"Generated function with Python errors.")
             if retries>0:
-                return self._improve_check_fn(domain, tool_name, tool_policies, code, [str(ex)], retries-1)
-            raise ex
+                return self._improve_check_fn(domain, tool_name, tool_policies, check_fn, review_comments, retries-1)
+            raise Exception(f"Generation failed for tool {tool_name}")
+        return check_fn
 
     def generate_tool_check_fn(self, domain: Code, tool_name:str, policies:List[ToolPolicyItem], output_path:str, trial_no=0)->Tuple[Code, Code]:
         check_fn = self._copy_check_fn_stub(domain, tool_name, f"check_{tool_name}")
         check_fn.save(output_path)
         logger.debug(f"Tool {tool_name} function draft created")
 
-        tests = self.generate_tool_tests(check_fn, tool_name, policies)
-        logger.debug(f"Tool {tool_name} unit tests successfully created")
+        tests, errors = self.generate_tool_tests(check_fn, tool_name, policies)
+        logger.debug(f"Tests {tests.file_name} successfully created")
 
-        valid_fn = lambda: self._check_fn_is_ok(check_fn, domain, tests, output_path)
         # logger.debug(f"Tool {tool_name} function is {'valid' if valid_fn() else 'invalid'}")
-        while trial_no < MAX_TOOL_IMPROVEMENTS and not valid_fn():
-            logger.debug(f"Tool {tool_name} function is invalid. Retrying...")
-            check_fn = self._improve_check_fn(domain, tool_name, policies, check_fn, review_comments)
+        while trial_no < MAX_TOOL_IMPROVEMENTS and errors:
+            logger.debug(f"Tool {tool_name} function has errors. Retrying...")
+            check_fn = self._improve_check_fn(domain, tool_name, policies, check_fn, errors)
             check_fn.save(output_path)
+            errors = self._check_fn_is_ok(check_fn, domain, tests, output_path)
             trial_no +=1
         
         return check_fn, tests
 
-    def _check_fn_is_ok(self, fn_code: Code, domain: Code, test_cases:Code, output_path:str):
+    def _check_fn_is_ok(self, fn_code: Code, domain: Code, test_cases:Code, output_path:str)->List[str]:
         report = run_unittests(output_path)
-        return report.all_tests_passed()
+        return report.list_errors()
         # lint
         # hallucinations
         # llm all poliCIES ARE COVERED?

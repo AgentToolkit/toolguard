@@ -4,3 +4,4 @@ pytest
 pytest-json-report
 loguru
 astor
+pyright
