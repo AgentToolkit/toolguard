@@ -95,6 +95,8 @@ def main():
 
     generator = PolicyAdherenceCodeGenerator(llm, cwd)
     result = generator.generate_tools_check_fns(tool_policies, domain)
+
+
     print(f"Domain: {result.domain_file}")
     for tool_name, tool in result.tools.items():
         print(f"\t{tool_name}\t{tool.check_file_name}\t{tool.tests_file_name}")

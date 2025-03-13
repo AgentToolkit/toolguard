@@ -62,6 +62,7 @@ class PolicyAdherenceCodeGenerator():
         ))
         for node in tree.body:
             if isinstance(node, ast.FunctionDef) and node.name == fn_name:
+                #TODO add history chat messages
                 node.name = new_fn_name
                 node.returns = ast.Constant(value=None)
                 node.body = [ast.Pass()]
@@ -72,8 +73,8 @@ class PolicyAdherenceCodeGenerator():
         src= astor.to_source(module)
         return Code(file_name=f"{new_fn_name}.py", content=src)
 
-    def _improve_check_fn(self, domain: Code, tool: ToolPolicy, previous_version:Code, review_comments: List[str], retries=2)->Code:
-        logger.debug(f"Improving check function... (retry = {retries})")
+    def _improve_check_fn(self, domain: Code, tool: ToolPolicy, previous_version:Code, review_comments: List[str], trial=0)->Code:
+        logger.debug(f"Improving check function... (trial = {trial})")
         check_fn_name = f"check_{tool.name}"
         prompt = f"""You are given:
 * a Python file describing the domain. It contains data classes and functions you may use.
@@ -118,8 +119,8 @@ The code must be simple and well documented.
         lint_report = run_pyright(self.cwd, check_fn.file_name)
         if lint_report.list_errors():
             logger.warning(f"Generated function with Python errors.")
-            if retries>0:
-                return self._improve_check_fn(domain, tool, check_fn, review_comments, retries-1)
+            if trial < MAX_TOOL_IMPROVEMENTS:
+                return self._improve_check_fn(domain, tool, check_fn, review_comments, trial+1)
             raise Exception(f"Generation failed for tool {tool.name}")
         return check_fn
 
@@ -129,7 +130,7 @@ The code must be simple and well documented.
         logger.debug(f"Tool {tool.name} function draft created")
 
         test_gen = ToolPolicyTestsGenerator(self.llm, self.cwd)
-        tests, errors = test_gen.generate_tool_tests(check_fn, tool)
+        tests, errors = test_gen.generate_tool_tests(check_fn, tool, domain)
         logger.debug(f"Tests {tests.file_name} successfully created")
 
         # logger.debug(f"Tool {tool_name} function is {'valid' if valid_fn() else 'invalid'}")
