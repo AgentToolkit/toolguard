@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Tuple
 
 from policy_adherence.utils import to_md_bulltets
 
-class MyFile(BaseModel):
+class GenFile(BaseModel):
     file_name: str
     content: str
 

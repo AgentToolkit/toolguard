@@ -1,12 +1,12 @@
 
 from loguru import logger
-from policy_adherence.types import MyFile
+from policy_adherence.types import GenFile
 from policy_adherence.common.open_api import OpenAPI
 from policy_adherence.tools.pyright import run_pyright
 from policy_adherence.utils import extract_code_from_llm_response
 
 
-def generate_domain_old(self, oas: OpenAPI, retries=2)->MyFile:
+def generate_domain_old(self, oas: OpenAPI, retries=2)->GenFile:
         logger.debug(f"Generating domain... (retry = {retries})")
         prompt = f"""Given an OpenAPI Spec, generate Python code that include all the data-types as Pydantic data-classes. 
 For data-classes fields, make all fields optional with default `None`.
@@ -22,7 +22,7 @@ Add the operation description as the function documentation.
 ```"""
         res_content = self._call_llm(prompt)
         body = extract_code_from_llm_response(res_content)
-        domain = MyFile(file_name="domain.py", content=body)
+        domain = GenFile(file_name="domain.py", content=body)
         domain.save(self.cwd)
         lint_report = run_pyright(self.cwd, domain.file_name)
         if lint_report.list_errors():

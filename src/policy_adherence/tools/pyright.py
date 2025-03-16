@@ -3,7 +3,7 @@ import subprocess
 from pydantic import BaseModel
 from typing import List, Optional
 
-from policy_adherence.types import MyFile
+from policy_adherence.types import GenFile
 
 ERROR = "error"
 WARNING = "warning"
@@ -82,14 +82,14 @@ def run_pyright(folder:str, py_file:str)->DiagnosticsReport:
     # return original.copy_errors_only()
     
 
-def pyright_config() ->MyFile:
+def pyright_config() ->GenFile:
     cfg = {
         "typeCheckingMode": "basic",
         "reportOptionalIterable": WARNING,
         "reportArgumentType": WARNING, #"Object of type \"None\" cannot be used as iterable value",
         "reportAttributeAccessIssue": ERROR
     }
-    return MyFile(file_name="pyrightconfig.json",
+    return GenFile(file_name="pyrightconfig.json",
                   content=json.dumps(cfg, indent=2))
 
 # r = run_pyright("/Users/davidboaz/Documents/GitHub/gen_policy_validator/tau_airline/output/2025-03-16 14:44:43", "check_book_reservation.py")

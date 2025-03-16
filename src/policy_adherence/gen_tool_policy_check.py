@@ -3,7 +3,7 @@ import astor
 from pydantic import BaseModel
 from typing import Dict, List, Tuple
 from loguru import logger
-from policy_adherence.types import MyFile, ToolPolicy
+from policy_adherence.types import GenFile, ToolPolicy
 from policy_adherence.llm.llm_model import LLM_model
 # from policy_adherence.pylint import run_pylint
 
@@ -32,7 +32,7 @@ class PolicyAdherenceCodeGenerator():
         self.llm = llm
         self.cwd = cwd
 
-    def generate_tools_check_fns(self, tool_policies: List[ToolPolicy], domain:MyFile)->ToolChecksCodeGenerationResult:
+    def generate_tools_check_fns(self, tool_policies: List[ToolPolicy], domain:GenFile)->ToolChecksCodeGenerationResult:
         logger.debug(f"Starting... will save into {self.cwd}")
         pyright_config().save(self.cwd)
 
@@ -41,7 +41,7 @@ class PolicyAdherenceCodeGenerator():
             if len(tool.policy_items) == 0: continue
             logger.debug(f"Tool {tool.name}")
             
-            tool_check_fn, tool_check_tests = self.generate_tool_check_fn(domain, tool, self.cwd)
+            tool_check_fn, tool_check_tests = self.generate_tool_check_fn(domain, tool)
             tools_result[tool.name] = ToolChecksCodeResult(
                 tool = tool,
                 check_file_name=tool_check_fn.file_name, 
@@ -54,7 +54,31 @@ class PolicyAdherenceCodeGenerator():
             tools=tools_result
         )
 
-    def _copy_check_fn_stub(self, domain:MyFile, fn_name:str, new_fn_name:str)->MyFile:
+    def generate_tool_check_fn(self, domain: GenFile, tool:ToolPolicy, trial_no=0)->Tuple[GenFile, GenFile]:
+        check_fn_name = f"check_{tool.name}"
+        check_fn = self._copy_check_fn_stub(domain, tool.name, check_fn_name)
+        check_fn.save(self.cwd)
+        check_fn.save_as(self.cwd, f"-1_{check_fn_name}.py")
+        
+        logger.debug(f"Tool {tool.name} function draft created")
+
+        tests = self.generate_tool_tests(check_fn, tool, domain)
+        logger.debug(f"Tests {tests.file_name} successfully created")
+        # logger.debug(f"Tool {tool_name} function is {'valid' if valid_fn() else 'invalid'}")
+        while True:
+            errors = run_unittests(self.cwd, tests.file_name, str(trial_no)).list_errors()
+            if not errors: 
+                return check_fn, tests
+            if trial_no >= MAX_TOOL_IMPROVEMENTS:
+                raise Exception(f"Could not generate check function for tool {tool.name}")
+            
+            logger.debug(f"Tool {tool.name} function has errors. Retrying...")
+            check_fn = self._improve_check_fn(domain, tool, check_fn, errors)
+            # check_fn.save(output_path)
+            trial_no +=1
+
+
+    def _copy_check_fn_stub(self, domain:GenFile, fn_name:str, new_fn_name:str)->GenFile:
         tree = ast.parse(domain.content)
         new_body = []
         new_body.append(ast.ImportFrom(
@@ -73,9 +97,9 @@ class PolicyAdherenceCodeGenerator():
         module = ast.Module(body=new_body, type_ignores=[])
         ast.fix_missing_locations(module)
         src= astor.to_source(module)
-        return MyFile(file_name=f"{new_fn_name}.py", content=src)
+        return GenFile(file_name=f"{new_fn_name}.py", content=src)
 
-    def _improve_check_fn(self, domain: MyFile, tool: ToolPolicy, previous_version:MyFile, review_comments: List[str], trial=0)->MyFile:
+    def _improve_check_fn(self, domain: GenFile, tool: ToolPolicy, previous_version:GenFile, review_comments: List[str], trial=0)->GenFile:
         logger.debug(f"Improving check function... (trial = {trial})")
         check_fn_name = f"check_{tool.name}"
         prompt = f"""You are given:
@@ -117,13 +141,13 @@ The code must be simple and well documented.
 """
         res_content = call_llm(prompt, self.llm)
         body = extract_code_from_llm_response(res_content)
-        check_fn = MyFile(file_name=f"{check_fn_name}.py", content=body)
+        check_fn = GenFile(file_name=f"{check_fn_name}.py", content=body)
         check_fn.save(self.cwd)
         check_fn.save_as(self.cwd, f"{trial}_{check_fn_name}.py")
 
         lint_report = run_pyright(self.cwd, check_fn.file_name)
         if lint_report.summary.errorCount>0:
-            MyFile(
+            GenFile(
                     file_name=f"{trial}_{check_fn_name}_errors.json", 
                     content=lint_report.model_dump_json(indent=2)
                 ).save(self.cwd)
@@ -134,10 +158,34 @@ The code must be simple and well documented.
             raise Exception(f"Generation failed for tool {tool.name}")
         return check_fn
     
-
-    def generate_tool_tests(self, fn_stub:MyFile, tool:ToolPolicy, domain:MyFile, trial=0)-> Tuple[MyFile, List[str]]:
-        test_module_name = f"test_check_{tool.name}"
+    def generate_tool_tests(self, fn_stub:GenFile, tool:ToolPolicy, domain:GenFile, trial=0)-> GenFile:
         logger.debug(f"Generating Tests... (trial={trial})")
+        tests = self._generate_tool_tests(fn_stub, tool, domain)
+        tests.save_as(self.cwd, f"{trial}_{tests.file_name}")
+
+        lint_report = run_pyright(self.cwd, tests.file_name)
+        if lint_report.summary.errorCount>0:
+            logger.warning(f"Generated tests with Python errors.")
+            if trial < MAX_TEST_GEN_TRIALS:
+                return self.generate_tool_tests(fn_stub, tool, domain, trial+1)
+            raise Exception("Generated tests contain errors")
+    
+        #syntax ok, try to run it...
+        logger.debug(f"Generated Tests... (trial={trial})")
+        #still running against a stub. the tests should fail, but the collector should not fail.
+        test_report = run_unittests(self.cwd, tests.file_name)
+        if test_report.all_tests_collected_successfully():
+            reviews = self._review_generated_tool_tests(domain, tool, tests)
+            if reviews:
+                #TODO 
+                print(reviews)
+            return tests
+        
+        logger.debug(f"Tool {tool.name} tests error. Retrying...")
+        return self.generate_tool_tests(fn_stub, tool, domain, trial+1)
+
+    def _generate_tool_tests(self, fn_stub:GenFile, tool:ToolPolicy, domain:GenFile)-> GenFile:
+        test_module_name = f"test_check_{tool.name}"
         prompt = f"""You are given:
 * a Python file describing the domain. It contains data classes and interfaces you may use.
 * a list of policy items. Policy items have a list of positive and negative examples. 
@@ -187,48 +235,9 @@ Make sure to indicate test failures using a meaningful message.
 ```"""
         res_content = call_llm(prompt, self.llm)
         body = extract_code_from_llm_response(res_content)
-        
-        tests = MyFile(file_name=f"{test_module_name}.py", content=body)
+        tests = GenFile(file_name=f"{test_module_name}.py", content=body)
         tests.save(self.cwd)
-        tests.save_as(self.cwd, f"{trial}_{test_module_name}.py")
-        lint_report = run_pyright(self.cwd, tests.file_name)
-        if lint_report.summary.errorCount>0:
-            logger.warning(f"Generated tests with Python errors.")
-            if trial < MAX_TEST_GEN_TRIALS:
-                return self.generate_tool_tests(fn_stub, tool, domain, trial+1)
-            raise Exception("Generated tests contain errors")
-    
-        #syntax ok, try to run it...
-        logger.debug(f"Generated Tests... (trial={trial})")
-        #still running against a stub. the tests should fail, but the collector should not fail.
-        test_report = run_unittests(self.cwd, tests.file_name)
-        if not test_report.all_tests_collected_successfully():
-            logger.debug(f"Tool {tool.name} unit tests error")
-            return self.generate_tool_tests(fn_stub, tool, domain, trial+1)
-        
-        return tests, test_report.list_errors()
+        return tests
 
-    def generate_tool_check_fn(self, domain: MyFile, tool:ToolPolicy, output_path:str, trial_no=0)->Tuple[MyFile, MyFile]:
-        check_fn_name = f"check_{tool.name}"
-        check_fn = self._copy_check_fn_stub(domain, tool.name, check_fn_name)
-        check_fn.save(output_path)
-        check_fn.save_as(self.cwd, f"-1_{check_fn_name}.py")
-        
-        logger.debug(f"Tool {tool.name} function draft created")
-
-        tests, errors = self.generate_tool_tests(check_fn, tool, domain)
-        logger.debug(f"Tests {tests.file_name} successfully created")
-
-        # logger.debug(f"Tool {tool_name} function is {'valid' if valid_fn() else 'invalid'}")
-        while trial_no < MAX_TOOL_IMPROVEMENTS and errors:
-            logger.debug(f"Tool {tool.name} function has errors. Retrying...")
-            check_fn = self._improve_check_fn(domain, tool, check_fn, errors)
-            check_fn.save(output_path)
-            errors = self._check_fn_is_ok(check_fn, domain, tests, output_path, trial_no)
-            trial_no +=1
-        
-        return check_fn, tests
-
-    def _check_fn_is_ok(self, fn_code: MyFile, domain: MyFile, test_cases:MyFile, output_path:str, trial_no)->List[str]:
-        report = run_unittests(output_path, test_cases.file_name, trial_no)
-        return report.list_errors()
+    def _review_generated_tool_tests(self, domain: GenFile, tool:ToolPolicy, tests: GenFile)-> List[str]:
+        return []
