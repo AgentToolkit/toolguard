@@ -4,12 +4,17 @@ from typing import Dict, List, Optional, Tuple
 
 from policy_adherence.utils import to_md_bulltets
 
-class Code(BaseModel):
+class MyFile(BaseModel):
     file_name: str
     content: str
 
     def save(self, folder:str):
         file_path = os.path.join(folder, self.file_name)
+        with open(file_path, "w") as file:
+            file.write(self.content)
+
+    def save_as(self, folder:str, file_name:str):
+        file_path = os.path.join(folder, file_name)
         with open(file_path, "w") as file:
             file.write(self.content)
 

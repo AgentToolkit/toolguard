@@ -7,7 +7,7 @@ from typing import List
 from dotenv import load_dotenv
 from loguru import logger
 
-from policy_adherence.types import Code, ToolPolicy, ToolPolicyItem
+from policy_adherence.types import MyFile, ToolPolicy, ToolPolicyItem
 from policy_adherence.gen_domain import OpenAPICodeGenerator
 from policy_adherence.gen_tool_policy_check import PolicyAdherenceCodeGenerator
 from policy_adherence.llm.azure_wrapper import AzureLitellm
@@ -34,10 +34,10 @@ def load_policy(file_path:str, tool_name:str)->ToolPolicy:
         )
     return ToolPolicy(name=tool_name, policy_items=policy_items)
 
-def load_domain(file_path:str)->Code:
+def load_domain(file_path:str)->MyFile:
     with open(file_path, "r", encoding="utf-8") as file:
         content = file.read()
-    return Code(
+    return MyFile(
         file_name=os.path.basename(file_path),
         content=content
     )

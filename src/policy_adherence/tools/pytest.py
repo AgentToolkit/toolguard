@@ -79,10 +79,11 @@ class TestReport(BaseModel):
                 errors.append(test.call.crash.message)
         return errors
 
-def run_unittests(folder:str)->TestReport:
-    report_file = "pytest_report.json"
+def run_unittests(folder:str, test_file:str, suffix:str = "")->TestReport:
+    report_file = f"pytest_report{suffix}.json"
     subprocess.run([
-            "pytest", 
+            "pytest",
+            test_file,
             "--json-report", 
             f"--json-report-file={report_file}"
         ], 
