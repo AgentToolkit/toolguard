@@ -1,11 +1,13 @@
 
 
 import ast
+import os
 from typing import List
 
 import astor
 from policy_adherence.tools.datamodel_codegen import run as dm_codegen
 from policy_adherence.common.open_api import OpenAPI, Operation, Parameter, Schema, read_openapi
+from policy_adherence.types import GenFile
 
 primitive_oas_types_to_py = {
     "string": "str",
@@ -14,15 +16,25 @@ primitive_oas_types_to_py = {
     "boolean": "bool"
 }
 class OpenAPICodeGenerator():
-    def generate_domain(self, oas_file:str, domain_py_file:str):
-        dm_codegen(oas_file, domain_py_file)
-        self.append_functions(domain_py_file, oas_file)
+    cwd: str
+    def __init__(self, cwd:str) -> None:
+        self.cwd = cwd
 
-    def append_functions(self, domain_py_file:str, oas_file:str):
+    def generate_domain(self, oas_file:str, domain_py_file:str)->GenFile:
+        file_path = os.path.join(self.cwd, domain_py_file)
+        dm_codegen(oas_file, file_path)
+
+        funcs_src = self.generate_functions(domain_py_file, oas_file)
+        with open(domain_py_file, "a", encoding="utf-8") as f:
+            f.write("\n# Tool interfaces\n")
+            f.write(funcs_src)
+
+        with open(file_path, "r", encoding="utf-8") as file:
+            content = file.read()
+        return GenFile(file_name=domain_py_file, content=content)
+
+    def generate_functions(self, domain_py_file:str, oas_file:str)->str:
         oas = read_openapi(oas_file)
-        
-        with open(domain_py_file, "r", encoding="utf-8") as f:
-            tree = ast.parse(f.read(), filename=domain_py_file)
         
         new_body = []
         new_body.append(ast.ImportFrom(
@@ -43,9 +55,7 @@ class OpenAPICodeGenerator():
         
         module = ast.Module(body=new_body, type_ignores=[])
         ast.fix_missing_locations(module)
-        src= astor.to_source(module)
-        with open(domain_py_file, "a", encoding="utf-8") as f:
-            f.write(src)
+        return astor.to_source(module)
 
     def make_fn(self, op: Operation, params: List[Parameter], oas:OpenAPI)->ast.FunctionDef:
         function_name = op.operationId
@@ -100,3 +110,10 @@ class OpenAPICodeGenerator():
         return ast.arg(
             arg=param.name, 
             annotation=ast.Name(id=py_type, ctx=ast.Load()))
+
+if __name__ == '__main__':
+    gen = OpenAPICodeGenerator("tau_airline/output")
+    oas_path = "tau_airline/input/openapi.yaml"
+    domain_path = "domain.py"
+    domain = gen.generate_domain(oas_path, domain_path)
+    print(domain.model_dump_json())

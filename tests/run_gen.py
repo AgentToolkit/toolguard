@@ -34,13 +34,13 @@ def load_policy(file_path:str, tool_name:str)->ToolPolicy:
         )
     return ToolPolicy(name=tool_name, policy_items=policy_items)
 
-def load_domain(file_path:str)->GenFile:
-    with open(file_path, "r", encoding="utf-8") as file:
-        content = file.read()
-    return GenFile(
-        file_name=os.path.basename(file_path),
-        content=content
-    )
+# def load_domain(file_path:str)->GenFile:
+#     with open(file_path, "r", encoding="utf-8") as file:
+#         content = file.read()
+#     return GenFile(
+#         file_name=os.path.basename(file_path),
+#         content=content
+#     )
 
 # def op_only_oas(oas: OpenAPI, operationId: str)-> OpenAPI:
 #     new_oas = OpenAPI(
@@ -88,14 +88,10 @@ def main():
         in zip(tool_names, policy_paths)]
     llm = AzureLitellm(model)
     
-    domain_file = os.path.join(cwd, "domain.py")
-    OpenAPICodeGenerator().generate_domain(
-        oas_path, domain_file)
-    domain = load_domain(domain_file)
-
-    generator = PolicyAdherenceCodeGenerator(llm, cwd)
-    result = generator.generate_tools_check_fns(tool_policies, domain)
-
+    domain = OpenAPICodeGenerator(cwd)\
+        .generate_domain(oas_path, "domain.py")
+    result = PolicyAdherenceCodeGenerator(llm, cwd)\
+        .generate_tools_check_fns(tool_policies, domain)
 
     print(f"Domain: {result.domain_file}")
     for tool_name, tool in result.tools.items():

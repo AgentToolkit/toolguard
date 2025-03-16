@@ -92,5 +92,6 @@ def pyright_config() ->GenFile:
     return GenFile(file_name="pyrightconfig.json",
                   content=json.dumps(cfg, indent=2))
 
-# r = run_pyright("/Users/davidboaz/Documents/GitHub/gen_policy_validator/tau_airline/output/2025-03-16 14:44:43", "check_book_reservation.py")
-# print(r)
+# if __name__ == '__main__':
+#     r = run_pyright("/Users/davidboaz/Documents/GitHub/gen_policy_validator/tau_airline/output/2025-03-16 14:44:43", "check_book_reservation.py")
+#     print(r)
