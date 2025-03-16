@@ -2,11 +2,11 @@
 
 import ast
 import os
-from typing import List
+from typing import List, Union
 
 import astor
 from policy_adherence.tools.datamodel_codegen import run as dm_codegen
-from policy_adherence.common.open_api import OpenAPI, Operation, Parameter, Schema, read_openapi
+from policy_adherence.common.open_api import OpenAPI, Operation, Parameter, PathItem, Reference, RequestBody, Response, Schema, read_openapi
 from policy_adherence.types import GenFile
 
 primitive_oas_types_to_py = {
@@ -25,7 +25,7 @@ class OpenAPICodeGenerator():
         dm_codegen(oas_file, file_path)
 
         funcs_src = self.generate_functions(domain_py_file, oas_file)
-        with open(domain_py_file, "a", encoding="utf-8") as f:
+        with open(file_path, "a", encoding="utf-8") as f:
             f.write("\n# Tool interfaces\n")
             f.write(funcs_src)
 
@@ -48,8 +48,11 @@ class OpenAPICodeGenerator():
         ))
 
         for path, path_item in oas.paths.items():
+            path_item = oas.resolve_ref(path_item, PathItem)
             for mtd, op in path_item.operations.items():
+                op = oas.resolve_ref(op, Operation)
                 params = (path_item.parameters or []) + (op.parameters or [])
+                params = [oas.resolve_ref(p, Parameter) for p in params]
                 function_def = self.make_fn(op, params, oas)
                 new_body.append(function_def)
         
@@ -60,20 +63,24 @@ class OpenAPICodeGenerator():
     def make_fn(self, op: Operation, params: List[Parameter], oas:OpenAPI)->ast.FunctionDef:
         function_name = op.operationId
         args = [self.make_arg(param, oas) for param in params]
-        if op.requestBody:
-            scm = op.requestBody.content_json.schema_
-            body_type = self.map_oas_to_py_type(scm)
+
+        req_body = oas.resolve_ref(op.requestBody, RequestBody)
+        if req_body:
+            scm_or_ref = req_body.content_json.schema_
+            
+            body_type = self.map_oas_to_py_type(scm_or_ref, oas)
             args.append(ast.arg(
                 arg="request", 
                 annotation=ast.Name(id=body_type, ctx=ast.Load())
             ))
 
         return_type = None
-        rsp = op.responses.get("200")
+        rsp_or_ref = op.responses.get("200")
+        rsp = oas.resolve_ref(rsp_or_ref, Response)
         if rsp:
-            scm = rsp.content_json.schema_
-            if scm:
-                type = self.map_oas_to_py_type(scm)
+            scm_or_ref = rsp.content_json.schema_
+            if scm_or_ref:
+                type = self.map_oas_to_py_type(scm_or_ref, oas)
                 return_type = ast.Name(id=type, ctx=ast.Load())
 
         fn = ast.FunctionDef(
@@ -95,18 +102,20 @@ class OpenAPICodeGenerator():
         fn.body.insert(0, doc)
         return fn
     
-    def map_oas_to_py_type(self, scm:Schema)->str:
+    def map_oas_to_py_type(self, scm_or_ref:Union[Reference, Schema], oas:OpenAPI)->str:
+        if isinstance(scm_or_ref, Reference):
+            return scm_or_ref.ref.split("/")[-1]
+
+        scm = oas.resolve_ref(scm_or_ref, Schema)
         py_type = primitive_oas_types_to_py.get(scm.type)
         if py_type:
             return py_type
-        if scm.ref:
-            return scm.ref.split("/")[-1]
         if scm.type == "array":
-            return f"List[{self.map_oas_to_py_type(scm.items)}]"
+            return f"List[{self.map_oas_to_py_type(scm.items, oas)}]"
         return "Any"
     
     def make_arg(self, param: Parameter, oas:OpenAPI):
-        py_type = self.map_oas_to_py_type(param.schema_)
+        py_type = self.map_oas_to_py_type(param.schema_, oas)
         return ast.arg(
             arg=param.name, 
             annotation=ast.Name(id=py_type, ctx=ast.Load()))

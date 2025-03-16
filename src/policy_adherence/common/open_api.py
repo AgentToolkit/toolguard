@@ -1,8 +1,9 @@
 from enum import StrEnum
 from pydantic import BaseModel, Field, HttpUrl
-from typing import List, Dict, Optional, Any, Union
+from typing import List, Dict, Optional, Any, TypeVar, Union
 
 from policy_adherence.common.array import not_none
+from policy_adherence.common.dict import find_ref
 from policy_adherence.common.http import MEDIA_TYPE_APP_JSON
 
 class JSONSchemaTypes(StrEnum):
@@ -13,18 +14,19 @@ class JSONSchemaTypes(StrEnum):
     array = "array"
     object = "object"
 
+class Reference(BaseModel):
+    ref: str = Field(..., alias="$ref")
 
 class Schema(BaseModel):
     type: Optional[JSONSchemaTypes] = None
-    properties: Optional[Dict[str, 'Schema']] = None
-    items: Optional[Union['Schema', list]] = None
+    properties: Optional[Dict[str, Union[Reference, 'Schema']]] = None
+    items: Optional[Union[Reference, 'Schema']] = None
     additionalProperties: Optional[Union['Schema', bool]] = None
     format: Optional[str] = None
     enum: Optional[list] = None
     default: Optional[Any] = None
     description: Optional[str] = None
     example: Optional[Any] = None
-    ref: Optional[str] = Field(None, alias="$ref")
 
 class Contact(BaseModel):
     name: Optional[str] = None
@@ -72,7 +74,7 @@ class Tag(BaseModel):
 
 
 class MediaType(BaseModel):
-    schema_: Optional[Schema] = Field(None, alias="schema")
+    schema_: Optional[Union[Reference, Schema]] = Field(None, alias="schema")
     example: Optional[Any] = None
     examples: Optional[Dict[str, Any]] = None
 
@@ -109,7 +111,7 @@ class Parameter(BaseModel):
     description: Optional[str] = None
     in_: ParameterIn = Field(ParameterIn.query, alias="in")
     required: Optional[bool] = None
-    schema_: Optional[Schema] = Field(None, alias="schema")
+    schema_: Optional[Union[Reference, Schema]] = Field(None, alias="schema")
 
 
 class Operation(BaseModel):
@@ -117,17 +119,16 @@ class Operation(BaseModel):
     description: Optional[str] = None
     operationId: Optional[str] = None
     tags: Optional[List[str]] = None
-    parameters: Optional[List[Parameter]] = None
-    requestBody: Optional[RequestBody] = None
-    responses: Optional[Dict[str, Response]] = None
+    parameters: Optional[List[Union[Reference, Parameter]]] = None
+    requestBody: Optional[Union[Reference, RequestBody]] = None
+    responses: Optional[Dict[str, Union[Reference, Response]]] = None
     security: Optional[Dict[str, List[str]]] = None
 
 class PathItem(BaseModel):
-    ref: Optional[str] = Field(None, alias="$ref")
     summary: Optional[str] = None
     description: Optional[str] = None
     servers: Optional[List[Server]] = None
-    parameters: Optional[List[Parameter]] = None
+    parameters: Optional[List[Union[Reference, Parameter]]] = None
     get: Optional[Operation] = None 
     put: Optional[Operation] = None 
     post: Optional[Operation] = None
@@ -152,24 +153,24 @@ class PathItem(BaseModel):
         return {k: v for k, v in d.items() if v is not None}
 
 class Components(BaseModel):
-    schemas: Optional[Dict[str, Any]] = None
-    responses: Optional[Dict[str, Any]] = None
-    parameters: Optional[Dict[str, Any]] = None
+    schemas: Optional[Dict[str, Schema]] = None
+    responses: Optional[Dict[str, Response]] = None
+    parameters: Optional[Dict[str, Parameter]] = None
     examples: Optional[Dict[str, Any]] = None
-    requestBodies: Optional[Dict[str, Any]] = None
+    requestBodies: Optional[Dict[str, RequestBody]] = None
     headers: Optional[Dict[str, Any]] = None
     securitySchemes: Optional[Dict[str, Any]] = None
     links: Optional[Dict[str, Any]] = None
     callbacks: Optional[Dict[str, Any]] = None
     pathItems: Optional[Dict[str, PathItem]] = None
 
-
+BaseModelT = TypeVar("BaseModelT", bound=BaseModel)
 class OpenAPI(BaseModel):
     openapi: str = Field(..., pattern=r"^3\.\d\.\d+(-.+)?$")
     info: Info
     jsonSchemaDialect: Optional[HttpUrl] = "https://spec.openapis.org/oas/3.1/dialect/WORK-IN-PROGRESS"
     servers: Optional[List[Server]] = [Server(url="/")]
-    paths: Dict[str, PathItem] = {}
+    paths: Dict[str, Union[Reference, PathItem]] = {}
     webhooks: Optional[Dict[str, PathItem]] = None
     components: Optional[Components] = None
     security: Optional[List[Dict[str, List[str]]]] = None  # Refined to List of Dicts
@@ -181,6 +182,12 @@ class OpenAPI(BaseModel):
             for op in path_item.operations.values():
                 if op.operationId == operationId:
                     return op
+                
+    def resolve_ref(self, obj: Reference | BaseModelT, object_type: type[BaseModelT])->BaseModelT:
+        if isinstance(obj, Reference):
+            tmp = find_ref(self.model_dump(), obj.ref)
+            return object_type.model_validate(tmp)
+        return obj
                 
 import json
 import yaml
