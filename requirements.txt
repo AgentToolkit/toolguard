@@ -1,3 +1,4 @@
+dotenv
 pydantic
 litellm
 pytest

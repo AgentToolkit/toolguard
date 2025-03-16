@@ -1,7 +1,6 @@
 {
     "python.testing.pytestArgs": [
-        "tau_airline"
+        "tests", "tau_airline"
     ],
-    "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true
+    "python.testing.pytestEnabled": true,
 }

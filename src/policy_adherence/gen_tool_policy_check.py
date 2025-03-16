@@ -4,7 +4,6 @@ from pydantic import BaseModel
 from typing import Dict, List, Tuple
 from loguru import logger
 from policy_adherence.types import Code, ToolPolicy
-from policy_adherence.gen_tool_policy_tests import ToolPolicyTestsGenerator
 from policy_adherence.llm.llm_model import LLM_model
 # from policy_adherence.pylint import run_pylint
 
@@ -13,6 +12,7 @@ from policy_adherence.tools.pytest import run_unittests
 from policy_adherence.utils import call_llm, extract_code_from_llm_response, to_md_bulltets
 
 MAX_TOOL_IMPROVEMENTS = 3
+MAX_TEST_GEN_TRIALS = 3
 
 class ToolChecksCodeResult(BaseModel):
     tool: ToolPolicy
@@ -123,14 +123,72 @@ The code must be simple and well documented.
                 return self._improve_check_fn(domain, tool, check_fn, review_comments, trial+1)
             raise Exception(f"Generation failed for tool {tool.name}")
         return check_fn
+    
+
+    def generate_tool_tests(self, fn_stub:Code, tool:ToolPolicy, domain:Code, trial=0)-> Tuple[Code, List[str]]:
+        fn_name = f"test_check_{tool.name}"
+        logger.debug(f"Generating Tests... (trial={trial})")
+        prompt = f"""You are given:
+* a Python file describing the domain. It contains data classes and interfaces you may use.
+* a list of policy items. Policy items have a list of positive and negative examples. 
+* an interface of a Python function-under-test, `{fn_name}()`.
+
+Your task is to write unit tests to check the implementation of the interface-under-test.
+The function implemtation needs to check that all the policy statements hold on its arguments.
+If the arguments violate a policy statement, an exception should be thrown.
+Policy statement have positive and negative examples.
+For positive-cases, the function should not throw exceptions.
+For negative-cases, the function should throw an exception.
+Generate one test for each example. 
+Name the test using up to 6 representative words (snake_case).
+Indicate test failures using a meaningful message.
+
+### Domain:
+```
+### {domain.file_name}
+
+{domain.content}
+```
+
+### Policy Items:
+
+{tool.policies_to_md()}
+
+
+### Interface under test
+```
+### {fn_stub.file_name}
+
+{fn_stub.content}
+```"""
+        res_content = call_llm(prompt, self.llm)
+        body = extract_code_from_llm_response(res_content)
+        
+        tests = Code(file_name=f"{fn_name}.py", content=body)
+        tests.save(self.cwd)
+        lint_report = run_pyright(self.cwd, tests.file_name)
+        if lint_report.list_errors():
+            logger.warning(f"Generated tests with Python errors.")
+            if trial < MAX_TEST_GEN_TRIALS:
+                return self.generate_tool_tests(fn_stub, tool, domain, trial+1)
+            raise Exception("Generated tests contain errors")
+    
+        #syntax ok, try to run it...
+        logger.debug(f"Generated Tests... (retries={trial})")
+        #still running against a stub. the tests should fail, but the collector should not fail.
+        test_report = run_unittests(self.cwd)
+        if not test_report.all_tests_collected_successfully():
+            logger.debug(f"Tool {tool.name} unit tests error")
+            return self.generate_tool_tests(fn_stub, tool, domain, trial+1)
+        
+        return tests, test_report.list_errors()
 
     def generate_tool_check_fn(self, domain: Code, tool:ToolPolicy, output_path:str, trial_no=0)->Tuple[Code, Code]:
         check_fn = self._copy_check_fn_stub(domain, tool.name, f"check_{tool.name}")
         check_fn.save(output_path)
         logger.debug(f"Tool {tool.name} function draft created")
 
-        test_gen = ToolPolicyTestsGenerator(self.llm, self.cwd)
-        tests, errors = test_gen.generate_tool_tests(check_fn, tool, domain)
+        tests, errors = self.generate_tool_tests(check_fn, tool, domain)
         logger.debug(f"Tests {tests.file_name} successfully created")
 
         # logger.debug(f"Tool {tool_name} function is {'valid' if valid_fn() else 'invalid'}")
@@ -146,8 +204,3 @@ The code must be simple and well documented.
     def _check_fn_is_ok(self, fn_code: Code, domain: Code, test_cases:Code, output_path:str)->List[str]:
         report = run_unittests(output_path)
         return report.list_errors()
-        # lint
-        # hallucinations
-        # llm all poliCIES ARE COVERED?
-        # llm code that is not described in policy?
-        return True
