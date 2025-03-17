@@ -31,6 +31,18 @@ class PolicyAdherenceCodeGenerator():
         self.llm = llm
         self.cwd = cwd
 
+    def check_fn_name(self, tool_name:str)->str:
+        return f"check_{tool_name}"
+    
+    def check_fn_module_name(self, tool_name:str)->str:
+        return f"check_{tool_name}"
+    
+    def test_fn_name(self, tool_name:str)->str:
+        return f"test_check_{tool_name}"
+    
+    def test_fn_module_name(self, tool_name:str)->str:
+        return f"test_check_{tool_name}"
+    
     def generate_tools_check_fns(self, tool_policies: List[ToolPolicy], domain:GenFile)->ToolChecksCodeGenerationResult:
         logger.debug(f"Starting... will save into {self.cwd}")
         pyright_config().save(self.cwd)
@@ -73,7 +85,6 @@ class PolicyAdherenceCodeGenerator():
             
             logger.debug(f"Tool {tool.name} function has errors. Retrying...")
             check_fn = self._improve_check_fn(domain, tool, check_fn, errors)
-            # check_fn.save(output_path)
             trial_no +=1
 
 
@@ -98,13 +109,11 @@ class PolicyAdherenceCodeGenerator():
         src= astor.to_source(module)
         return GenFile(file_name=f"{new_fn_name}.py", content=src)
 
-    def _improve_check_fn(self, domain: GenFile, tool: ToolPolicy, previous_version:GenFile, review_comments: List[str], trial=0)->GenFile:
-        logger.debug(f"Improving check function... (trial = {trial})")
-        check_fn_name = f"check_{tool.name}"
+    def _do_improve_fn(self, domain: GenFile, tool: ToolPolicy, previous_version:GenFile, review_comments: List[str])->str:
         prompt = f"""You are given:
 * a Python file describing the domain. It contains data classes and functions you may use.
 * a list of policy items. Policy items have a list of positive and negative examples. 
-* current implementation of a Python function, `{check_fn_name}()`.
+* current implementation of a Python function, `{self.check_fn_name(tool.name)}()`.
 * a list of review comments on issues that need to be improved in the current implementation.
 
 The goal of the function is to check that ALL policy items hold on the function arguments. 
@@ -138,16 +147,23 @@ The code must be simple and well documented.
 
 {to_md_bulltets(review_comments)}
 """
-        res_content = self.llm.generate(prompt)
+        return self.llm.generate(prompt)
+
+    def _improve_check_fn(self, domain: GenFile, tool: ToolPolicy, prev_version:GenFile, review_comments: List[str], trial=0)->GenFile:
+        logger.debug(f"Improving check function... (trial = {trial})")
+        res_content = self._do_improve_fn(domain, tool, prev_version, review_comments)
         body = extract_code_from_llm_response(res_content)
-        check_fn = GenFile(file_name=f"{check_fn_name}.py", content=body)
+        check_fn = GenFile(
+            file_name=f"{self.check_fn_module_name(tool.name)}.py", 
+            content=body
+        )
         check_fn.save(self.cwd)
-        check_fn.save_as(self.cwd, f"{trial}_{check_fn_name}.py")
+        check_fn.save_as(self.cwd, f"{trial}_{self.check_fn_module_name(tool.name)}.py")
 
         lint_report = run_pyright(self.cwd, check_fn.file_name)
         if lint_report.summary.errorCount>0:
             GenFile(
-                    file_name=f"{trial}_{check_fn_name}_errors.json", 
+                    file_name=f"{trial}_{self.check_fn_module_name(tool.name)}_errors.json", 
                     content=lint_report.model_dump_json(indent=2)
                 ).save(self.cwd)
             logger.warning(f"Generated function with Python errors.")
@@ -183,12 +199,11 @@ The code must be simple and well documented.
         logger.debug(f"Tool {tool.name} tests error. Retrying...")
         return self.generate_tool_tests(fn_stub, tool, domain, trial+1)
 
-    def _generate_tool_tests(self, fn_stub:GenFile, tool:ToolPolicy, domain:GenFile)-> GenFile:
-        test_module_name = f"test_check_{tool.name}"
+    def _do_generate_tool_tests(self, fn_stub:GenFile, tool:ToolPolicy, domain:GenFile)-> str:
         prompt = f"""You are given:
 * a Python file describing the domain. It contains data classes and interfaces you may use.
 * a list of policy items. Policy items have a list of positive and negative examples. 
-* an interface of a Python function-under-test, `{test_module_name}()`.
+* an interface of a Python function-under-test, `{self.test_fn_module_name(tool.name)}()`.
 
 Your task is to write unit tests to check the implementation of the interface-under-test.
 The function implemtation should assert that ALL policy statements hold on its arguments.
@@ -232,9 +247,12 @@ Make sure to indicate test failures using a meaningful message.
 
 {fn_stub.content}
 ```"""
-        res_content = self.llm.generate(prompt)
+        return self.llm.generate(prompt)
+
+    def _generate_tool_tests(self, fn_stub:GenFile, tool:ToolPolicy, domain:GenFile)-> GenFile:
+        res_content = self._do_generate_tool_tests(fn_stub, tool, domain)
         body = extract_code_from_llm_response(res_content)
-        tests = GenFile(file_name=f"{test_module_name}.py", content=body)
+        tests = GenFile(file_name=f"{self.test_fn_module_name(tool.name)}.py", content=body)
         tests.save(self.cwd)
         return tests
 
