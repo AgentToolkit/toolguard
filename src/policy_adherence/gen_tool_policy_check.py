@@ -5,11 +5,10 @@ from typing import Dict, List, Tuple
 from loguru import logger
 from policy_adherence.types import GenFile, ToolPolicy
 from policy_adherence.llm.llm_model import LLM_model
-# from policy_adherence.pylint import run_pylint
 
 from policy_adherence.tools.pyright import pyright_config, run_pyright
 from policy_adherence.tools.pytest import run_unittests
-from policy_adherence.utils import call_llm, extract_code_from_llm_response, to_md_bulltets
+from policy_adherence.utils import extract_code_from_llm_response, to_md_bulltets
 
 MAX_TOOL_IMPROVEMENTS = 3
 MAX_TEST_GEN_TRIALS = 3
@@ -117,7 +116,7 @@ You need to generate code that improve the current implementation, according to 
 The code must be simple and well documented.
 
 ### Domain:
-```
+```python
 ### {domain.file_name}
 
 {domain.content}
@@ -129,7 +128,7 @@ The code must be simple and well documented.
 
 
 ### Current implemtnation
-```
+```python
 ### {previous_version.file_name}
 
 {previous_version.content}
@@ -139,7 +138,7 @@ The code must be simple and well documented.
 
 {to_md_bulltets(review_comments)}
 """
-        res_content = call_llm(prompt, self.llm)
+        res_content = self.llm.generate(prompt)
         body = extract_code_from_llm_response(res_content)
         check_fn = GenFile(file_name=f"{check_fn_name}.py", content=body)
         check_fn.save(self.cwd)
@@ -216,7 +215,7 @@ with patch("check_book_reservation.get_user_details", return_value=user):
 Make sure to indicate test failures using a meaningful message.
 
 ### Domain:
-```
+```python
 ### {domain.file_name}
 
 {domain.content}
@@ -228,12 +227,12 @@ Make sure to indicate test failures using a meaningful message.
 
 
 ### Interface under test
-```
+```python
 ### {fn_stub.file_name}
 
 {fn_stub.content}
 ```"""
-        res_content = call_llm(prompt, self.llm)
+        res_content = self.llm.generate(prompt)
         body = extract_code_from_llm_response(res_content)
         tests = GenFile(file_name=f"{test_module_name}.py", content=body)
         tests.save(self.cwd)
