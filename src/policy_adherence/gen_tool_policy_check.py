@@ -3,12 +3,13 @@ import astor
 from pydantic import BaseModel
 from typing import Dict, List, Tuple
 from loguru import logger
+from policy_adherence.prompts import do_generate_tool_tests, do_improve_fn
 from policy_adherence.types import GenFile, ToolPolicy
 from policy_adherence.llm.llm_model import LLM_model
 
 from policy_adherence.tools.pyright import pyright_config, run_pyright
 from policy_adherence.tools.pytest import run_unittests
-from policy_adherence.utils import extract_code_from_llm_response, to_md_bulltets
+from policy_adherence.utils import extract_code_from_llm_response
 
 MAX_TOOL_IMPROVEMENTS = 3
 MAX_TEST_GEN_TRIALS = 3
@@ -109,49 +110,10 @@ class PolicyAdherenceCodeGenerator():
         src= astor.to_source(module)
         return GenFile(file_name=f"{new_fn_name}.py", content=src)
 
-    def _do_improve_fn(self, domain: GenFile, tool: ToolPolicy, previous_version:GenFile, review_comments: List[str])->str:
-        prompt = f"""You are given:
-* a Python file describing the domain. It contains data classes and functions you may use.
-* a list of policy items. Policy items have a list of positive and negative examples. 
-* current implementation of a Python function, `{self.check_fn_name(tool.name)}()`.
-* a list of review comments on issues that need to be improved in the current implementation.
-
-The goal of the function is to check that ALL policy items hold on the function arguments. 
-In particular, running the function on all the positive examples should pass.
-For all negative examples, the function should raise an exception with a meaningful message.
-
-If you need to retrieve additional data (that is not in the function arguments), you can call functions defined in the domain.
-You need to generate code that improve the current implementation, according to the review comments.
-The code must be simple and well documented.
-
-### Domain:
-```python
-### {domain.file_name}
-
-{domain.content}
-```
-
-### Policy Items:
-
-{tool.policies_to_md()}
-
-
-### Current implemtnation
-```python
-### {previous_version.file_name}
-
-{previous_version.content}
-```
-
-### Review commnets:
-
-{to_md_bulltets(review_comments)}
-"""
-        return self.llm.generate(prompt)
-
     def _improve_check_fn(self, domain: GenFile, tool: ToolPolicy, prev_version:GenFile, review_comments: List[str], trial=0)->GenFile:
+        fn_name = self.check_fn_name(tool.name)
         logger.debug(f"Improving check function... (trial = {trial})")
-        res_content = self._do_improve_fn(domain, tool, prev_version, review_comments)
+        res_content = do_improve_fn(self.llm, fn_name, domain, tool, prev_version, review_comments)
         body = extract_code_from_llm_response(res_content)
         check_fn = GenFile(
             file_name=f"{self.check_fn_module_name(tool.name)}.py", 
@@ -199,58 +161,9 @@ The code must be simple and well documented.
         logger.debug(f"Tool {tool.name} tests error. Retrying...")
         return self.generate_tool_tests(fn_stub, tool, domain, trial+1)
 
-    def _do_generate_tool_tests(self, fn_stub:GenFile, tool:ToolPolicy, domain:GenFile)-> str:
-        prompt = f"""You are given:
-* a Python file describing the domain. It contains data classes and interfaces you may use.
-* a list of policy items. Policy items have a list of positive and negative examples. 
-* an interface of a Python function-under-test, `{self.test_fn_module_name(tool.name)}()`.
-
-Your task is to write unit tests to check the implementation of the interface-under-test.
-The function implemtation should assert that ALL policy statements hold on its arguments.
-If the arguments violate a policy statement, an exception should be thrown.
-Policy statement have positive and negative examples.
-For positive-cases, the function should not throw exceptions.
-For negative-cases, the function should throw an exception.
-Generate one test for each example. 
-
-If an unexpected exception is catched, the test should fail with the nested exception message.
-
-Name the test using up to 6 representative words (snake_case).
-
-The function-under-test might call other functions, in the domain, to retreive data, and check the policy accordingly. 
-Hence, you should MOCK the call to other functions and set the expected return value using `unittest.mock.patch`. 
-For example, if `check_book_reservation` is the function-under-test, it may access the `get_user_details()`:
-```
-args = ...
-user = User(...)
-with patch("check_book_reservation.get_user_details", return_value=user):
-  check_book_reservation(args)
-```
-
-Make sure to indicate test failures using a meaningful message.
-
-### Domain:
-```python
-### {domain.file_name}
-
-{domain.content}
-```
-
-### Policy Items:
-
-{tool.policies_to_md()}
-
-
-### Interface under test
-```python
-### {fn_stub.file_name}
-
-{fn_stub.content}
-```"""
-        return self.llm.generate(prompt)
-
     def _generate_tool_tests(self, fn_stub:GenFile, tool:ToolPolicy, domain:GenFile)-> GenFile:
-        res_content = self._do_generate_tool_tests(fn_stub, tool, domain)
+        test_fn_name = self.test_fn_name(tool.name)
+        res_content = do_generate_tool_tests(self.llm, test_fn_name, fn_stub, tool, domain)
         body = extract_code_from_llm_response(res_content)
         tests = GenFile(file_name=f"{self.test_fn_module_name(tool.name)}.py", content=body)
         tests.save(self.cwd)
