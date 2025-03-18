@@ -7,11 +7,11 @@ from policy_adherence.prompts import prompt_generate_tool_tests, prompt_improve_
 from policy_adherence.types import GenFile, ToolPolicy
 from policy_adherence.llm.llm_model import LLM_model
 
-from policy_adherence.tools.pyright import pyright_config, run_pyright
-from policy_adherence.tools.pytest import run_unittests
+import policy_adherence.tools.pyright as pyright
+import policy_adherence.tools.pytest as pytest
 from policy_adherence.utils import extract_code_from_llm_response
 
-MAX_TOOL_IMPROVEMENTS = 3
+MAX_TOOL_IMPROVEMENTS = 5
 MAX_TEST_GEN_TRIALS = 3
 
 class ToolChecksCodeResult(BaseModel):
@@ -46,7 +46,7 @@ class PolicyAdherenceCodeGenerator():
     
     def generate_tools_check_fns(self, tool_policies: List[ToolPolicy], domain:GenFile)->ToolChecksCodeGenerationResult:
         logger.debug(f"Starting... will save into {self.cwd}")
-        pyright_config().save(self.cwd)
+        pyright.config().save(self.cwd)
 
         tools_result: Dict[str, ToolChecksCodeResult] = {}
         for tool in tool_policies:
@@ -78,7 +78,7 @@ class PolicyAdherenceCodeGenerator():
         logger.debug(f"Tests {tests.file_name} successfully created")
         # logger.debug(f"Tool {tool_name} function is {'valid' if valid_fn() else 'invalid'}")
         while True:
-            errors = run_unittests(self.cwd, tests.file_name, str(trial_no)).list_errors()
+            errors = pytest.run(self.cwd, tests.file_name, str(trial_no)).list_errors()
             if not errors: 
                 return check_fn, tests
             if trial_no >= MAX_TOOL_IMPROVEMENTS:
@@ -112,27 +112,29 @@ class PolicyAdherenceCodeGenerator():
 
     def _improve_check_fn(self, domain: GenFile, tool: ToolPolicy, prev_version:GenFile, review_comments: List[str], trial=0)->GenFile:
         fn_name = self.check_fn_name(tool.name)
+        module_name = self.check_fn_module_name(tool.name)
         logger.debug(f"Improving check function... (trial = {trial})")
         res_content = prompt_improve_fn(self.llm, fn_name, domain, tool, prev_version, review_comments)
         body = extract_code_from_llm_response(res_content)
         check_fn = GenFile(
-            file_name=f"{self.check_fn_module_name(tool.name)}.py", 
+            file_name=f"{module_name}.py", 
             content=body
         )
         check_fn.save(self.cwd)
-        check_fn.save_as(self.cwd, f"{trial}_{self.check_fn_module_name(tool.name)}.py")
+        check_fn.save_as(self.cwd, f"{trial}_{module_name}.py")
 
-        lint_report = run_pyright(self.cwd, check_fn.file_name)
+        lint_report = pyright.run(self.cwd, check_fn.file_name)
         if lint_report.summary.errorCount>0:
             GenFile(
-                    file_name=f"{trial}_{self.check_fn_module_name(tool.name)}_errors.json", 
+                    file_name=f"{trial}_{module_name}_errors.json", 
                     content=lint_report.model_dump_json(indent=2)
                 ).save(self.cwd)
             logger.warning(f"Generated function with Python errors.")
             
-            if trial < MAX_TOOL_IMPROVEMENTS:
-                return self._improve_check_fn(domain, tool, check_fn, review_comments, trial+1)
-            raise Exception(f"Generation failed for tool {tool.name}")
+            if trial >= MAX_TOOL_IMPROVEMENTS:
+                raise Exception(f"Generation failed for tool {tool.name}")
+            errors = [d.message for d in lint_report.generalDiagnostics if d.severity == pyright.ERROR]
+            return self._improve_check_fn(domain, tool, check_fn, errors, trial+1)
         return check_fn
     
     def generate_tool_tests(self, fn_stub:GenFile, tool:ToolPolicy, domain:GenFile, trial=0)-> GenFile:
@@ -140,7 +142,7 @@ class PolicyAdherenceCodeGenerator():
         tests = self._generate_tool_tests(fn_stub, tool, domain)
         tests.save_as(self.cwd, f"{trial}_{tests.file_name}")
 
-        lint_report = run_pyright(self.cwd, tests.file_name)
+        lint_report = pyright.run(self.cwd, tests.file_name)
         if lint_report.summary.errorCount>0:
             logger.warning(f"Generated tests with Python errors.")
             if trial < MAX_TEST_GEN_TRIALS:
@@ -150,7 +152,7 @@ class PolicyAdherenceCodeGenerator():
         #syntax ok, try to run it...
         logger.debug(f"Generated Tests... (trial={trial})")
         #still running against a stub. the tests should fail, but the collector should not fail.
-        test_report = run_unittests(self.cwd, tests.file_name)
+        test_report = pytest.run(self.cwd, tests.file_name)
         if test_report.all_tests_collected_successfully():
             reviews = self._review_generated_tool_tests(domain, tool, tests)
             if reviews:

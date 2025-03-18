@@ -2,7 +2,7 @@
 from loguru import logger
 from policy_adherence.types import GenFile
 from policy_adherence.common.open_api import OpenAPI
-from policy_adherence.tools.pyright import run_pyright
+from policy_adherence.tools.pyright import run
 from policy_adherence.utils import extract_code_from_llm_response
 
 
@@ -24,7 +24,7 @@ Add the operation description as the function documentation.
         body = extract_code_from_llm_response(res_content)
         domain = GenFile(file_name="domain.py", content=body)
         domain.save(self.cwd)
-        lint_report = run_pyright(self.cwd, domain.file_name)
+        lint_report = run(self.cwd, domain.file_name)
         if lint_report.list_errors():
             logger.warning(f"Generated domain have Python errors.")
             if retries>1:

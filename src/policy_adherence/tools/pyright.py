@@ -64,7 +64,7 @@ class DiagnosticsReport(BaseModel):
     #         )
     #     )
 
-def run_pyright(folder:str, py_file:str)->DiagnosticsReport:
+def run(folder:str, py_file:str)->DiagnosticsReport:
     res = subprocess.run([
             "pyright", 
             "--outputjson",
@@ -82,11 +82,12 @@ def run_pyright(folder:str, py_file:str)->DiagnosticsReport:
     # return original.copy_errors_only()
     
 
-def pyright_config() ->GenFile:
+def config() ->GenFile:
     cfg = {
         "typeCheckingMode": "basic",
         "reportOptionalIterable": WARNING,
         "reportArgumentType": WARNING, #"Object of type \"None\" cannot be used as iterable value",
+        "reportOptionalMemberAccess": WARNING,
         "reportAttributeAccessIssue": ERROR
     }
     return GenFile(file_name="pyrightconfig.json",
