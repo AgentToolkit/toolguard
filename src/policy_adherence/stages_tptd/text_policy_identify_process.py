@@ -5,13 +5,12 @@ import os
 
 from langgraph.graph import StateGraph
 
-from typing import Dict, List, Any, Optional
-from azure_wrapper import AzureWrepper
-from stages_tptd.utils import reviewer_should_stop, fixer_should_stop, read_prompt_file, generate_messages, save_output, \
+from src.policy_adherence.llm.azure_wrapper import AzureLitellm
+from src.policy_adherence.stages_tptd.utils import reviewer_should_stop, fixer_should_stop, read_prompt_file, generate_messages, save_output, \
 	TPTDState, find_mismatched_references, have_reference_to_fix
 
-llm = AzureWrepper()
-
+model = 'gpt-4o-2024-08-06'
+llm = AzureLitellm(model)
 
 class PolicyIdentifier:
 	def __init__(self):

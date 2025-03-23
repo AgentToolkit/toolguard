@@ -7,7 +7,7 @@ from langgraph.graph import StateGraph
 
 
 from azure_wrapper import AzureWrepper
-from stages_tptd.utils import reviewer_should_stop, fixer_should_stop, read_prompt_file, generate_messages, save_output, \
+from src.policy_adherence.stages_tptd.utils import reviewer_should_stop, fixer_should_stop, read_prompt_file, generate_messages, save_output, \
 	TPTDState
 
 llm = AzureWrepper()
