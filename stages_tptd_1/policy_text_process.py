@@ -4,6 +4,8 @@ import os
 from typing import Dict, List, Any, Optional
 
 from langgraph.graph import StateGraph
+from matplotlib import pyplot as plt
+
 from azure_wrapper import AzureWrepper
 
 llm = AzureWrepper()
@@ -36,8 +38,19 @@ def save_output(outdir: str, filename: str, content: Any):
         json.dump(content, outfile, indent=4)
 
 
-def should_stop(state: TPTDState) -> bool:
-    return state.get("review_score", {}).get("score", 0) == 5 or state["iteration"] >= 5
+def reviewer_should_stop(state: TPTDState) -> bool:
+	if state.get("review_score", {}).get("score", 0) == 5:
+		state.update({"iteration": 0})
+		return True
+	return False
+
+
+def fixer_should_stop(state: TPTDState) -> bool:
+	if state["iteration"]>=3:
+		state.update({"iteration": 0})
+		return True
+	return False
+	
 
 
 class Phase2:
@@ -55,18 +68,22 @@ class Phase2:
 		
 		workflow.set_entry_point("policy_creator")
 		workflow.add_edge("policy_creator", "coverage_reviewer")
-		workflow.add_conditional_edges("coverage_reviewer", lambda state: "standalone_reviewer" if should_stop(state) else "coverage_fixer")
-		workflow.add_conditional_edges("coverage_fixer", lambda state: "standalone_reviewer" if should_stop(state) else "coverage_reviewer")
-		workflow.add_conditional_edges("standalone_reviewer", lambda state: "examples_creator" if should_stop(state) else "standalone_fixer")
-		workflow.add_conditional_edges("standalone_fixer", lambda state: "examples_creator" if should_stop(state) else "standalone_reviewer")
-		workflow.add_edge("examples_creator", "standalone_reviewer")
-		workflow.add_conditional_edges("examples_reviewer",lambda state: "final" if should_stop(state) else "examples_fixer")
-		workflow.add_conditional_edges("examples_fixer", lambda state: "final" if should_stop(state) else "examples_reviewer")
+		workflow.add_conditional_edges("coverage_reviewer", lambda state: "standalone_reviewer" if reviewer_should_stop(state) else "coverage_fixer")
+		workflow.add_conditional_edges("coverage_fixer", lambda state: "standalone_reviewer" if fixer_should_stop(state) else "coverage_reviewer")
+		workflow.add_conditional_edges("standalone_reviewer", lambda state: "examples_creator" if reviewer_should_stop(state) else "standalone_fixer")
+		workflow.add_conditional_edges("standalone_fixer", lambda state: "examples_creator" if fixer_should_stop(state) else "standalone_reviewer")
+		workflow.add_edge("examples_creator", "examples_reviewer")
+		workflow.add_conditional_edges("examples_reviewer",lambda state: "final" if reviewer_should_stop(state) else "examples_fixer")
+		workflow.add_conditional_edges("examples_fixer", lambda state: "final" if fixer_should_stop(state) else "examples_reviewer")
 		
 		self.executor = workflow.compile()
+	
+		
+		
 		
 	def policy_creator_node(self, state: TPTDState) -> TPTDState:
 		system_prompt = read_prompt_file("create_policy")
+		system_prompt = system_prompt.replace("ToolX",state["target_tool"])
 		user_content = f"Policy Document:{state['policy_text']}\nTools Descriptions:{json.dumps(state['tools'])}\nTarget Tool:{json.dumps(state['target_tool_description'])}"
 		response = llm.chat_json(generate_messages(system_prompt, user_content))
 		state.update({"TPTD": response, "iteration": 0})
@@ -140,7 +157,8 @@ if __name__ == '__main__':
 	parser.add_argument('--model-name', type=str,default='gpt-4o-2024-08-06')
 	parser.add_argument('--policy-path', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki.md')
 	parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/process')
-	parser.add_argument('--functions-schema', type=str, default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/airline.json')
+	#parser.add_argument('--functions-schema', type=str, default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/airline.json')
+	parser.add_argument('--functions-schema', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/fc_schema.json')
 	args = parser.parse_args()
 	policy_path = args.policy_path
 	outdir = args.outdir
@@ -152,37 +170,50 @@ if __name__ == '__main__':
 	with open(functions_schema, 'r') as file:
 		functions =  json.load(file)
 	
-	
-	
 	fsummary = {}
+	for k, v in functions.items():
+		fsummary[k] = v['description']
 	
-	if 'paths' in functions:
-		for path, methods in functions["paths"].items():
-			for method, details in methods.items():
-				if isinstance(details, dict) and "operationId" in details:
-					operation_id = details["operationId"]
-					description = details.get("description", "No description available.")
-					fsummary[operation_id] = {"path": path, "description": description}
-			
-		for path, methods in functions["paths"].items():
-			for method, details in methods.items():
-				if isinstance(details, dict) and "operationId" in details:
-					fname = details["operationId"]
-					input_state = {
+	for function_name, function_data in functions.items():
+		fname = function_data["name"]
+		input_state = {
 						"policy_text": policy_text,
 						"tools": fsummary,
 						"target_tool": fname,
-						"target_tool_description": methods,
+						"target_tool_description": function_data,
 						"outdir":outdir
-					}
-					break
+						}
+						
+	
+
+	
+	# if 'paths' in functions:
+	# 	for path, methods in functions["paths"].items():
+	# 		for method, details in methods.items():
+	# 			if isinstance(details, dict) and "operationId" in details:
+	# 				operation_id = details["operationId"]
+	# 				description = details.get("description", "No description available.")
+	# 				fsummary[operation_id] = description
+	#
+	# 	for path, methods in functions["paths"].items():
+	# 		for method, details in methods.items():
+	# 			if isinstance(details, dict) and "operationId" in details:
+	# 				fname = details["operationId"]
+	# 				input_state = {
+	# 					"policy_text": policy_text,
+	# 					"tools": fsummary,
+	# 					"target_tool": fname,
+	# 					"target_tool_description": {path:methods},
+	# 					"outdir":outdir
+	# 				}
+	# 				break
 					
-			p2 = Phase2()
-			final_output = p2.executor.invoke(input_state)
-			print(json.dumps(final_output))
-			tmpoutdir = "/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final"
-			outcontent = final_output["TPTD"]
-			
-			#out = json.loads(outcontent)
-			with open(os.path.join(tmpoutdir, fname +  ".json"), "w") as outfile:
-				outfile.write(json.dumps(outcontent))
+		p2 = Phase2()
+		final_output = p2.executor.invoke(input_state)
+		print(json.dumps(final_output))
+		tmpoutdir = "/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final"
+		outcontent = final_output["TPTD"]
+		
+		#out = json.loads(outcontent)
+		with open(os.path.join(tmpoutdir, fname +  ".json"), "w") as outfile:
+			outfile.write(json.dumps(outcontent))

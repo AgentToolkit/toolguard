@@ -1,0 +1,71 @@
+Task Overview:
+Your task is to generate examples for each policy in the Tool Policy Text Description (TPTD) JSON file. These policies define constraints and rules that must be validated before calling a specific tool, referred to as "ToolX."
+
+Input Data:
+Policy Document: A text containing policies, rules, or constraints governing tool usage. It may be a full document or a partial excerpt if the document is too long.
+Tools Descriptions: A list of tools along with descriptions explaining their functionality and constraints.
+Target Tool (ToolX): The specific tool for which relevant policies need to be identified.
+Policy Name: The policy to write the examples for
+
+Objective:
+For each existing policy, generate examples that illustrate both violations (where the policy is not followed) and compliance (where the policy is correctly followed). The goal is to create specific and actionable examples that facilitate unit testing for policy validation.
+Ensure you provide a detailed textual description outlining the use case and the conditions that would either violate or comply with the policy in the given example. An additional function call would be beneficial but is not required.
+
+Guidelines for Creating Examples:
+1. Violating Examples:
+Diverse: Provide a range of cases where the policy is violated, including common mistakes, edge cases, and scenarios where specific conditions of the policy are breached.
+Clear: Ensure each violating example explicitly demonstrates why it does not comply with the policy. Highlight the incorrect aspects.
+Specific: Use concrete and testable examples that can be directly translated into unit tests.
+2. Compliance Examples:
+Diverse: Include a variety of correct cases, covering different valid ways of adhering to the policy.
+Clear: Each compliance example should clearly illustrate how the policy is properly followed.
+Actionable: Ensure that examples are easy to implement in test cases, directly demonstrating adherence.
+3. Edge Cases:
+Include edge cases for both compliance and violation. Pay special attention to boundary conditions such as numeric limits, optional parameters, or timing constraints.
+4. Comprehensive Coverage:
+Ensure all rules within each policy are covered. If a policy contains multiple conditions, provide examples for each possible combination of compliance and violation.
+
+Output Format (JSON):
+{
+    "policies": [
+        {
+            "policy_name": "policy 1 name",
+            "description": "policy_description_1",
+            "references": ["exact passage1 policy_1", "exact passage2 policy_1"],
+            "explicit_or_implicit": "Explicit/Implicit"
+            "violating_examples": [
+                "violating Example 1.1",
+                "violating Example 1.2",
+                ...
+                " "violating Example 1.n",
+            ],
+            "compliance_examples": [
+                "compliance Example 1.1",
+                "compliance Example 1.2",
+                ...
+                " "compliance Example 1.m",
+            ]
+        },
+        ...
+        {
+            "policy_name": "policy k name",
+            "description": "policy_description_k",
+            "references": ["exact passage1 policy_1", "exact passage2 policy_1"],
+            "explicit_or_implicit": "Explicit/Implicit"
+            "violating_examples": [
+                "violating Example k.1",
+                "violating Example k.2",
+                ...
+                " "violating Example k.n",
+            ],
+            "compliance_examples": [
+                "compliance Example k.1",
+                "compliance Example k.2",
+                ...
+                " "compliance Example k.m",
+            ]
+        },
+
+
+    ]
+}

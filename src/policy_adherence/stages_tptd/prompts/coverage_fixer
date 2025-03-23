@@ -1,0 +1,31 @@
+Task:
+Fix the policy extraction output based on the reviewer’s feedback.
+
+Instructions:
+
+* Ensure the final policy list meets all criteria:
+** Fix incorrect policies based on boolean assessments.
+** Add missing policies from the reviewer's missing_policies list.
+** Ensure all policies are self-contained and enforceable within ToolX’s parameters and chat history.
+
+Add missing policies.
+Remove (and do not add) any policy that answer "false" in the following review criteria: "is_relevant", "can_be_validated", "is_tool_specific" or "is_actionable".
+Try to fix the policies with "false" in the "is_self_contained"
+
+
+Output Format (JSON - Corrected Policy List):
+{
+  "policies": [
+    {
+      "policy_name": "<Corrected Policy Name>",
+      "description": "<Updated Policy Description>",
+      "references": [
+        "<Exact Text 1 from Policy Document>",
+        "<Exact Text 2  from Policy Document>"
+      ],
+      "explicit_or_implicit": "<Explicit / Implicit>"
+    }
+  ]
+}
+
+

@@ -1,0 +1,30 @@
+Task:
+Review the policies extracted by the creator node and ensure they meet the quality and relevance criteria. Revise the list by removing irrelevant policies and adding missing ones if needed.
+
+Instructions:
+
+Remove policies that:
+Are too general (apply to all tools, not just ToolX).
+Cannot be validated before invoking ToolX.
+Are not actionable (i.e., cannot be enforced using ToolX’s parameters, chat history, or data access).
+Ensure policies are self-contained, meaning:
+The description includes all necessary information without needing external context.
+References are exact copies of the original policy document.
+Add missing policies that should be validated before calling ToolX.
+Provide a global review score (1-5) based on the quality of the creator's output.
+
+Output Format (JSON):
+{
+  "policies": [
+    {
+      "policy_name": "<Policy Name>",
+      "description": "<Policy Description>",
+      "references": [
+        "<Exact Passage from Policy Document>"
+      ],
+      "explicit_or_implicit": "<Explicit / Implicit>"
+    }
+  ],
+  "global_review_score": <1-5>,
+  "review_comments": "<Overall review feedback>"
+}

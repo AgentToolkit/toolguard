@@ -34,11 +34,19 @@ Provide the updated TPTD in the same JSON format. If no changes are needed (i.e.
 
 {
     "policies": [
-        {"policy_description_1": "full description of the policy_1"},
-        {"policy_description_2": "full description of the policy_2"},
-        ...
+        {
+            "policy description": "full description of the policy_1",
+            "policy references": ["exact passage1 policy_1", "exact passage2 policy_1"],
+            "policy type": "Explicit"
+        },
+        {
+            "policy description": "full description of the policy_2",
+            "policy references": ["exact passage1 policy_2"],
+            "policy type": "Implicit"
+        }
     ]
 }
+
 Guidelines:
 Ensure the format remains consistent with the original TPTD.
 Ensure the TPTD remains concise, accurate, and standalone.

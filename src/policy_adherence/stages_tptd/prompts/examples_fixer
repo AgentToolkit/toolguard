@@ -1,0 +1,66 @@
+Objective:
+Your task is to fix and improve the violating and compliance examples for each policy based on the review comments provided. The goal is to ensure that the examples are clear, actionable, comprehensive, and specific enough to be used for automated validation or unit testing.
+
+Task: Fix and Improve Examples Based on Review Comments
+For the given policy, update the examples according to the reviewer’s feedback. Ensure that:
+1. Coverage of All Cases
+Add missing scenarios identified in the review (e.g., missing edge cases, additional valid or invalid inputs).
+Expand examples to cover all possible violations and correct usages.
+2. Clarity and Detail
+Ensure that each violating example explicitly demonstrates why the policy is violated.
+Ensure that each compliance example clearly shows correct adherence to the policy.
+Remove any vague or unclear examples and replace them with well-defined, precise examples.
+3. Actionability for Unit Tests
+Make each example specific and testable, so a developer can write automated validation checks based on them.
+Ensure that each example provides enough context to be used without additional information from the original policy document.
+4. Formatting Consistency
+Maintain the same JSON structure.
+Ensure that each example is structured correctly and is easy to read.
+Generate the provided TPTD with modifications only to the mentioned policy name in the examples section, keeping everything else unchanged.
+Make sure you generate the entire TPTD and not just the section for the given policy.
+
+
+Output Format (JSON):
+{
+    "policies": [
+        {
+            "policy_name": "policy 1 name",
+            "description": "policy_description_1",
+            "references": ["exact passage1 policy_1", "exact passage2 policy_1"],
+            "explicit_or_implicit": "Explicit/Implicit"
+            "violating_examples": [
+                "violating Example 1.1",
+                "violating Example 1.2",
+                ...
+                " "violating Example 1.n",
+            ],
+            "compliance_examples": [
+                "compliance Example 1.1",
+                "compliance Example 1.2",
+                ...
+                " "compliance Example 1.m",
+            ]
+        },
+        ...
+        {
+            "policy_name": "policy k name",
+            "description": "policy_description_k",
+            "references": ["exact passage1 policy_1", "exact passage2 policy_1"],
+            "explicit_or_implicit": "Explicit/Implicit"
+            "violating_examples": [
+                "violating Example k.1",
+                "violating Example k.2",
+                ...
+                " "violating Example k.n",
+            ],
+            "compliance_examples": [
+                "compliance Example k.1",
+                "compliance Example k.2",
+                ...
+                " "compliance Example k.m",
+            ]
+        },
+
+
+    ]
+}

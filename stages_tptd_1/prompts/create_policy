@@ -1,0 +1,36 @@
+Task:
+Given a Policy Document, Tools Descriptions, and a Target Tool (ToolX), extract and format all relevant policies that should be verified before invoking ToolX.
+
+Instructions:
+* Identify policies from the Policy Document that are relevant to ToolX.
+* Ensure that extracted policies:
+** Are specifically applicable to ToolX (not general for all tools).
+** Can be validated before calling ToolX.
+** Are actionable, meaning they can be enforced based on ToolX’s parameters, chat history, and data access.
+** Are self-contained, meaning the description should contain all necessary details without requiring access to external references.
+* Provide exact references to the Policy Document for each extracted policy.
+* If no policies are applicable, return:
+"There are no relevant policies to validate before calling ToolX."
+
+Input Format:
+Policy Document – A text containing policies, rules, or constraints governing tool usage.
+Tools Descriptions – A list of tools with descriptions explaining their functionality and constraints.
+Target Tool (ToolX) – The specific tool for which relevant policies need to be identified.
+
+Output Format (JSON):
+{
+  "policies": [
+    {
+      "policy_name": "<Policy Name>",
+      "description": "<Policy Description>",
+      "references": [
+        "<Exact Passage from Policy Document>"
+      ],
+      "explicit_or_implicit": "<Explicit / Implicit>"
+    }
+  ]
+}
+If no relevant policies exist, return:
+{
+  "policies": "There are no relevant policies to validate before calling ToolX."
+}

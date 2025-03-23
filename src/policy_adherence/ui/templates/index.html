@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Highlighter</title>
+    <style>
+        body { display: flex; font-family: Arial, sans-serif; }
+        #sidebar { width: 300px; padding: 10px; background: #f4f4f4; }
+        #content { flex: 1; padding: 20px; }
+        .highlight { background-color: yellow; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <h3>Tools</h3>
+        <input type="checkbox" id="mark-all"> <label for="mark-all"><b>Mark All Tools</b></label>
+        <ul id="tool-list">
+            {% for tool in tools %}
+            <li>
+                <input type="checkbox" class="tool-checkbox" value="{{ tool }}"> {{ tool }}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div id="content">
+        <h2>Policy Document</h2>
+        <div id="text">{{ text | safe }}</div>
+    </div>
+
+    <script>
+        const checkboxes = document.querySelectorAll('.tool-checkbox');
+        const markAllCheckbox = document.getElementById('mark-all');
+
+        function updateHighlights() {
+            let selectedTools = Array.from(document.querySelectorAll('.tool-checkbox:checked')).map(cb => cb.value);
+            fetch('/highlight', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tools: selectedTools })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('text').innerHTML = data.updated_text;
+            });
+        }
+
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateHighlights);
+        });
+
+        markAllCheckbox.addEventListener('change', function() {
+            checkboxes.forEach(cb => cb.checked = markAllCheckbox.checked);
+            updateHighlights();
+        });
+    </script>
+</body>
+</html>
