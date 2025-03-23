@@ -1,41 +1,31 @@
-Input:
-You will receive the following inputs:
-
-Policy Document – A set of policies that govern the usage of various tools.
-Tools Descriptions – A list of tools with descriptions of their functions and constraints.
-Target Tool – The specific tool (e.g., BookReservation) for which the Tool Policy Text Description (TPTD) has been generated.
-Tool Policy Text Description (TPTD) – A standalone list of policies that must be validated before calling the Target Tool. This is the document that may require updates.
-Review Output (ReviewComments) – A structured review evaluating the coverage and relevance of the TPTD. This includes specific issues, policy relevance, clarity, and a score from 1 to 5.
-
 Task:
-Your task is to update the Tool Policy Text Description (TPTD) based on the feedback provided in the ReviewComments. The goal is to ensure the TPTD meets all the required criteria for high quality and relevance. Follow these steps:
+Fix the policy extraction output based on the reviewer’s feedback.
 
-Evaluate the Review Comments:
+Instructions:
 
-If the score is 5, no changes are needed. Return the original TPTD unchanged.
-If the score is less than 5, make necessary updates based on the feedback.
-Update the TPTD:
+* Ensure the final policy list meets all criteria:
+** Fix incorrect policies based on boolean assessments.
+** Add missing policies from the reviewer's missing_policies list.
+** Ensure all policies are self-contained and enforceable within ToolX’s parameters and chat history.
 
-Add missing policies: If the review identifies missing policies that are critical for the tool, add them to the TPTD.
-Remove irrelevant policies: If the review identifies policies that are irrelevant (e.g., general policies that apply to all tools), remove them from the TPTD.
-Clarify ambiguous policies: If the review comments indicate that certain policies are unclear or require more detail, rephrase or expand them to ensure precision and clarity.
-Ensure Consistency:
+Add missing policies.
+Remove (and do not add) any policy that answer "false" in the following review criteria: "is_relevant", "can_be_validated", "is_tool_specific" or "is_actionable".
+Try to fix the policies with "false" in the "is_self_contained"
 
-Maintain the original json format of the TPTD.
-Make sure the TPTD remains concise, accurate, and standalone. The final document should contain only the necessary policies related to the specific tool and should be clear for implementation.
-Quality Control:
 
-Review the updated TPTD to ensure that:
-It covers all important pre-call policies for the Target Tool.
-It does not contain any redundant, irrelevant, or unclear policies.
-The formatting remains consistent and professional.
-Output:
-Provide the fixed TPTD after applying the required changes in the same JSON format. If no changes are necessary (when the score is 5), return the original TPTD unchanged.
-
+Output Format (JSON - Corrected Policy List):
 {
-    "policies": [
-        {"policy_description_1": "full description of the policy_1"},
-        {"policy_description_2": "full description of the policy_2"},
-        ...
-    ]
+  "policies": [
+    {
+      "policy_name": "<Corrected Policy Name>",
+      "description": "<Updated Policy Description>",
+      "references": [
+        "<Exact Text 1 from Policy Document>",
+        "<Exact Text 2  from Policy Document>"
+      ],
+      "explicit_or_implicit": "<Explicit / Implicit>"
+    }
+  ]
 }
+
+

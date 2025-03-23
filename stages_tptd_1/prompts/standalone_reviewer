@@ -49,8 +49,9 @@ The output should include the reviews for each policy and an overall score. Use 
         }
     ],
     "global_score": {
-        "score": [integer between 1-5],
-        "comments": "Overall feedback on completeness and clarity of the TPTD"
+        "comments": "Overall feedback on completeness and clarity of the TPTD",
+        "score": [integer between 1-5]
+
     }
 }
 Key Points to Remember:

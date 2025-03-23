@@ -1,63 +1,59 @@
-Your task is to review a JSON file (TPTD) that contains policies designed to be validated before calling a specific tool, referred to as "ToolX." The review should include the following aspects:
+Task:
+Review the policies extracted by the creator node and ensure they meet the quality and relevance criteria. Revise the list by removing irrelevant policies and adding missing ones if needed.
 
-1. Policy Relevance
-For each policy in the TPTD, determine if it is relevant to the target tool ("ToolX") based on:
-The provided policy document.
-The description of ToolX.
-Policies that are general for all tools, rather than ToolX specifically or relevant to a sub-group of tools, should not be considered relevant.
-Clarify whether the policy applies specifically to ToolX or if it pertains to a broader context or other tools.
+Instructions:
 
-2. Pre-Call Validation
-For each relevant policy, assess whether it defines a rule that must be validated before calling ToolX, as opposed to during or after the call.
-Ensure that any policy marked for validation is appropriate for pre-call checks and doesn't overlap with post-call validation.
+1. Remove policies that:
+* Are too general (apply to all tools, not just ToolX or not just sub-set of tools).
+* Cannot be validated before invoking ToolX.
+* Are not actionable (i.e., cannot be enforced using ToolX’s parameters, chat history, or data access).
 
-3. Comments
-For each policy, provide a short explanation on the following:
-Why it is relevant (or not) for ToolX.
-Whether the policy should be validated before calling the tool.
-If the policy is missing specific details or needs further clarification.
+2. Ensure policies are self-contained, meaning:
+* The description includes all necessary information without needing external context.
 
-4. Missing Policies
-Review the policy document thoroughly and identify any important pre-call policies that are missing in the TPTD.
-For each missing policy, provide:
-A description of the missing policy.
-Why it is important for ToolX.
+3. Add missing policies that should be validated before calling ToolX.
 
-5. Global Score
-Provide an overall quality score (1-5) for the TPTD, based on:
-Whether all important pre-call policies are covered.
-The presence of irrelevant or unclear policies.
-The clarity, completeness, and relevance of the policies to pre-call validation.
+For each assessed category, provide a boolean field indicating whether the policy meets the requirement.
 
-Score of 5 means the document is complete and without the need for further improvement.
-Scoring System:
-
-1 = Needs significant improvement, several policies are irrelevant, missing, or unclear.
-2 = Some relevant policies are missing or unclear.
-3 = Adequate, but some policies need refinement or further explanation.
-4 = Good, minor improvements needed.
-5 = Excellent, no changes required.
-
-Output Format (JSON)
+Output Format (JSON - Reviewed Policies with Feedback):
 {
-    "review":[
-    {"policy_reviews": [
+    "review":{
+      "policies": [
         {
-            "policy_description": "Policy text from TPTD",
-            "is_relevant": true/false,
-            "validation_required": true/false,
-            "review_comments": "Short explanation"
+          "policy_name": "<Policy Name>",
+          "description": "<Policy Description>",
+          "references": [
+            "<Exact Passage from Policy Document>"
+          ],
+          "explicit_or_implicit": "<Explicit / Implicit>",
+          "is_relevant": <true/false>,
+          "can_be_validated": <true/false>,
+          "is_tool_specific": <true/false>,
+          "is_actionable": <true/false>,
+          "is_self_contained": <true/false>,
+          "comments" <comments describing and explaining your review>
         }
-    ]},
-    {"missing_policies": [
+      ],
+      "missing_policies": [
         {
-            "missing_policy_description": "Description of missing policy",
-            "reason": "Why it is important"
+          "policy_name": "<Missing Policy Name>",
+          "description": "<Missing Policy Description>",
+          "references": [
+            "<Exact Text 1 from Policy Document>",
+            "<Exact Text 2 from Policy Document>"
+          ],
+          "explicit_or_implicit": "<Explicit / Implicit>",
+          "is_relevant": <true/false>,
+          "can_be_validated": <true/false>,
+          "is_tool_specific": <true/false>,
+          "is_actionable": <true/false>,
+          "is_self_contained": <true/false>,
+          "reason": "<Why this policy is necessary>"
         }
-    ]}
-    ],
-    "global_score": {
-        "score": [integer number between 1-5],
-        "comments": "Overall feedback"
-    }
+      ]
+  },
+  "global_score": {
+        "comments": "Overall feedback",
+        "score": [integer number between 1-5]
+       }
 }

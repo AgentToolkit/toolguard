@@ -31,23 +31,26 @@ Scoring Scale:
 
 Output Format (JSON):
 {
-    "review": {
-        "policy name":
+    "review": [
         {
+              "policy_description": "Policy 1 text from TPTD",
             "violating_examples_review": [
-                "violating_examples_review_1",
-                "violating_examples_review_2",
-                ...
-                "violating_examples_review_n"
+                "violating_examples_review_1"
             ],
             "compliance_examples_review": [
-                "compliance_examples_review_1",
-                ..
-                "compliance_examples_review_m"
+                "compliance_examples_review_1"
             ]
         },
-
-    },
+        {
+            "policy_description": "TPolicy 2 text from TPTD",
+            "violating_examples_review": [
+                "violating_examples_review_2"
+            ],
+            "compliance_examples_review": [
+                "compliance_examples_review_2"
+            ]
+        }
+    ],
     "global_score": {
         "comments": "Overall feedback",
         "score": [integer number between 1-5]

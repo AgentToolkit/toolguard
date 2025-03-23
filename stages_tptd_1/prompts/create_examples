@@ -5,11 +5,13 @@ Input Data:
 Policy Document: A text containing policies, rules, or constraints governing tool usage. It may be a full document or a partial excerpt if the document is too long.
 Tools Descriptions: A list of tools along with descriptions explaining their functionality and constraints.
 Target Tool (ToolX): The specific tool for which relevant policies need to be identified.
-Policy Name: The policy to write the examples for
-
 Objective:
 For each existing policy, generate examples that illustrate both violations (where the policy is not followed) and compliance (where the policy is correctly followed). The goal is to create specific and actionable examples that facilitate unit testing for policy validation.
-Ensure you provide a detailed textual description outlining the use case and the conditions that would either violate or comply with the policy in the given example. An additional function call would be beneficial but is not required.
+
+Strict Constraints:
+🔹 Do not modify or remove any existing policies.
+🔹 Do not add new policies.
+🔹 Only generate examples for policies that are already present.
 
 Guidelines for Creating Examples:
 1. Violating Examples:
@@ -29,43 +31,20 @@ Output Format (JSON):
 {
     "policies": [
         {
-            "policy_name": "policy 1 name",
-            "description": "policy_description_1",
-            "references": ["exact passage1 policy_1", "exact passage2 policy_1"],
-            "explicit_or_implicit": "Explicit/Implicit"
+            "policy_description": "policy_description_1",
+            "policy_references": ["exact passage1 policy_1", "exact passage2 policy_1"],
+            "policy_type": "Explicit/Implicit",
             "violating_examples": [
-                "violating Example 1.1",
-                "violating Example 1.2",
-                ...
-                " "violating Example 1.n",
+                "Violating Example 1.1",
+                "Violating Example 1.2",
+                "Violating Example 1.n"
             ],
             "compliance_examples": [
-                "compliance Example 1.1",
-                "compliance Example 1.2",
-                ...
-                " "compliance Example 1.m",
+                "Compliance Example 1.1",
+                "Compliance Example 1.2",
+                "Compliance Example 1.m"
             ]
         },
         ...
-        {
-            "policy_name": "policy k name",
-            "description": "policy_description_k",
-            "references": ["exact passage1 policy_1", "exact passage2 policy_1"],
-            "explicit_or_implicit": "Explicit/Implicit"
-            "violating_examples": [
-                "violating Example k.1",
-                "violating Example k.2",
-                ...
-                " "violating Example k.n",
-            ],
-            "compliance_examples": [
-                "compliance Example k.1",
-                "compliance Example k.2",
-                ...
-                " "compliance Example k.m",
-            ]
-        },
-
-
     ]
 }
