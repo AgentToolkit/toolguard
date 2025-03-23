@@ -1,0 +1,9 @@
+dotenv
+pydantic
+litellm
+pytest
+pytest-json-report
+loguru
+astor
+pyright
+datamodel-code-generator

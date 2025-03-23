@@ -1,0 +1,6 @@
+{
+    "python.testing.pytestArgs": [
+        "tests", "tau_airline"
+    ],
+    "python.testing.pytestEnabled": true,
+}
