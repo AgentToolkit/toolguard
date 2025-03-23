@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime
 import json
 import os
@@ -34,10 +35,17 @@ def load_policy(file_path:str, tool_name:str)->ToolPolicy:
     for i, p in enumerate(policies):
         policy_items.append(
             ToolPolicyItem(
+                name=str(i),
                 policy = p.get(f"policy description {i+1}"),
                 compliance_examples = p.get(f"Compliance Examples {i+1}"),
                 violation_examples = p.get(f"Violating Examples {i+1}")
             )
+            # ToolPolicyItem(
+            # name =??
+            #     policy = p.get(f"references")[0],
+            #     compliance_examples = p.get(f"examples").get("compliance_examples"),
+            #     violation_examples = p.get(f"examples").get("violating_examples")
+            # )
         )
     return ToolPolicy(name=tool_name, policy_items=policy_items)
 
@@ -72,7 +80,7 @@ def symlink_force(target, link_name):
         os.remove(link_name)
         os.symlink(target, link_name)
 
-def main():
+async def main():
     oas_path = "tau_airline/input/openapi.yaml"
     tool_names = ["book_reservation"]
     policy_paths = ["tau_airline/input/BookReservation_fix_5.json"]
@@ -81,19 +89,21 @@ def main():
     cwd = os.path.join(output_dir, now.strftime("%Y-%m-%d %H:%M:%S"))
     os.makedirs(cwd, exist_ok=True)
 
-    tool_policies = [load_policy(path,tool_name) 
+    tool_policies = [load_policy(path, tool_name) 
         for tool_name, path 
         in zip(tool_names, policy_paths)]
     llm = AzureLitellm(model)
     
     domain = OpenAPICodeGenerator(cwd)\
         .generate_domain(oas_path, "domain.py")
-    result = PolicyAdherenceCodeGenerator(llm, cwd)\
-        .generate_tools_check_fns(tool_policies, domain)
+    result = await (PolicyAdherenceCodeGenerator(llm, cwd)\
+        .generate_tools_check_fns(tool_policies, domain))
 
     print(f"Domain: {result.domain_file}")
     for tool_name, tool in result.tools.items():
-        print(f"\t{tool_name}\t{tool.check_file_name}\t{tool.tests_file_name}")
+        print(f"\t{tool_name}\t{tool.check_fn_src.file_name}")
+        for test in tool.test_files:
+            print(f"\t{test.file_name}")
     
 
 if __name__ == '__main__':
@@ -101,4 +111,4 @@ if __name__ == '__main__':
     logger.remove()
     logger.add(sys.stdout, colorize=True, format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> <level>{message}</level>")
 
-    main()
+    asyncio.run(main())
