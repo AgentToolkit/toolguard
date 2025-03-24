@@ -2,12 +2,13 @@ import ast
 import asyncio
 import os
 import anyio
+import anyio.to_thread
 import astor
 from pydantic import BaseModel
 from typing import Dict, List, Tuple
 from loguru import logger
-from policy_adherence.prompts import prompt_improve_fn
-from policy_adherence.prompts_gen_ai import generate_policy_item_tests, tool_information_dependencies
+# from policy_adherence.prompts import prompt_improve_fn
+import policy_adherence.prompts as prompts #import generate_policy_item_tests, tool_information_dependencies
 from policy_adherence.types import SourceFile, ToolPolicy, ToolPolicyItem
 from policy_adherence.llm.llm_model import LLM_model
 
@@ -84,7 +85,7 @@ class PolicyAdherenceCodeGenerator():
         # logger.debug(f"Tests {tests.file_name} successfully created")
         # logger.debug(f"Tool {tool_name} function is {'valid' if valid_fn() else 'invalid'}")
         while True:
-            errors = pytest.run(self.cwd, '', str(trial_no)).list_errors()
+            errors = pytest.run(self.cwd, '').list_errors()
             if not errors: 
                 return ToolChecksCodeResult(tool=tool, check_fn_src=check_fn, test_files=item_tests)
             if trial_no >= MAX_TOOL_IMPROVEMENTS:
@@ -117,10 +118,13 @@ class PolicyAdherenceCodeGenerator():
         return SourceFile(file_name=f"{new_fn_name}.py", content=src)
 
     async def _improve_check_fn(self, domain: SourceFile, tool: ToolPolicy, prev_version:SourceFile, review_comments: List[str], trial=0)->SourceFile:
-        fn_name = self.check_fn_name(tool.name)
         module_name = self.check_fn_module_name(tool.name)
         logger.debug(f"Improving check function... (trial = {trial})")
-        res_content = prompt_improve_fn(self.llm, fn_name, domain, tool, prev_version, review_comments)
+
+        policies = [item.policy for item in tool.policy_items]
+        res_content = await anyio.to_thread.run_sync(lambda:
+            prompts.improve_tool_check_fn(prev_version, domain, policies, review_comments)
+        )
         body = extract_code_from_llm_response(res_content)
         check_fn = SourceFile(
             file_name=f"{module_name}.py", 
@@ -160,6 +164,12 @@ class PolicyAdherenceCodeGenerator():
         logger.debug(f"Generated Tests... (trial={trial})")
         #still running against a stub. the tests should fail, but the collector should not fail.
         test_report = pytest.run(self.cwd, item_tests.file_name)
+        report_file_name = f"{tool_name}_{policy_item.name}_report.json"
+        SourceFile(
+            file_name=report_file_name, 
+            content=test_report.model_dump_json(indent=2)
+        ).save_as(self.debug_dir, report_file_name)
+
         if test_report.all_tests_collected_successfully():
             reviews = self._review_generated_tool_tests(domain, tool_name, policy_item, item_tests)
             if reviews:
@@ -174,12 +184,12 @@ class PolicyAdherenceCodeGenerator():
         test_fn_name = self.test_fn_name(tool_name, policy_item.name)
 
         deps = await anyio.to_thread.run_sync(
-            lambda: tool_information_dependencies(policy_item.name, policy_item.policy, domain)
+            lambda: prompts.tool_information_dependencies(policy_item.name, policy_item.policy, domain)
         )
         print(deps)
 
         res_content = await anyio.to_thread.run_sync(
-            lambda: generate_policy_item_tests(test_fn_name, fn_stub, policy_item, domain, deps)
+            lambda: prompts.generate_policy_item_tests(test_fn_name, fn_stub, policy_item, domain, deps)
         )
         body = extract_code_from_llm_response(res_content)
         tests = SourceFile(file_name=f"{self.test_fn_module_name(tool_name, policy_item.name)}.py", content=body)

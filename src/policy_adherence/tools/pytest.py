@@ -2,6 +2,7 @@
 from enum import StrEnum
 import json
 import os
+from pathlib import Path
 import subprocess
 from typing import List, Dict, Literal, Optional
 from pydantic import BaseModel
@@ -87,8 +88,8 @@ class TestReport(BaseModel):
                 errors.append(test.call.crash.message)
         return errors
 
-def run(folder:str, test_file:str, prefix:str = "")->TestReport:
-    report_file = f"{prefix}_pytest_report.json"
+def run(folder:str, test_file:str)->TestReport:
+    report_file = f"{Path(test_file).stem}_pytest.json"
     subprocess.run([
             "pytest",
             test_file,

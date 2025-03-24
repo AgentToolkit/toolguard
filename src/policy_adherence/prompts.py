@@ -1,96 +1,150 @@
 
 from typing import List
 from policy_adherence.types import SourceFile, ToolPolicy, ToolPolicyItem
-from policy_adherence.utils import to_md_bulltets
-from policy_adherence.llm.llm_model import LLM_model
+from programmatic_ai import generative
 
-def generate_policy_item_tests(llm: LLM_model, fn_name:str, fn_src:SourceFile, policy_item:ToolPolicyItem, domain:SourceFile)-> str:
-    prompt = f"""You are given:
-* a Python file describing the domain. It contains data classes and interfaces you may use.
-* a list of policy items. Policy items have a list of positive and negative examples. 
-* an interface of a Python function-under-test, `{fn_name}()`.
+model = "gpt-4o-2024-08-06"
 
-Your task is to write unit tests to check the implementation of the interface-under-test.
-The function implemtation should assert that ALL policy statements hold on its arguments.
-If the arguments violate a policy statement, an exception should be thrown.
-Policy statement have positive and negative examples.
-For positive-cases, the function should not throw exceptions.
-For negative-cases, the function should throw an exception.
-Generate one test for each example. 
+@generative(model=model, provider="azure", sdk="litellm")
+def generate_policy_item_tests(fn_name:str, fn_src:SourceFile, tool:ToolPolicyItem, domain:SourceFile, dependent_tool_names: List[str])-> str:
+    """Generate Python unit tests for a function to verify tool-call compliance with policy constraints.
 
-If an unexpected exception is catched, the test should fail with the nested exception message.
+    This function creates unit tests to validate the behavior of a given function-under-test. 
+    The function implementation must ensure that **all policy items** hold for given arguments. 
+    If an argument violates a policy item, an exception must be raised.
 
-Name the test using up to 6 representative words (snake_case).
+    **Test Generation Rules:**
+    - Each **policy item** has **positive** and **negative** test cases.
+    - For **positive cases**, the function-under-test should **not** raise exceptions.
+    - For **negative cases**, the function-under-test **must** raise an exception.
+    - Each **policy item** gets its own test class.
+    - Each **example case** becomes a test method.
+    - Test class and method names should be meaningful and use up to **six words in snake_case**.
+    - For each test function, add a comment quoting the policy item that this function is testing 
+    - When populating domain objects, make sure to pupulate all non-optional fields.
+    - Test failure message should be informative, contain a description of the scenario that failed, and optionaly an exception stack trace.
+    - You should **mock** the responses from other tools listed in dependent_tool_names param.
+    - You should use `unittest.mock.patch` for mocking other tools with the expected return values.
+    
+    **Example: Testing the function `check_create_reservation` and mocking `["get_user", "get_hotel"]` tools responses**
+    ```python
+    args = ...
+    user = User(...)
+    hotel = Hotel(...)
 
-The function-under-test might call other functions, in the domain, to retreive data, and check the policy accordingly. 
-Hence, you should MOCK the call to other functions and set the expected return value using `unittest.mock.patch`. 
-For example, if `check_book_reservation` is the function-under-test, it may access the `get_user_details()`:
+    with patch("check_create_reservation.get_user", return_value=user):
+        with patch("check_create_reservation.get_hotel", return_value=hotel):
+            try:
+                check_book_flight(args)
+            except Exception as ex:
+                pytest.fail("The user cannot book room for a date in the past")
+    ```
+
+    Ensure that test failure messages are meaningful.
+
+    Args:
+        fn_name (str): Name of the function under test.
+        fn_src (SourceFile): Source code containing the function signature (interface).
+        tool (ToolPolicy): Specification of the function-under-test, including positive and negative examples.
+        domain (SourceFile): Source code defining available data types and interfaces needed by the tests.
+        dependent_tool_names(List[str]): List of other tool names that this tool depends on
+
+    Returns:
+        str: Generated Python unit test code.
+    """
+    ...
+
+
+
+@generative(model=model, provider="azure", sdk="litellm")
+def tool_information_dependencies(tool_name:str, policy: str, domain:SourceFile)-> List[str]:
+    """
+    List other tools that the given tool depends on.
+
+    Args:
+        tool_name (str): name of the tool under analysis
+        policy (str): business policy, in natural language, specifying a constraint on a business processes involving the tool unedr analysis
+        domain (SourceFile): Python code defining available data types and other tool interfaces
+
+    Returns:
+        List[str]: dependent tool names
+
+    **Dependency Rules:**
+    - Tool available information is: from it function arguments, or from calling other tools.
+    - The function analyzes information dependency only on other tools.
+    - Information dependency can be only on tools that are immutable. That is, that retieve data only, but do not modify the environment.
+    - A dependency in another-tool exists only if the policy mention information is not available in the arguments, but can accessed by calling the other tool.
+    - The list of dependencies can be empty, with one, or multiple tools.
+    
+    **Example: ** 
 ```
-args = ...
-user = User(...)
-with patch("check_book_reservation.get_user_details", return_value=user):
-check_book_reservation(args)
-```
+    domain = {
+        "file_name": "domain.py",
+        "content": "
+    class Car:
+        pass
+    class Person:
+        pass
+    class Insurance:
+        pass
+    def buy_car(car:Car, owner_id:str, insurance_id:str):
+        pass
+    def get_person(id:str) -> Person:
+        pass
+    def get_insurance(id:str) -> Insurance:
+        pass
+    def delete_car(car:Car):
+        pass
+    def list_all_cars_owned_by(id:str): List[Car]
+        pass
+    "
+    }
 
-Make sure to indicate test failures using a meaningful message.
+    # According to the policy, the `buy_car` operation depends on `get_person` to get the driving licence of the owner, and on `get_insurance` to check the insurance is valid.
+    assert tool_dependencies(
+        "tool_name": "buy_car", 
+        "policy": "when buying a new car, you should check that the car owner has a driving licence and that the insurance is valid.",
+        "domain": domain
+    ) == ["get_person", "get_insurance"]
 
-### Domain:
-```python
-### {domain.file_name}
+    # According to the policy, the `get_insurance` operation does not depend on any other operation
+    assert tool_dependencies(
+        "tool_name": "get_insurance", 
+        "policy": "when buying a new car, you should check that the car owner has a driving licence and that the insurance is valid.",
+        "domain": domain
+    ) == []
 
-{domain.content}
-```
+    # According to the policy, the `delete_car` operation does not depend on any other operation
+    assert tool_dependencies(
+        "tool_name": "delete_car", 
+        "policy": "when buying a new car, you should check that the car owner has a driving licence and that the insurance is valid.",
+        "domain": domain
+    ) == []
 
-### Policy Item:
+    ```
 
-{policy_item}
-
-
-### Interface under test
-```python
-### {fn_src.file_name}
-
-{fn_src.content}
-```"""
-    return llm.generate(prompt)
-
-
-def prompt_improve_fn(llm: LLM_model, fn_name:str, domain: SourceFile, tool: ToolPolicy, previous_version:SourceFile, review_comments: List[str])->str:
-    prompt = f"""You are given:
-* a Python file describing the domain. It contains data classes and functions you may use.
-* a list of policy items. Policy items have a list of positive and negative examples. 
-* current implementation of a Python function, `{fn_name}()`.
-* a list of review comments on issues that need to be improved in the current implementation.
-
-The goal of the function is to check that ALL policy items hold on the function arguments. 
-In particular, running the function on all the positive examples should pass.
-For all negative examples, the function should raise an exception with a meaningful message.
-
-If you need to retrieve additional data (that is not in the function arguments), you can call functions defined in the domain.
-You need to generate code that improve the current implementation, according to the review comments.
-The code must be simple and well documented.
-
-### Domain:
-```python
-### {domain.file_name}
-
-{domain.content}
-```
-
-### Policy Items:
-
-{tool}
+    """
+    ...
 
 
-### Current implemtnation
-```python
-### {previous_version.file_name}
+@generative(model=model, provider="azure", sdk="litellm")
+def improve_tool_check_fn(previous_version:SourceFile, domain: SourceFile, tool_policy_items: List[str], review_comments: List[str])-> str:
+    """
+    Improve the previous tool function implementation (in Python) according to the tool policy-items and review-comments.
 
-{previous_version.content}
-```
+    Args:
+        previous_version (SourceFile): previous implementation of a Python function.
+        domain (SourceFile): Python code defining available data types and other tool interfaces.
+        tool_policy_items (List[str]): Requirements for the tool.
+        review_comments (List[str]): Review comments on the current implementation. For example, pylint errors or Failed unit-tests.
 
-### Review commnets:
+    Returns:
+        str: Improved implementation Python code.
 
-{to_md_bulltets(review_comments)}
-"""
-    return llm.generate(prompt)
+    **Implementation Rules:**"
+    - ALL tool policy items must hold on the function arguments.
+    - if additional information is needed to check the policy, other immutable functions in the domain may be called.
+    - The code should be simple.
+    - The code should be well documented.
+    """
+    ...
