@@ -1,12 +1,12 @@
 
-from typing import List
+from typing import List, Set
 from policy_adherence.types import SourceFile, ToolPolicy, ToolPolicyItem
 from programmatic_ai import generative
 
 model = "gpt-4o-2024-08-06"
 
 @generative(model=model, provider="azure", sdk="litellm")
-def generate_policy_item_tests(fn_name:str, fn_src:SourceFile, tool:ToolPolicyItem, domain:SourceFile, dependent_tool_names: List[str])-> str:
+def generate_tool_policy_tests(fn_src:SourceFile, tool:ToolPolicy, domain:SourceFile, dependent_tool_names: Set[str])-> str:
     """Generate Python unit tests for a function to verify tool-call compliance with policy constraints.
 
     This function creates unit tests to validate the behavior of a given function-under-test. 
@@ -14,41 +14,41 @@ def generate_policy_item_tests(fn_name:str, fn_src:SourceFile, tool:ToolPolicyIt
     If an argument violates a policy item, an exception must be raised.
 
     **Test Generation Rules:**
-    - Each **policy item** has **positive** and **negative** test cases.
-    - For **positive cases**, the function-under-test should **not** raise exceptions.
-    - For **negative cases**, the function-under-test **must** raise an exception.
-    - Each **policy item** gets its own test class.
-    - Each **example case** becomes a test method.
+    - Make sure to import the module of the module of the function-under-test
+    - Each **policy item** in the tool policy gets its own test class.
+    - Each **policy item** has **compliance** and **violation** test cases.
+    - For **compliance cases**, the function-under-test should **not** raise exceptions.
+    - For **violation cases**, the function-under-test **must** raise an exception.
+    - Each **policy item test case** should be tested in a dedicated test method.
     - Test class and method names should be meaningful and use up to **six words in snake_case**.
     - For each test function, add a comment quoting the policy item that this function is testing 
-    - When populating domain objects, use pydantic `.model_construct()`, to skip validation.
-    - Failure message should descrive the test scenario that failed, the expected and the actual outcomes.
-    - You should **mock** the responses from other tools listed in dependent_tool_names param.
-    - You should use `unittest.mock.patch` for mocking other tools with the expected return values.
+    - Failure message should describe the test scenario that failed, the expected and the actual outcomes.
+    - When populating domain objects, use pydantic `.model_construct()`.
+    - You should **mock** the return_value from tools listed in `dependent_tool_names` param.
+    - The mocked returned value should be fully populated
+    - Use `unittest.mock.patch` for mocking.
     
     **Example:** Testing the function `check_create_reservation`, for policy: `cannot book room for a date in the past`, and mocking dependent_tool_names: `["get_user", "get_hotel"]`
     ```python
     args = {...}
-    user = User(...)
-    hotel = Hotel(...)
+    user = User.model_construct(...)
+    hotel = Hotel.model_construct(...)
 
     with patch("check_create_reservation.get_user", return_value=user):
         with patch("check_create_reservation.get_hotel", return_value=hotel):
             try:
                 check_book_flight(args)
             except Exception as ex:
-                # Fail with a meaningful message describing the test scenario
                 pytest.fail("The user cannot book room for a date in the past")
     ```
 
     Ensure that test failure messages are meaningful.
 
     Args:
-        fn_name (str): Name of the function under test.
-        fn_src (SourceFile): Source code containing the function signature (interface).
+        fn_src (SourceFile): Source code containing the function-under-test signature.
         tool (ToolPolicy): Specification of the function-under-test, including positive and negative examples.
         domain (SourceFile): Source code defining available data types and interfaces needed by the tests.
-        dependent_tool_names(List[str]): List of other tool names that this tool depends on
+        dependent_tool_names(Set[str]): other tool names that this tool depends on
 
     Returns:
         str: Generated Python unit test code.

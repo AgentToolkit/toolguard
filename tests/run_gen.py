@@ -10,7 +10,6 @@ from loguru import logger
 
 from policy_adherence.types import SourceFile, ToolPolicy, ToolPolicyItem
 from policy_adherence.gen_domain import OpenAPICodeGenerator
-from policy_adherence.llm.azure_wrapper import AzureLitellm
 from policy_adherence.common.open_api import OpenAPI
 
 model = "gpt-4o-2024-08-06"
@@ -86,17 +85,16 @@ async def main():
     policy_paths = ["tau_airline/input/BookReservation_fix_5.json"]
     output_dir = "tau_airline/output"
     now = datetime.now()
-    cwd = os.path.join(output_dir, now.strftime("%Y-%m-%d %H:%M:%S"))
+    cwd = os.path.join(output_dir, now.strftime("%Y-%m-%d_%H_%M_%S"))
     os.makedirs(cwd, exist_ok=True)
 
     tool_policies = [load_policy(path, tool_name) 
         for tool_name, path 
         in zip(tool_names, policy_paths)]
-    llm = AzureLitellm(model)
     
     domain = OpenAPICodeGenerator(cwd)\
         .generate_domain(oas_path, "domain.py")
-    result = await (PolicyAdherenceCodeGenerator(llm, cwd)\
+    result = await (PolicyAdherenceCodeGenerator(cwd)\
         .generate_tools_check_fns(tool_policies, domain))
 
     print(f"Domain: {result.domain_file}")
