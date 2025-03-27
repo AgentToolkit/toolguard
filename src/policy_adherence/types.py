@@ -24,7 +24,7 @@ class SourceFile(BaseModel):
         with open(file_path, "r") as file:
             data = file.read()
             return SourceFile(
-                file_name=Path(file_path).stem, 
+                file_name=Path(file_path).name, 
                 content=data
             )
 

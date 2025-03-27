@@ -1,15 +1,16 @@
 import ast
 import asyncio
 import os
+from pathlib import Path
 import anyio
 import anyio.to_thread
+import shutil
 import astor
 from pydantic import BaseModel
 from typing import Dict, List
 from loguru import logger
 import policy_adherence.prompts as prompts
 from policy_adherence.types import SourceFile, ToolPolicy, ToolPolicyItem
-from policy_adherence.llm.llm_model import LLM_model
 import policy_adherence.tools.venv as venv
 import policy_adherence.tools.pyright as pyright
 import policy_adherence.tools.pytest as pytest
@@ -18,7 +19,8 @@ from policy_adherence.utils import extract_code_from_llm_response
 MAX_TOOL_IMPROVEMENTS = 5
 MAX_TEST_GEN_TRIALS = 3
 PY_ENV = "my_env"
-PY_PACKAGES = ["pydantic"]
+PY_PACKAGES = ["pydantic"] #, "litellm"
+RUNTIME_COMMON = "common.py"
 
 class ToolChecksCodeResult(BaseModel):
     tool: ToolPolicy
@@ -58,8 +60,15 @@ class PolicyAdherenceCodeGenerator():
         venv.run(os.path.join(self.cwd, PY_ENV), PY_PACKAGES)
         pyright.config().save(self.cwd)
 
+        common_file = os.path.join(self.cwd, RUNTIME_COMMON)
+        shutil.copy(
+            os.path.join(Path(__file__).parent, "_runtime_common.py"),
+            common_file
+        )
+        common = SourceFile.load_from(common_file)
+
         tools_with_poilicies = [tool for tool in tool_policies if len(tool.policy_items) > 0]
-        tool_futures = [self.generate_tool_tests_and_check_fn(domain, tool) for tool in tools_with_poilicies]
+        tool_futures = [self.generate_tool_tests_and_check_fn(domain, common, tool) for tool in tools_with_poilicies]
         tool_results = await asyncio.gather(*tool_futures)
         tools_result = {tool.name:res 
             for tool, res 
@@ -71,9 +80,9 @@ class PolicyAdherenceCodeGenerator():
             tools=tools_result
         )
 
-    async def generate_tool_tests_and_check_fn(self, domain: SourceFile, tool:ToolPolicy, trial_no=0)->ToolChecksCodeResult:
+    async def generate_tool_tests_and_check_fn(self, domain: SourceFile, common:SourceFile, tool:ToolPolicy, trial_no=0)->ToolChecksCodeResult:
         check_fn_name = f"check_{tool.name}"
-        check_fn = self._copy_check_fn_stub(domain, tool.name, check_fn_name)
+        check_fn = self._create_check_fn_signature(domain, common, tool.name, check_fn_name)
         check_fn.save(self.cwd)
         self._save_debug(check_fn, f"-1_{check_fn_name}.py")
         
@@ -82,17 +91,11 @@ class PolicyAdherenceCodeGenerator():
         dependent_tools = await self.dependent_tools(tool, domain)
         logger.debug(f"Dependencies of {tool.name}: {dependent_tools}")
 
-        # items_test_futures = [self.generate_tool_policy_item_tests(check_fn, tool.name, policy_item, domain, dependent_tools) 
-        #     for policy_item in tool.policy_items]
-        # item_tests = await asyncio.gather(*items_test_futures)
-        test = await self.generate_tool_policy_tests(check_fn, tool, domain, dependent_tools) 
-        tests = [test]
-        # logger.debug(f"Tests {tests.file_name} successfully created")
-        # logger.debug(f"Tool {tool_name} function is {'valid' if valid_fn() else 'invalid'}")
+        test = await self.generate_tool_policy_tests(check_fn, tool, common, domain, dependent_tools) 
         while True:
             errors = pytest.run(self.cwd, '').list_errors()
             if not errors: 
-                return ToolChecksCodeResult(tool=tool, check_fn_src=check_fn, test_files=tests)
+                return ToolChecksCodeResult(tool=tool, check_fn_src=check_fn, test_files=[test])
             if trial_no >= MAX_TOOL_IMPROVEMENTS:
                 raise Exception(f"Could not generate check function for tool {tool.name}")
             
@@ -109,9 +112,18 @@ class PolicyAdherenceCodeGenerator():
         uniq_deps = set(item for sublist in all_deps for item in sublist)
         return uniq_deps
 
-    def _copy_check_fn_stub(self, domain:SourceFile, fn_name:str, new_fn_name:str)->SourceFile:
-        tree = ast.parse(domain.content)
+    def _create_check_fn_signature(self, domain:SourceFile, common: SourceFile, fn_name:str, new_fn_name:str)->SourceFile:
         new_body = []
+
+        #runtime
+        new_body.append(ast.ImportFrom(
+            module=common.file_name[:-3],# The module name (without ./)
+            names=[ast.alias(name="*", asname=None)],
+            level=0
+        ))
+
+        #domain
+        tree = ast.parse(domain.content)
         new_body.append(ast.ImportFrom(
             module=domain.file_name[:-3],# The module name (without ./)
             names=[ast.alias(name="*", asname=None)],  # Import Type
@@ -120,8 +132,11 @@ class PolicyAdherenceCodeGenerator():
         for node in tree.body:
             if isinstance(node, ast.FunctionDef) and node.name == fn_name:
                 #TODO add history chat messages
-                node.name = new_fn_name
+                node.name = new_fn_name#rename
                 node.returns = ast.Constant(value=None)
+                node.args.args.append(
+                    ast.arg(arg="chat_history", annotation=ast.Name(id="ChatHistory", ctx=ast.Load()))
+                )
                 node.body = [ast.Pass()]
                 new_body.append(node)
         
@@ -152,7 +167,7 @@ class PolicyAdherenceCodeGenerator():
                     file_name=f"{trial}_{module_name}_errors.json", 
                     content=lint_report.model_dump_json(indent=2)
                 ).save(self.cwd)
-            logger.warning(f"Generated function with Python errors.")
+            logger.warning(f"Generated function with {lint_report.summary.errorCount} errors.")
             
             if trial >= MAX_TOOL_IMPROVEMENTS:
                 raise Exception(f"Generation failed for tool {tool.name}")
@@ -160,16 +175,16 @@ class PolicyAdherenceCodeGenerator():
             return await self._improve_check_fn(domain, tool, check_fn, errors, trial+1)
         return check_fn
     
-    async def generate_tool_policy_tests(self, fn_stub:SourceFile, tool:ToolPolicy, domain:SourceFile, dependent_tools: set[str], trial=0)-> SourceFile:
+    async def generate_tool_policy_tests(self, fn_stub:SourceFile, tool:ToolPolicy, common:SourceFile, domain:SourceFile, dependent_tools: set[str], trial=0)-> SourceFile:
         logger.debug(f"Generating Tests {tool.name}... (trial={trial})")
-        tests = await self._generate_tool_policy_tests(fn_stub, tool, domain, dependent_tools)
+        tests = await self._generate_tool_policy_tests(fn_stub, tool, common, domain, dependent_tools)
         self._save_debug(tests, f"{trial}_{tests.file_name}")
 
         lint_report = pyright.run(self.cwd, tests.file_name, PY_ENV)
         if lint_report.summary.errorCount>0:
             logger.warning(f"Generated tests with Python errors {tests.file_name}.")
             if trial < MAX_TEST_GEN_TRIALS:
-                return await self.generate_tool_policy_tests(fn_stub, tool, domain, dependent_tools, trial+1)
+                return await self.generate_tool_policy_tests(fn_stub, tool, common, domain, dependent_tools, trial+1)
             raise Exception("Generated tests contain errors")
     
         #syntax ok, try to run it...
@@ -190,11 +205,11 @@ class PolicyAdherenceCodeGenerator():
             return tests
         
         logger.debug(f"Tool {tool.name} tests error. Retrying...")
-        return await self.generate_tool_policy_tests(fn_stub, tool, domain, dependent_tools, trial+1)
+        return await self.generate_tool_policy_tests(fn_stub, tool, common, domain, dependent_tools, trial+1)
 
-    async def _generate_tool_policy_tests(self, fn_stub:SourceFile, tool:ToolPolicy, domain:SourceFile, dependent_tools: set[str])-> SourceFile:
+    async def _generate_tool_policy_tests(self, fn_stub:SourceFile, tool:ToolPolicy, common: SourceFile, domain:SourceFile, dependent_tools: set[str])-> SourceFile:
         res_content = await anyio.to_thread.run_sync(
-            lambda: prompts.generate_tool_policy_tests(fn_stub, tool, domain, dependent_tools)
+            lambda: prompts.generate_tool_policy_tests(fn_stub, tool, common, domain, dependent_tools)
         )
         body = extract_code_from_llm_response(res_content)
         tests = SourceFile(file_name=f"{self.test_fn_module_name(tool.name)}.py", content=body)

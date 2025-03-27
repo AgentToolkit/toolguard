@@ -9,7 +9,7 @@ from policy_adherence.types import SourceFile
 load_dotenv()
 
 current_dir = Path(__file__).parent
-domain = SourceFile.load_from(os.path.join(current_dir,"tau_airline_domain.py"))
+domain = SourceFile.load_from(os.path.join(current_dir, "_tau_airline_domain.py"))
 
 model = "gpt-4o-2024-08-06"
 llm = AzureLitellm(model)

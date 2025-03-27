@@ -6,7 +6,7 @@ from programmatic_ai import generative
 model = "gpt-4o-2024-08-06"
 
 @generative(model=model, provider="azure", sdk="litellm")
-def generate_tool_policy_tests(fn_src:SourceFile, tool:ToolPolicy, domain:SourceFile, dependent_tool_names: Set[str])-> str:
+def generate_tool_policy_tests(fn_src:SourceFile, tool:ToolPolicy, common: SourceFile, domain:SourceFile, dependent_tool_names: Set[str])-> str:
     """Generate Python unit tests for a function to verify tool-call compliance with policy constraints.
 
     This function creates unit tests to validate the behavior of a given function-under-test. 
@@ -25,29 +25,51 @@ def generate_tool_policy_tests(fn_src:SourceFile, tool:ToolPolicy, domain:Source
     - Failure message should describe the test scenario that failed, the expected and the actual outcomes.
     - When populating domain objects, use pydantic `.model_construct()`.
     - You should **mock** the return_value from tools listed in `dependent_tool_names` param.
+    - Every reference in the domain object, should be match with an object. 
     - The mocked returned value should be fully populated
     - Use `unittest.mock.patch` for mocking.
     
     **Example:** Testing the function `check_create_reservation`, for policy: `cannot book room for a date in the past`, and mocking dependent_tool_names: `["get_user", "get_hotel"]`
     ```python
-    args = {...}
+    
+    model_name = ""
+    llm = Litellm(model_name)
+
+    # domain:
+    def get_user(user_id):
+        ...
+    def get_hotel(hotel_id):
+        ...
+
+    # function call arguments
+    args = {
+        user_id: ...,
+        ...
+        hotel_id: ....
+    }
+
+    messages = [...]
+    history = ChatHistory(messages, llm)
+
+    # mock return values:
     user = User.model_construct(...)
     hotel = Hotel.model_construct(...)
 
+    # mock functions and invoke function under test.
+    # failure message describe the test case
     with patch("check_create_reservation.get_user", return_value=user):
         with patch("check_create_reservation.get_hotel", return_value=hotel):
             try:
-                check_book_flight(args)
+                check_book_flight(args, history)
             except Exception as ex:
                 pytest.fail("The user cannot book room for a date in the past")
     ```
 
-    Ensure that test failure messages are meaningful.
-
     Args:
         fn_src (SourceFile): Source code containing the function-under-test signature.
         tool (ToolPolicy): Specification of the function-under-test, including positive and negative examples.
-        domain (SourceFile): Source code defining available data types and interfaces needed by the tests.
+        common (SourceFile): utility functions the test may use
+        domain (SourceFile): available data types and interfaces needed by the tests.
         dependent_tool_names(Set[str]): other tool names that this tool depends on
 
     Returns:
