@@ -30,7 +30,8 @@ class SourceFile(BaseModel):
 
 class ToolPolicyItem(BaseModel):
     name: str
-    policy: str = Field(..., description="Policy item")
+    description: str = Field(..., description="Policy item description")
+    references: List[str] = Field(..., description="original text")
     compliance_examples: Optional[List[str]] = Field(..., description="Case example that complies with the policy")
     violation_examples: Optional[List[str]] = Field(..., description="Case example that violates the policy")
 
@@ -42,7 +43,7 @@ class ToolPolicy(BaseModel):
         s = ""
         for i, item in enumerate(self.policy_items):
             s+= f"#### Policy item {i+1}\n"
-            s+=f"{item.policy}\n"
+            s+=f"{item.description}\n"
             if item.compliance_examples:
                 s+=f"##### Positive examples\n{to_md_bulltets(item.compliance_examples)}"
             if item.violation_examples:

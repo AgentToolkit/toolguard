@@ -14,8 +14,7 @@ class Litellm(LLM):
     custom_provider: str
 
     def __init__(self, model_name: str, custom_provider: str = "azure") -> None:
-        self.model_name = model_name
-        self.custom_provider = custom_provider
+        super().__init__(model_name=model_name, custom_provider=custom_provider)
         
     def generate(self, messages: List[Dict])->str:
         resp = completion(

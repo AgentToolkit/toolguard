@@ -8,6 +8,7 @@ def run(oas_file:str):
             "--use-field-description",
             "--use-schema-description",
             "--output-model-type", "pydantic_v2.BaseModel", #"typing.TypedDict",
+            "--collapse-root-models",
             # "--force-optional",
             "--reuse-model",
             "--enum-field-as-literal", "all",

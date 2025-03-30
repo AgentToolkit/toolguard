@@ -1,6 +1,6 @@
 
 from typing import List
-from policy_adherence.types import SourceFile, ToolPolicy, ToolPolicyItem
+from policy_adherence.types import SourceFile, ToolPolicyItem, ToolPolicyItem
 from policy_adherence.utils import to_md_bulltets
 from policy_adherence.llm.llm_model import LLM_model
 
@@ -55,7 +55,7 @@ Make sure to indicate test failures using a meaningful message.
     return llm.generate(prompt)
 
 
-def prompt_improve_fn(llm: LLM_model, fn_name:str, domain: SourceFile, tool: ToolPolicy, previous_version:SourceFile, review_comments: List[str])->str:
+def prompt_improve_fn(llm: LLM_model, fn_name:str, domain: SourceFile, tool: ToolPolicyItem, previous_version:SourceFile, review_comments: List[str])->str:
     prompt = f"""You are given:
 * a Python file describing the domain. It contains data classes and functions you may use.
 * a list of policy items. Policy items have a list of positive and negative examples. 

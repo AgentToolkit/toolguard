@@ -25,7 +25,7 @@ def read_oas(file_path:str)->OpenAPI:
         d = yaml.safe_load(file)
     return OpenAPI.model_validate(d)
 
-def load_policy(file_path:str, tool_name:str)->ToolPolicy:
+def load_policy(file_path:str, tool_name:str)->ToolPolicyItem:
     with open(file_path, "r") as file:
         d = json.load(file)
     
@@ -35,7 +35,7 @@ def load_policy(file_path:str, tool_name:str)->ToolPolicy:
         policy_items.append(
             ToolPolicyItem(
                 name=str(i),
-                policy = p.get(f"policy description {i+1}"),
+                description = p.get(f"policy description {i+1}"),
                 compliance_examples = p.get(f"Compliance Examples {i+1}"),
                 violation_examples = p.get(f"Violating Examples {i+1}")
             )
@@ -46,7 +46,23 @@ def load_policy(file_path:str, tool_name:str)->ToolPolicy:
             #     violation_examples = p.get(f"examples").get("violating_examples")
             # )
         )
-    return ToolPolicy(name=tool_name, policy_items=policy_items)
+    return ToolPolicyItem(name=tool_name, policy_items=policy_items)
+
+
+def load_policy_new(file_path:str, tool_name:str)->ToolPolicy:
+    with open(file_path, "r") as file:
+        d = json.load(file)
+    
+    items = [ToolPolicyItem(
+                name=item.get("policy_name"),
+                description = item.get("description"),
+                references = item.get("references"),
+                compliance_examples = item.get("compliance_examples"),
+                violation_examples = item.get("violating_examples")
+            )
+            for item in d.get("policies", [])
+            if not item.get("skip")]
+    return ToolPolicy(name=tool_name, policy_items=items)
 
 # def op_only_oas(oas: OpenAPI, operationId: str)-> OpenAPI:
 #     new_oas = OpenAPI(
@@ -79,16 +95,16 @@ def symlink_force(target, link_name):
         os.remove(link_name)
         os.symlink(target, link_name)
 
-async def main():
+async def gen_all():
     oas_path = "tau_airline/input/openapi.yaml"
     tool_names = ["book_reservation"]
-    policy_paths = ["tau_airline/input/BookReservation_fix_5.json"]
+    policy_paths = ["tau_airline/input/BookReservation.json"]
     output_dir = "tau_airline/output"
     now = datetime.now()
     cwd = os.path.join(output_dir, now.strftime("%Y-%m-%d_%H_%M_%S"))
     os.makedirs(cwd, exist_ok=True)
 
-    tool_policies = [load_policy(path, tool_name) 
+    tool_policies = [load_policy_new(path, tool_name) 
         for tool_name, path 
         in zip(tool_names, policy_paths)]
     
@@ -104,9 +120,32 @@ async def main():
             print(f"\t{test.file_name}")
     
 
+async def gen_tool_check_fn(case:str):
+    cwd = f"tau_airline/output/{case}"
+    tool_name = "book_reservation"
+    policy_path = "tau_airline/input/BookReservation.json"
+    tool = load_policy_new(policy_path, tool_name)
+    domain = SourceFile.load_from(os.path.join(cwd, "domain.py"))
+    check_fn = SourceFile.load_from(os.path.join(cwd, "check_book_reservation.py"))
+    tests = [
+        SourceFile.load_from(os.path.join(cwd, "test_check_Baggage Allowance.py")),
+        SourceFile.load_from(os.path.join(cwd, "test_check_Passenger Information.py")),
+        SourceFile.load_from(os.path.join(cwd, "test_check_Payment Method Restrictions.py")),
+    ]
+
+    gen = PolicyAdherenceCodeGenerator(cwd)
+    check_futures = [
+        gen._generate_tool_check_fn(domain, check_fn, tool_item, tests)
+        for tool_item in tool.policy_items 
+    ]
+    checks = await asyncio.gather(*check_futures)
+    # res = await gen._generate_tool_check_fn(domain, check_fn, tool, test)
+    print(checks)
+
 if __name__ == '__main__':
     load_dotenv()
     logger.remove()
     logger.add(sys.stdout, colorize=True, format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> <level>{message}</level>")
 
-    asyncio.run(main())
+    asyncio.run(gen_all())
+    # asyncio.run(gen_tool_check_fn("game"))

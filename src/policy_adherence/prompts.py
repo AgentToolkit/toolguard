@@ -1,32 +1,39 @@
 
 from typing import List, Set
-from policy_adherence.types import SourceFile, ToolPolicy, ToolPolicyItem
+from policy_adherence.types import SourceFile, ToolPolicyItem, ToolPolicyItem
 from programmatic_ai import generative
 
 model = "gpt-4o-2024-08-06"
 
 @generative(model=model, provider="azure", sdk="litellm")
-def generate_tool_policy_tests(fn_src:SourceFile, tool:ToolPolicy, common: SourceFile, domain:SourceFile, dependent_tool_names: Set[str])-> str:
+def generate_tool_item_tests(fn_under_test_name:str, fn_src:SourceFile, tool_item:ToolPolicyItem, common: SourceFile, domain:SourceFile, dependent_tool_names: Set[str])-> str:
     """Generate Python unit tests for a function to verify tool-call compliance with policy constraints.
 
     This function creates unit tests to validate the behavior of a given function-under-test. 
-    The function implementation must ensure that **all policy items** hold for given arguments. 
-    If an argument violates a policy item, an exception must be raised.
+    The function goal is to check the argument data, and raise an exception if they violated the requirements in the policy item.
 
     **Test Generation Rules:**
-    - Make sure to import the module of the module of the function-under-test
-    - Each **policy item** in the tool policy gets its own test class.
-    - Each **policy item** has **compliance** and **violation** test cases.
-    - For **compliance cases**, the function-under-test should **not** raise exceptions.
-    - For **violation cases**, the function-under-test **must** raise an exception.
-    - Each **policy item test case** should be tested in a dedicated test method.
-    - Test class and method names should be meaningful and use up to **six words in snake_case**.
-    - For each test function, add a comment quoting the policy item that this function is testing 
-    - Failure message should describe the test scenario that failed, the expected and the actual outcomes.
+    - Make sure to Python import all items in fn_src, common and domain modules. Example:
+```
+from check_my_fn import check_my_function
+from common import *
+from domain import *
+```
+    - Each **policy item** has multiple **compliance** and **violation** test examples.
+        - For **each compliance example, ONE test method** is generated. 
+            - If an exception occurrs in the function-under-test, let the exception propagate up.
+        - For **each violation example, ONE test** is generated.
+            - the function-under-test is EXPECTED to raise an exception.
+        - Test class and method names should be meaningful and use up to **six words in snake_case**.
+        - For each test, add a comment quoting the policy item case that this function is testing 
+        - Failure message should describe the test scenario that failed, the expected and the actual outcomes.
+
+    **Data population and references:**
+    - populate all request object fields that are required by Pydantic or that are required according to the policy.
     - When populating domain objects, use pydantic `.model_construct()`.
-    - You should **mock** the return_value from tools listed in `dependent_tool_names` param.
-    - Every reference in the domain object, should be match with an object. 
-    - The mocked returned value should be fully populated
+    - You should **mock** the return_value from **ALL tools listed in `dependent_tool_names`**.
+    - Every reference in the domain object, should refer to an instanciated data object. 
+    - The mocked returned value should be fully populated.
     - Use `unittest.mock.patch` for mocking.
     
     **Example:** Testing the function `check_create_reservation`, for policy: `cannot book room for a date in the past`, and mocking dependent_tool_names: `["get_user", "get_hotel"]`
@@ -66,6 +73,7 @@ def generate_tool_policy_tests(fn_src:SourceFile, tool:ToolPolicy, common: Sourc
     ```
 
     Args:
+        fn_under_test_name (str): the name of the function under test
         fn_src (SourceFile): Source code containing the function-under-test signature.
         tool (ToolPolicy): Specification of the function-under-test, including positive and negative examples.
         common (SourceFile): utility functions the test may use
@@ -151,14 +159,14 @@ def tool_information_dependencies(tool_name:str, policy: str, domain:SourceFile)
 
 
 @generative(model=model, provider="azure", sdk="litellm")
-def improve_tool_check_fn(previous_version:SourceFile, domain: SourceFile, tool_policy_items: List[str], review_comments: List[str])-> str:
+def improve_tool_check_fn(prev_impl:SourceFile, domain: SourceFile, tool: ToolPolicyItem, review_comments: List[str])-> str:
     """
     Improve the previous tool function implementation (in Python) according to the tool policy-items and review-comments.
 
     Args:
-        previous_version (SourceFile): previous implementation of a Python function.
+        prev_impl (SourceFile): previous implementation of a Python function.
         domain (SourceFile): Python code defining available data types and other tool interfaces.
-        tool_policy_items (List[str]): Requirements for the tool.
+        tool (ToolPolicy): Requirements for this tool.
         review_comments (List[str]): Review comments on the current implementation. For example, pylint errors or Failed unit-tests.
 
     Returns:
