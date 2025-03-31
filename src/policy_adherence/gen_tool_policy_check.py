@@ -9,7 +9,7 @@ import astor
 from pydantic import BaseModel
 from typing import Dict, List
 from loguru import logger
-from policy_adherence.check_fn import check_fn_module_name, check_fn_name, create_initial_check_fns, replace_fn_body
+from policy_adherence.check_fn import check_fn_module_name, check_fn_name, CheckFnManager
 from policy_adherence.common.array import find
 import policy_adherence.prompts as prompts
 from policy_adherence.types import SourceFile, ToolPolicy, ToolPolicyItem, ToolPolicyItem
@@ -26,7 +26,8 @@ RUNTIME_COMMON = "common.py"
 
 class ToolChecksCodeResult(BaseModel):
     tool: ToolPolicy
-    check_fn_src: SourceFile
+    tool_check_file: SourceFile
+    item_check_files: List[SourceFile]
     test_files: List[SourceFile]
 
 class ToolChecksCodeGenerationResult(BaseModel):
@@ -80,39 +81,42 @@ class PolicyAdherenceCodeGenerator():
         )
 
     async def generate_tool_tests_and_check_fn(self, domain: SourceFile, common:SourceFile, tool:ToolPolicy)->ToolChecksCodeResult:
-        check_module = create_initial_check_fns(domain, common, tool, self.cwd)
-        self._save_debug(check_module, f"-1_{check_module.file_name}")
+        tool_file, item_files = CheckFnManager(self.cwd)\
+            .create_initial_check_fns(domain, common, tool, self.cwd)
+        
+        # self._save_debug(tool_file, f"-1_{tool_file.file_name}")
+        for item_file in item_files:
+            self._save_debug(item_file, f"-1_{item_file.file_name}")
         
         logger.debug(f"Tool {tool.name} function draft created")
         
         tests = await asyncio.gather(* [
-            self.generate_tool_item_tests(check_module, tool_item, common, domain)
-            for tool_item in tool.policy_items 
+            self.generate_tool_item_tests(file, item, common, domain)
+            for item, file in zip(tool.policy_items, item_files)
         ])
 
-        check_fns = await asyncio.gather(* [
-            self._generate_tool_check_fn(domain, check_module, tool_item, tests)
-            for tool_item in tool.policy_items 
+        item_check_files = await asyncio.gather(* [
+            self._improve_tool_check_fn_loop(domain, item_file, item, item_tests)
+            for item, item_file, item_tests in zip(tool.policy_items, item_files, tests)
         ])
-        for check_fn, tool_item in zip(check_fns, tool.policy_items):
-            check_module = replace_fn_body(check_fn, check_module, check_fn_name(tool_item.name), self.cwd)
+        # for check_fn, tool_item in zip(check_fns, tool.policy_items):
+        #     check_module = replace_fn_body(check_fn, check_module, check_fn_name(tool_item.name), self.cwd)
         
         return ToolChecksCodeResult(
             tool=tool,
-            check_fn_src=check_module,
+            tool_check_file=tool_file,
+            item_check_files = item_check_files,
             test_files=tests
         )
 
-    async def _generate_tool_check_fn(self, domain: SourceFile, check_fn:SourceFile, tool_item:ToolPolicyItem, tests:List[SourceFile])->SourceFile:
-        trial_no = 0
-        while trial_no < MAX_TOOL_IMPROVEMENTS:
-            errors = pytest.run(self.cwd, py_extension(test_fn_module_name(tool_item.name))).list_errors()
+    async def _improve_tool_check_fn_loop(self, domain: SourceFile, check_fn:SourceFile, tool_item:ToolPolicyItem, tests:SourceFile)->SourceFile:
+        for trial_no in range(MAX_TOOL_IMPROVEMENTS):
+            errors = pytest.run(self.cwd, tests.file_name).list_errors()
             if not errors: 
                 return check_fn
             
             logger.debug(f"Tool {tool_item.name} check function unit-tests failed. Retrying...")
             check_fn = await self._improve_check_fn(domain, tool_item, check_fn, errors, trial_no)
-            trial_no +=1
         
         raise Exception(f"Could not generate check function for tool {tool_item.name}")
 
@@ -159,7 +163,16 @@ class PolicyAdherenceCodeGenerator():
         dependent_tools = await self.dependent_tools(tool_item, domain)
         logger.debug(f"Dependencies of {tool_item.name}: {dependent_tools}")
 
-        tests = await self._generate_tool_item_tests(fn_stub, tool_item, common, domain, dependent_tools)
+        fn_name = check_fn_name(tool_item.name)
+        res_content = await anyio.to_thread.run_sync(
+            lambda: prompts.generate_tool_item_tests(fn_name, fn_stub, tool_item, common, domain, dependent_tools)
+        )
+        test_content = extract_code_from_llm_response(res_content)
+        tests = SourceFile(
+            file_name=f"{test_fn_module_name(tool_item.name)}.py", 
+            content=test_content
+        )
+        tests.save(self.cwd)
         self._save_debug(tests, f"{trial}_{tests.file_name}")
 
         lint_report = pyright.run(self.cwd, tests.file_name, PY_ENV)
@@ -180,25 +193,9 @@ class PolicyAdherenceCodeGenerator():
         ).save_as(self.debug_dir, report_file_name)
 
         if test_report.all_tests_collected_successfully():
-            reviews = self._review_generated_tool_tests(domain, tool_item, tests)
-            if reviews:
-                #TODO 
-                print(reviews)
             return tests
         
         logger.debug(f"Tool {tool_item.name} tests error. Retrying...")
         return await self.generate_tool_item_tests(fn_stub, tool_item, common, domain, trial+1)
 
-    async def _generate_tool_item_tests(self, fn_stub:SourceFile, tool_item:ToolPolicyItem, common: SourceFile, domain:SourceFile, dependent_tools: set[str])-> SourceFile:
-        fn_name = check_fn_name(tool_item.name)
-        res_content = await anyio.to_thread.run_sync(
-            lambda: prompts.generate_tool_item_tests(fn_name, fn_stub, tool_item, common, domain, dependent_tools)
-        )
-        body = extract_code_from_llm_response(res_content)
-        tests = SourceFile(file_name=f"{test_fn_module_name(tool_item.name)}.py", content=body)
-        tests.save(self.cwd)
-        return tests
-
-    def _review_generated_tool_tests(self, domain: SourceFile, tool:ToolPolicyItem, tests: SourceFile)-> List[str]:
-        return []
  

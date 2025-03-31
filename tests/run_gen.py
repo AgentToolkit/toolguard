@@ -115,7 +115,7 @@ async def gen_all():
 
     print(f"Domain: {result.domain_file}")
     for tool_name, tool in result.tools.items():
-        print(f"\t{tool_name}\t{tool.check_fn_src.file_name}")
+        print(f"\t{tool_name}\t{tool.tool_check_file.file_name}")
         for test in tool.test_files:
             print(f"\t{test.file_name}")
     
@@ -126,16 +126,18 @@ async def gen_tool_check_fn(case:str):
     policy_path = "tau_airline/input/BookReservation.json"
     tool = load_policy_new(policy_path, tool_name)
     domain = SourceFile.load_from(os.path.join(cwd, "domain.py"))
-    check_fn = SourceFile.load_from(os.path.join(cwd, "check_book_reservation.py"))
-    tests = [
-        SourceFile.load_from(os.path.join(cwd, "test_check_Baggage Allowance.py")),
-        SourceFile.load_from(os.path.join(cwd, "test_check_Passenger Information.py")),
-        SourceFile.load_from(os.path.join(cwd, "test_check_Payment Method Restrictions.py")),
-    ]
+    # check_fn = SourceFile.load_from(os.path.join(cwd, "check_book_reservation.py"))
+    check_fn = SourceFile.load_from(os.path.join(cwd, "check_Baggage_Allowance.py"))
+    test = SourceFile.load_from(os.path.join(cwd, "test_check_Baggage_Allowance.py")) 
+    # tests = [
+    #     SourceFile.load_from(os.path.join(cwd, "test_check_Baggage Allowance.py")),
+    #     SourceFile.load_from(os.path.join(cwd, "test_check_Passenger Information.py")),
+    #     SourceFile.load_from(os.path.join(cwd, "test_check_Payment Method Restrictions.py")),
+    # ]
 
     gen = PolicyAdherenceCodeGenerator(cwd)
     check_futures = [
-        gen._generate_tool_check_fn(domain, check_fn, tool_item, tests)
+        gen._improve_tool_check_fn_loop(domain, check_fn, tool_item, test)
         for tool_item in tool.policy_items 
     ]
     checks = await asyncio.gather(*check_futures)
@@ -147,5 +149,5 @@ if __name__ == '__main__':
     logger.remove()
     logger.add(sys.stdout, colorize=True, format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> <level>{message}</level>")
 
-    asyncio.run(gen_all())
-    # asyncio.run(gen_tool_check_fn("game"))
+    # asyncio.run(gen_all())
+    asyncio.run(gen_tool_check_fn("game"))

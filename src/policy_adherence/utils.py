@@ -21,3 +21,6 @@ def py_name(human_name: str)->str:
 
 def py_extension(name:str)->str:
     return name+".py"
+
+def un_py_extension(name:str)->str:
+    return name[:-3]

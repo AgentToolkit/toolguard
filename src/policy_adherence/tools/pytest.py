@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import subprocess
 from typing import List, Dict, Literal, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class TestOutcome(StrEnum):
@@ -65,7 +65,7 @@ class TestReport(BaseModel):
     root: str
     environment: Dict[str, str]
     summary: Summary
-    collectors: List[Collector]
+    collectors: List[Collector] = Field(default=[])
     tests: List[TestResult]
 
     def all_tests_passed(self)->bool:
@@ -93,6 +93,7 @@ def run(folder:str, test_file:str)->TestReport:
     subprocess.run([
             "pytest",
             test_file,
+            "--verbose",
             "--json-report", 
             f"--json-report-file={report_file}"
         ], 
