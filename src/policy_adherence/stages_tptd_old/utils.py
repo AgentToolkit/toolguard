@@ -120,8 +120,8 @@ def ref_fixer_should_stop(state: TPTDState) -> bool:
 
 def normalize_text(text):
 	"""Normalize text by removing punctuation, converting to lowercase, and standardizing spaces."""
-	#return re.sub(r'\s+', ' ', re.sub(r'[^a-zA-Z0-9\s]', '', text)).strip().lower()
-	return text.lower()
+	return re.sub(r'\s+', ' ', re.sub(r'[^a-zA-Z0-9\s]', '', text)).strip().lower()
+
 
 def split_reference_if_both_parts_exist(reference, policy_text):
 	words = reference.split()

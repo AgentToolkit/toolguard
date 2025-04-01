@@ -7,4 +7,7 @@ loguru
 astor
 pyright
 datamodel-code-generator
+flask
+langgraph
+markdown
 anyio

@@ -30,28 +30,16 @@ Output Format (JSON):
 {
   "policies": [
     {
-      "policy_name": "<Policy 1 Name>",
-      "description": "<Policy 1 Description>",
+      "policy_name": "<Policy Name>",
+      "description": "<Policy Description>",
       "references": [
-        "<Exact Passage 1 from Policy Document>",
-         "<Exact Passage 2 from Policy Document>",
-         ...
+        "<Exact Passage from Policy Document>"
       ],
-       "iteration_added": 0
-    },
-    ...
-    {
-      "policy_name": "<Policy n Name>",
-      "description": "<Policy n Description>",
-      "references": [
-        "<Exact Passage 1 from Policy Document>"
-         ...
-      ],
-       "iteration_added": 0
+      "explicit_or_implicit": "<Explicit / Implicit>"
     }
   ]
 }
 If no relevant policies exist, return:
 {
-  "policies": []
+  "policies": "There are no relevant policies to validate before calling ToolX."
 }

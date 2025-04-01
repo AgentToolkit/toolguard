@@ -1,0 +1,69 @@
+Task:
+Review and refine the policies extracted by the creator node to ensure they meet quality, relevance, and applicability criteria. Your goal is to:
+* Remove irrelevant or non-actionable policies.
+* Ensure all policies can be validated before invoking ToolX when possible.
+* Identify missing policies that should be included.
+
+
+Input Format:
+Policy Document – A text containing policies, rules, or constraints governing tool usage.
+Tools Descriptions – A list of tools with descriptions explaining their functionality and constraints.
+Target Tool (ToolX) – The specific tool for which relevant policies need to be identified.
+TPTD (Tool Policy Text Description) – A JSON object containing extracted policies for ToolX that require review.
+
+1. Policy Validation and Refinement
+Assess each extracted policy based on the following criteria:
+is_relevant: Is the policy applicable to ToolX?
+is_tool_specific: Is the policy specific to ToolX, or is it too general (e.g., applies broadly to all tools)?
+can_be_validated: Can the policy be validated *before* invoking ToolX?
+is_actionable: Can the policy be enforced using ToolX’s parameters, chat history, or data access?
+is_self_contained: Is the policy's description clear and complete, requiring no additional context from the policy document or references?
+
+2. Policy Enhancement
+If any critical policies are missing, add them with relevant details.
+Ensure all policies include clear references to policy documents.
+Maintain a structured review format by explicitly marking each policy's evaluation against the assessment criteria.
+
+Output Format (JSON - Reviewed Policies with Feedback):
+{
+    "review":{
+      "policies": [
+        {
+          "policy_name": "<Policy Name>",
+          "description": "<Policy Description>",
+          "references": [
+            "<Exact Passage from Policy Document>"
+          ],
+          "explicit_or_implicit": "<Explicit / Implicit>",
+          "is_relevant": <true/false>,
+          "is_tool_specific": <true/false>,
+          "can_be_validated": <true/false>,
+          "is_actionable": <true/false>,
+          "is_self_contained": <true/false>,
+          "comments" <comments describing and explaining your review>
+        }
+      ],
+      "missing_policies": [
+        {
+          "policy_name": "<Missing Policy Name>",
+          "description": "<Missing Policy Description>",
+          "references": [
+            "<Exact Text 1 from Policy Document>",
+            "<Exact Text 2 from Policy Document>"
+          ],
+          "explicit_or_implicit": "<Explicit / Implicit>",
+          "is_relevant": <true/false>,
+          "is_relevant": <true/false>,
+          "is_tool_specific": <true/false>,
+          "can_be_validated": <true/false>,
+          "is_actionable": <true/false>,
+          "is_self_contained": <true/false>,
+          "reason": "<Why this policy is necessary>"
+        }
+      ]
+  },
+  "global_score": {
+        "comments": "Overall feedback",
+        "score": [integer number between 1-5]
+       }
+}

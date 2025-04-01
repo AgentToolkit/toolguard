@@ -28,20 +28,18 @@ def index():
 
 @app.route('/highlight', methods=['POST'])
 def highlight():
-    selected_tools = request.json.get("tools", [])
+	selected_tools = request.json.get("tools", [])
+	highlights = set()
+	for tool in selected_tools:
+		if tool in normalized_passages:
+			highlights.update(normalized_passages[tool])
 
-    # Find all matching phrases from the selected tools
-    highlights = set()
-    for tool in selected_tools:
-        if tool in normalized_passages:
-            highlights.update(normalized_passages[tool])
+	highlighted_text = policy_text
+	for phrase in highlights:
+		regex = re.escape(phrase)
+		highlighted_text = re.sub(regex, f'<span class="highlight">{phrase}</span>', highlighted_text, flags=re.IGNORECASE)
 
-    highlighted_text = policy_text
-    for phrase in highlights:
-        regex = re.escape(phrase)
-        highlighted_text = re.sub(regex, f'<span class="highlight">{phrase}</span>', highlighted_text, flags=re.IGNORECASE)
-
-    return {"highlights": list(highlights), "updated_text": highlighted_text}
+	return {"highlights": list(highlights), "updated_text": highlighted_text}
 
 
 
@@ -57,6 +55,7 @@ if __name__ == '__main__':
 	#policy_text = open(policy_path, 'r', encoding='utf-8').read()
 	with open(policy_path, 'r', encoding='utf-8') as f:
 		policy_text = markdown.markdown(f.read())
+		#policy_text = f.read()
 	tools_data = defaultdict(list)
 	for filename in os.listdir(outdir):
 		if filename.endswith(".json"):
@@ -72,11 +71,12 @@ if __name__ == '__main__':
 	
 	
 	def normalize_text(text):
-		text = text.replace("“", '""').replace("”", '"')  # Convert fancy quotes to normal quotes
+		text = text.replace("“", '""').replace("”", '"')
 		text = text.replace("\'", '"')
-		text = text.replace("‘", "'").replace("’", "'") # Convert fancy apostrophes to normal ones
-		text = re.sub(r'\s+', ' ', text).strip()  # Remove extra spaces
-		return text.lower()  # Convert to lowercase for case-insensitive matching
+		text = text.replace("‘", "'").replace("’", "'")
+		text = text.replace("<p>","")
+		text = re.sub(r'\s+', ' ', text).strip()
+		return text.lower()
 	
 	
 	# Preprocess tool passages for better search

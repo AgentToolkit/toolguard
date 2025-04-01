@@ -11,13 +11,14 @@ from src.policy_adherence.llm.llm_model import LLM_model
 
 class AzureLitellm(LLM_model):
 	
-	def chat(self, messages: List[Dict]):
-		return completion(
+	def generate(self, messages: List[Dict])->ModelResponse:
+		response =  completion(
             messages=messages,
             model=self.model_name,
             custom_llm_provider= "azure")
+		return response
 	
-	def chat_json(self, messages: List[Dict]):
+	def chat_json(self, messages: List[Dict])->Dict:
 		response =  completion(
             messages=messages,
             model=self.model_name,
