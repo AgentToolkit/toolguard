@@ -49,6 +49,7 @@ class PolicyAdherenceCodeGenerator():
         self.cwd = cwd
         self.debug_dir = os.path.join(cwd, "debug")
         os.makedirs(self.debug_dir, exist_ok=True)
+        pytest.configure(self.cwd)
     
     def _save_debug(self, src:SourceFile, file_name:str):
         src.save_as(self.debug_dir, file_name)

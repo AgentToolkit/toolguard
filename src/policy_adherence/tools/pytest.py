@@ -4,8 +4,10 @@ import json
 import os
 from pathlib import Path
 import subprocess
-from typing import List, Dict, Literal, Optional
+from typing import Any, List, Dict, Literal, Optional
 from pydantic import BaseModel, Field
+
+from policy_adherence.types import SourceFile
 
 
 class TestOutcome(StrEnum):
@@ -40,6 +42,7 @@ class TestResult(BaseModel):
     keywords: List[str]
     setup: TestPhase
     call: CallInfo
+    user_properties: Optional[List[Any]] = None
     teardown: TestPhase
 
 class ResultEntry(BaseModel):
@@ -85,7 +88,12 @@ class TestReport(BaseModel):
         #applicative test failure
         for test in self.tests:
             if test.outcome == TestOutcome.failed:
-                errors.append(test.call.crash.message)
+                error = test.call.crash.message
+                if test.user_properties:
+                    case_desc = test.user_properties[0].get("docstring")
+                    if case_desc:
+                        error = f"""Test case {case_desc} failed with the following message:\n {test.call.crash.message}"""
+                errors.append(error)
         return errors
 
 def run(folder:str, test_file:str)->TestReport:
@@ -93,12 +101,27 @@ def run(folder:str, test_file:str)->TestReport:
     subprocess.run([
             "pytest",
             test_file,
-            "--verbose",
+            # "--verbose",
+            "--quiet",
             "--json-report", 
             f"--json-report-file={report_file}"
         ], 
         cwd=folder)
     return read_test_report(os.path.join(folder, report_file))
+
+def configure(folder:str):
+    """adds the test function docstring to the output report"""
+
+    hook = """
+import pytest
+
+def pytest_runtest_protocol(item, nextitem):
+    docstring = item.function.__doc__
+    if docstring:
+        item.user_properties.append(("docstring", docstring))
+"""
+    SourceFile(file_name="conftest.py", content=hook).save(folder)
+
 
 def read_test_report(file_path:str)->TestReport:
     with open(file_path, "r") as file:
