@@ -1,6 +1,8 @@
 import argparse
 import json
 import os
+from typing import List
+
 import markdown
 
 from langgraph.graph import StateGraph
@@ -16,6 +18,8 @@ class PolicyIdentifier:
 	def __init__(self):
 		workflow = StateGraph(TPTDState)
 		workflow.add_node("policy_creator", self.policy_creator_node)
+		workflow.add_node("merge_and_split",self.merge_and_split)
+		workflow.add_node("review_policy",self.review_policy)
 		workflow.add_node("add_policies", self.add_policies)
 		workflow.add_node("add_references",self.add_references)
 		workflow.add_node("reference_correctness", self.reference_correctness)
@@ -26,7 +30,9 @@ class PolicyIdentifier:
 		workflow.set_entry_point("policy_creator")
 		
 		workflow.add_edge("policy_creator", "add_policies")
-		workflow.add_conditional_edges("add_policies", lambda state: "add_references" if state.get("stop", False) else "add_policies" )
+		workflow.add_conditional_edges("add_policies", lambda state: "merge_and_split" if state.get("stop", False) else "add_policies" )
+		workflow.add_edge("merge_and_split", "review_policy")
+		workflow.add_edge("review_policy", "add_references")
 		workflow.add_edge("add_references", "reference_correctness")
 		workflow.add_edge("reference_correctness", "example_creator")
 		workflow.add_edge("example_creator", "add_examples")
@@ -63,6 +69,74 @@ class PolicyIdentifier:
 		if state["iteration"]>3:
 			state.update({"stop":True})
 		save_output(state["outdir"], f"{state['target_tool']}_ADD_{state['iteration']}.json", TPTD)
+		return state
+	
+	
+	
+	def merge_and_split(self, state: TPTDState) -> TPTDState:
+		#todo: consider addition step to split policy by policy and not overall
+		print("merge_and_split")
+		system_prompt = read_prompt_file("merge_and_split")
+		TPTD = state['TPTD']
+		user_content = f"Policy Document:{state['policy_text']}\nTools Descriptions:{json.dumps(state['tools'])}\nTarget Tool:{json.dumps(state['target_tool_description'])}\nTPTD: {json.dumps(TPTD)}"
+		response = llm.chat_json(generate_messages(system_prompt, user_content))
+		TPTD = response
+		
+		state.update({"TPTD": TPTD})
+		save_output(state["outdir"], f"{state['target_tool']}_sam.json", TPTD)
+		return state
+	
+	def move2archive(self, reviews) -> (bool,str):
+		comments = ""
+		num = len(reviews)
+		if num == 0:
+			return False
+		counts = {
+			"is_relevant": 0,
+			"is_tool_specific": 0,
+			"can_be_validated": 0,
+			"is_actionable": 0
+		}
+		
+		for r in reviews:
+			print(f"{r['is_relevant']}\t{r['is_tool_specific']}\t{r['can_be_validated']}\t{r['is_actionable']}\t{r['is_self_contained']}\t{r['score']}\t")
+			counts["is_relevant"] += r["is_relevant"]
+			counts["is_tool_specific"] += r["is_tool_specific"]
+			counts["can_be_validated"] += r["can_be_validated"]
+			counts["is_actionable"] += r["is_actionable"]
+			if not( r['is_relevant'] and r['is_tool_specific'] and r['can_be_validated'] and r['is_actionable']):
+				comments+= r["comments"]+"\n"
+
+		return not(all(float(counts[key]) / num > 0.5 for key in counts)),comments
+			
+	
+	
+	def review_policy(self, state: TPTDState) -> TPTDState:
+		print("review_policy")
+		system_prompt = read_prompt_file("policy_reviewer")
+		TPTD = state["TPTD"]
+		newTPTD = {"policies":[]}
+		for policy in TPTD["policies"]:
+			reviews = []
+			for iteration in range(5):
+				user_content = f"Policy Document:{state['policy_text']}\nTools Descriptions:{json.dumps(state['tools'])}\nTarget Tool:{json.dumps(state['target_tool_description'])}\npolicy: {json.dumps(policy)}"
+				response = llm.chat_json(generate_messages(system_prompt, user_content))
+				is_self_contained = response["is_self_contained"]
+				if not is_self_contained:
+					policy["description"] = response["alternative_description"]
+				reviews.append(response)
+			archive,comments = self.move2archive(reviews)
+			print(archive)
+			if archive:
+				if "archive" not in newTPTD:
+					newTPTD["archive"] = []
+				policy["comments"] = comments
+				newTPTD["archive"].append(policy)
+			else:
+				newTPTD["policies"].append(policy)
+				
+		state.update({"TPTD": newTPTD})
+		save_output(state["outdir"], f"{state['target_tool']}_rev.json", newTPTD)
 		return state
 	
 	def add_references(self, state: TPTDState) -> TPTDState:
@@ -104,7 +178,7 @@ class PolicyIdentifier:
 				
 			if 'compliance_examples' in response:
 				policy["compliance_examples"] = response["compliance_examples"]
-		state.update({"TPTD": TPTD, "iteration": 0,"stop":True})
+		state.update({"TPTD": TPTD, "iteration": 0,"stop":False})
 		save_output(state["outdir"], f"{state['target_tool']}_examples.json", TPTD)
 		return state
 	
