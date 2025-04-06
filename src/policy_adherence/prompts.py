@@ -1,6 +1,6 @@
 
 from typing import List, Set
-from policy_adherence.types import SourceFile, ToolPolicyItem, ToolPolicyItem
+from policy_adherence.types import SourceFile, ToolPolicyItem
 from programmatic_ai import generative
 
 model = "gpt-4o-2024-08-06"
@@ -24,6 +24,7 @@ from domain import *
             - If an exception occurrs in the function-under-test, let the exception propagate up.
         - For **each violation example, ONE test** is generated.
             - the function-under-test is EXPECTED to raise an exception.
+            - dont expect a particular error message
         - Test class and method names should be meaningful and use up to **six words in snake_case**.
         - For each test, add a comment quoting the policy item case that this function is testing 
         - Failure message should describe the test scenario that failed, the expected and the actual outcomes.
@@ -31,16 +32,13 @@ from domain import *
     **Data population and references:**
     - populate all request object fields that are required by Pydantic or that are required according to the policy.
     - When populating domain objects, use pydantic `.model_construct()`.
-    - You should **mock** the return_value from **ALL tools listed in `dependent_tool_names`**.
-    - Every reference in the domain object, should refer to an instanciated data object. 
-    - The mocked returned value should be fully populated.
-    - Use `unittest.mock.patch` for mocking.
+    - You should mock the return_value from **ALL tools listed in `dependent_tool_names`**.
+    - You should mock the chat_history services. 
     
     **Example:** Testing the function `check_create_reservation`, for policy: `cannot book room for a date in the past`, and mocking dependent_tool_names: `["get_user", "get_hotel"]`
     ```python
-    
-    model_name = ""
-    llm = Litellm(model_name)
+
+    from unittest.mock import MagicMock, patch
 
     # domain:
     def get_user(user_id):
@@ -55,12 +53,13 @@ from domain import *
         hotel_id: ....
     }
 
-    messages = [...]
-    history = ChatHistory(messages, llm)
-
     # mock return values:
     user = User.model_construct(...)
     hotel = Hotel.model_construct(...)
+
+    # mock the history service:
+    history = MagicMock()
+    history.ask_bool.return_value = True #Mock that True is the answer to the question
 
     # mock functions and invoke function under test.
     # failure message describe the test case
@@ -173,8 +172,10 @@ def improve_tool_check_fn(prev_impl:SourceFile, domain: SourceFile, tool: ToolPo
 
     **Implementation Rules:**"
     - ALL tool policy items must hold on the function arguments.
-    - if additional information is needed to check the policy, other immutable functions in the domain may be called.
     - The code should be simple.
     - The code should be well documented.
+    - You should call other domain functions to get additional information from the backend. Make sure to import the other functions.
+    - You should call `chat_history.ask(question)` or `chat_history.ask_bool(question)` services to analyze the previous messages in this chat.
+    - History services are slow and expensive. Prefer calling domain functions over history services.
     """
     ...

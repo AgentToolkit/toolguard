@@ -2,7 +2,6 @@
 import json
 from typing import Dict, List
 
-from litellm import completion
 from pydantic import BaseModel
 
 class LLM(BaseModel):
@@ -17,6 +16,7 @@ class Litellm(LLM):
         super().__init__(model_name=model_name, custom_provider=custom_provider)
         
     def generate(self, messages: List[Dict])->str:
+        from litellm import completion
         resp = completion(
             messages=messages,
             model=self.model_name,

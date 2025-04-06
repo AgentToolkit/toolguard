@@ -28,13 +28,12 @@ import policy_adherence.tools.pyright as pyright
 MAX_TOOL_IMPROVEMENTS = 5
 MAX_TEST_GEN_TRIALS = 3
 PY_ENV = "my_env"
-PY_PACKAGES = ["pydantic"] #, "litellm"
+PY_PACKAGES = ["pydantic", "pytest"]#, "litellm"]
 DEBUG_DIR = "debug"
 TESTS_DIR = "tests"
 RUNTIME_COMMON_PY = "common.py"
 DOMAIN_PY = "domain.py"
 HISTORY_PARAM = "chat_history"
-
 
 def check_fn_name(name:str)->str:
     return to_snake_case(f"check_{name}")
@@ -47,6 +46,20 @@ def test_fn_name(name:str)->str:
 
 def test_fn_module_name(name:str)->str:
     return to_snake_case(test_fn_name(name))
+
+def fn_doc_string(args: ast.arguments):
+    arg0 = args.args[0]
+    arg1 = args.args[1]
+    return f"""
+Checks that the {arg0.arg} and {arg1.arg} comply with a policy.
+
+Args:
+    {arg0.arg} ({arg0.annotation.id}): the tool arguments
+    {arg1.arg} ({arg1.annotation.id}): provide question-answer services over the past chat messages.
+
+Raises:
+    ValueError: If the request violates the policy.
+"""
 
 async def generate_tools_check_fns(app_name: str, tools: List[ToolPolicy], py_root:str, openapi_path:str)->ToolChecksCodeGenerationResult:
     logger.debug(f"Starting... will save into {py_root}")
@@ -150,7 +163,7 @@ class ToolCheckPolicyGenerator:
 
         lint_report = pyright.run(self.py_path, tests.file_name, PY_ENV)
         if lint_report.summary.errorCount>0:
-            logger.warning(f"Generated tests with Python errors {tests.file_name}.")
+            logger.warning(f"Generated tests with {lint_report.summary.errorCount} Python errors {tests.file_name}.")
             if trial < MAX_TEST_GEN_TRIALS:
                 return await self.generate_tool_item_tests(item, check_fn, trial+1)
             raise Exception("Generated tests contain errors")
@@ -221,15 +234,17 @@ class ToolCheckPolicyGenerator:
         tree = ast.parse(self.domain.content)
         tool_fn = find(tree.body, lambda node: isinstance(node, ast.FunctionDef) and node.name == self.tool.name)
         assert tool_fn
+
         fn_args:ast.arguments = tool_fn.args # type: ignore
         fn_args.args.append(
             ast.arg(arg=HISTORY_PARAM, annotation=ast.Name(id="ChatHistory", ctx=ast.Load()))
         )
+        fn_docstring = ast.Expr(value=ast.Constant(value=fn_doc_string(fn_args), kind=None))
 
         py.create_init_py(join(self.py_path, to_snake_case(self.app_name), to_snake_case(self.tool.name)))
         
         item_files = [self._create_item_module(item, fn_args) 
-                for item in self.tool.policy_items]
+            for item in self.tool.policy_items]
         
         body = [
             py.create_import(py.py_module(self.domain.file_name), "*"),
@@ -241,16 +256,16 @@ class ToolCheckPolicyGenerator:
                 check_fn_name(item.name)
             ))
         
-        call_item_fns = []
+        fn_body = [fn_docstring]
         for item in self.tool.policy_items:
             params = ["request", HISTORY_PARAM]#TODO names
-            call_item_fns.append(
+            fn_body.append(
                 py.call_fn(check_fn_name(item.name), *params) 
             )
         body.append(py.create_fn(
             name=check_fn_name(self.tool.name),
             args=fn_args,
-            body=call_item_fns
+            body=fn_body
         )) # type: ignore
         file_name = join(
             to_snake_case(self.app_name),
@@ -262,10 +277,15 @@ class ToolCheckPolicyGenerator:
      
 
     def _create_item_module(self, tool_item: ToolPolicyItem, fn_args:ast.arguments)->SourceFile:
+        fn_docstring = ast.Expr(value=ast.Constant(value=fn_doc_string(fn_args), kind=None))
         body = [
             py.create_import(f"{py.py_module(self.domain.file_name)}", "*"),
             py.create_import(f"{py.py_module(self.common.file_name)}", "*"),
-            py.create_fn(name=check_fn_name(tool_item.name), args=fn_args)
+            py.create_fn(
+                name=check_fn_name(tool_item.name), 
+                args=fn_args,
+                body=[fn_docstring]
+            )
         ]
         file_name = join(
             to_snake_case(self.app_name), 
