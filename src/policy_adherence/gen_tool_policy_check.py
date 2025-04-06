@@ -114,7 +114,7 @@ class ToolCheckPolicyGenerator:
     async def generate(self)->ToolChecksCodeResult:
         tool_check_fn, item_check_fns = self.create_initial_check_fns()
         for item_check_fn in item_check_fns:
-            tool_check_fn.save_as(self.py_path, join(DEBUG_DIR, f"-1_{Path(item_check_fn.file_name).parts[-1]}"))
+            item_check_fn.save_as(self.py_path, join(DEBUG_DIR, f"-1_{Path(item_check_fn.file_name).parts[-1]}"))
         
         logger.debug(f"Tool {self.tool.name} function draft created")
     
