@@ -5,19 +5,19 @@ from os.path import join
 import anyio
 import anyio.to_thread
 from typing import List, Tuple
-import astor
 from loguru import logger
 from policy_adherence.common.array import find
+from policy_adherence.common import py
+from policy_adherence.common.str import to_snake_case
 from policy_adherence.gen_domain import OpenAPICodeGenerator
 import policy_adherence.prompts as prompts
 from policy_adherence.types import SourceFile, ToolChecksCodeResult, ToolPolicy, ToolPolicyItem, ToolPolicyItem
 import policy_adherence.tools.pyright as pyright
 import policy_adherence.tools.pytest as pytest
-from policy_adherence.utils import extract_code_from_llm_response, py_extension, snake_case, un_py_extension
+from policy_adherence.utils import extract_code_from_llm_response
 
 import asyncio
 from pathlib import Path
-import shutil
 from typing import List
 from loguru import logger
 from policy_adherence.types import SourceFile, ToolChecksCodeGenerationResult, ToolPolicy
@@ -36,23 +36,16 @@ DOMAIN_PY = "domain.py"
 
 
 def check_fn_name(name:str)->str:
-    return snake_case(f"check_{name}")
+    return to_snake_case(f"check_{name}")
 
 def check_fn_module_name(name:str)->str:
-    return snake_case(check_fn_name(name))
+    return to_snake_case(check_fn_name(name))
 
 def test_fn_name(name:str)->str:
-    return snake_case(f"test_check_{name}")
+    return to_snake_case(f"test_check_{name}")
 
 def test_fn_module_name(name:str)->str:
-    return snake_case(test_fn_name(name))
-
-def py_module(file_path:str):
-    assert file_path
-    parts = file_path.split('/')
-    if parts[-1].endswith(".py"):
-        parts[-1] = un_py_extension(parts[-1])
-    return '.'.join([snake_case(part) for part in parts])
+    return to_snake_case(test_fn_name(name))
 
 async def generate_tools_check_fns(app_name: str, tools: List[ToolPolicy], py_root:str, openapi_path:str)->ToolChecksCodeGenerationResult:
     logger.debug(f"Starting... will save into {py_root}")
@@ -66,7 +59,7 @@ async def generate_tools_check_fns(app_name: str, tools: List[ToolPolicy], py_ro
     #app folder:
     app_root = join(py_root, app_name)
     os.makedirs(app_root, exist_ok=True)
-    _create_init_py(app_root)
+    py.create_init_py(app_root)
 
     #common
     tmp_common = SourceFile.load_from(str(Path(__file__).parent), "_runtime_common.py")
@@ -111,9 +104,9 @@ class ToolCheckPolicyGenerator:
         self.tool = tool
         self.domain = SourceFile.load_from(py_path, join(app_name, DOMAIN_PY))
         self.common = SourceFile.load_from(py_path, join(app_name, RUNTIME_COMMON_PY))
-        os.makedirs(join(py_path, snake_case(app_name), snake_case(tool.name)), exist_ok=True)
-        os.makedirs(join(py_path, snake_case(DEBUG_DIR)), exist_ok=True)
-        os.makedirs(join(py_path, snake_case(TESTS_DIR)), exist_ok=True)
+        os.makedirs(join(py_path, to_snake_case(app_name), to_snake_case(tool.name)), exist_ok=True)
+        os.makedirs(join(py_path, to_snake_case(DEBUG_DIR)), exist_ok=True)
+        os.makedirs(join(py_path, to_snake_case(TESTS_DIR)), exist_ok=True)
 
     # def _path_to_file(self, name:str)->str:
     #     return join(snake_case(self.tool.name), name)
@@ -167,7 +160,7 @@ class ToolCheckPolicyGenerator:
 
         #syntax ok, try to run it...
         logger.debug(f"Generated Tests... (trial={trial})")
-        report_file_name = join(DEBUG_DIR, f"{trial}_{snake_case(item.name)}_report.json")
+        report_file_name = join(DEBUG_DIR, f"{trial}_{to_snake_case(item.name)}_report.json")
         test_report = pytest.run(self.py_path, tests.file_name, report_file_name)
 
         if test_report.all_tests_collected_successfully():
@@ -184,7 +177,7 @@ class ToolCheckPolicyGenerator:
 
     async def improve_tool_item_check_fn_loop(self, item: ToolPolicyItem, check_fn: SourceFile, tests:SourceFile)->SourceFile:
         for trial_no in range(MAX_TOOL_IMPROVEMENTS):
-            report_file_name = join(DEBUG_DIR, f"{trial_no}_{snake_case(item.name)}_report.json")
+            report_file_name = join(DEBUG_DIR, f"{trial_no}_{to_snake_case(item.name)}_report.json")
             errors = pytest.run(
                     self.py_path, 
                     tests.file_name,
@@ -236,85 +229,48 @@ class ToolCheckPolicyGenerator:
         #     ast.arg(arg="chat_history", annotation=ast.Name(id="ChatHistory", ctx=ast.Load()))
         # )
 
-        _create_init_py(join(self.py_path, snake_case(self.app_name), snake_case(self.tool.name)))
+        py.create_init_py(join(self.py_path, to_snake_case(self.app_name), to_snake_case(self.tool.name)))
         
         item_files = [self._create_item_module(item, fn_args) 
                 for item in self.tool.policy_items]
         
         body = [
-            self._create_import(py_module(self.domain.file_name), "*"),
-            self._create_import(py_module(self.common.file_name), "*")
+            py.create_import(py.py_module(self.domain.file_name), "*"),
+            py.create_import(py.py_module(self.common.file_name), "*")
         ]
         for item_module, item in zip(item_files, self.tool.policy_items):
-            body.append(self._create_import(
-                py_module(item_module.file_name),
+            body.append(py.create_import(
+                py.py_module(item_module.file_name),
                 check_fn_name(item.name)
             ))
         
         call_item_fns = [
-            ast.Expr(
-                value=ast.Call(
-                    func=ast.Name(id=check_fn_name(item.name), ctx=ast.Load()),
-                    args=[ast.Name(id="request", ctx=ast.Load())],#TODO name
-                    keywords=[],
-                )
-            )
+            py.call_fn(check_fn_name(item.name), "request") #TODO name
             for item in self.tool.policy_items
         ]
-        body.append(self._create_fn(
+        body.append(py.create_fn(
             name=check_fn_name(self.tool.name),
             args=fn_args,
             body=call_item_fns
         )) # type: ignore
         file_name = join(
-            snake_case(self.app_name),
-            snake_case(self.tool.name),
-            py_extension(check_fn_module_name(self.tool.name))
+            to_snake_case(self.app_name),
+            to_snake_case(self.tool.name),
+            py.py_extension(check_fn_module_name(self.tool.name))
         )
-        tool_file = self.py_module_to_file(body, file_name)
+        tool_file = py.save_py_body(body, file_name, self.py_path)
         return (tool_file, item_files)
      
-    def py_module_to_file(self, body, file_name:str)->SourceFile:
-        module = ast.Module(body=body, type_ignores=[])
-        ast.fix_missing_locations(module)
-        src= astor.to_source(module)
-        res = SourceFile(
-            file_name=file_name,
-            content=src
-        )
-        res.save(self.py_path)
-        return res
 
     def _create_item_module(self, tool_item: ToolPolicyItem, fn_args:ast.arguments)->SourceFile:
         body = [
-            self._create_import(f"{py_module(self.domain.file_name)}", "*"),
+            py.create_import(f"{py.py_module(self.domain.file_name)}", "*"),
             # self._create_import(f"{py_module(self.common.file_name)}", "*"),
-            self._create_fn(name=check_fn_name(tool_item.name), args=fn_args)
+            py.create_fn(name=check_fn_name(tool_item.name), args=fn_args)
         ]
         file_name = join(
-            snake_case(self.app_name), 
-            snake_case(self.tool.name), 
-            py_extension(check_fn_module_name(tool_item.name))
+            to_snake_case(self.app_name), 
+            to_snake_case(self.tool.name), 
+            py.py_extension(check_fn_module_name(tool_item.name))
         )
-        return self.py_module_to_file(body, file_name)
-
-    
-    def _create_import(self, module_name:str, *items: str):
-        return ast.ImportFrom(
-            module=module_name,
-            names=[ast.alias(name=item, asname=None) for item in items], 
-            level=0 # 0 = absolute import, 1 = relative import (.)
-        )
-
-    def _create_fn(self, name:str, args, body=[ast.Pass()], returns=ast.Constant(value=None))->ast.FunctionDef:
-        return ast.FunctionDef(
-                name=name,
-                args=args,
-                body=body,
-                decorator_list=[],
-                returns=returns
-            ) # type: ignore
-    
-def _create_init_py(folder):
-    with open(join(folder, "__init__.py"), "w") as file:
-        pass
+        return py.save_py_body(body, file_name, self.py_path)

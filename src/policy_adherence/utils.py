@@ -15,12 +15,3 @@ def to_md_bulltets(items: List[str])->str:
     for item in items:
         s+=f"* {item}\n"
     return s
-
-def snake_case(human_name: str)->str:
-    return human_name.replace(" ", "_")
-
-def py_extension(filename:str)->str:
-    return filename if filename.endswith(".py") else filename+".py" 
-
-def un_py_extension(filename:str)->str:
-    return filename[:-3] if filename.endswith(".py") else filename

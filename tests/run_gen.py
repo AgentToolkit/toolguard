@@ -10,7 +10,6 @@ from loguru import logger
 
 from policy_adherence.types import SourceFile, ToolPolicy, ToolPolicyItem
 from policy_adherence.common.open_api import OpenAPI
-from policy_adherence.utils import py_extension
 
 model = "gpt-4o-2024-08-06"
 # import programmatic_ai
@@ -24,30 +23,6 @@ def read_oas(file_path:str)->OpenAPI:
     with open(file_path, "r") as file:
         d = yaml.safe_load(file)
     return OpenAPI.model_validate(d)
-
-def load_policy(file_path:str, tool_name:str)->ToolPolicyItem:
-    with open(file_path, "r") as file:
-        d = json.load(file)
-    
-    policies = d.get("policies", [])
-    policy_items = []
-    for i, p in enumerate(policies):
-        policy_items.append(
-            ToolPolicyItem(
-                name=str(i),
-                description = p.get(f"policy description {i+1}"),
-                compliance_examples = p.get(f"Compliance Examples {i+1}"),
-                violation_examples = p.get(f"Violating Examples {i+1}")
-            )
-            # ToolPolicyItem(
-            # name =??
-            #     policy = p.get(f"references")[0],
-            #     compliance_examples = p.get(f"examples").get("compliance_examples"),
-            #     violation_examples = p.get(f"examples").get("violating_examples")
-            # )
-        )
-    return ToolPolicyItem(name=tool_name, policy_items=policy_items)
-
 
 def load_policy_new(file_path:str, tool_name:str)->ToolPolicy:
     with open(file_path, "r") as file:
@@ -96,10 +71,10 @@ def symlink_force(target, link_name):
         os.symlink(target, link_name)
 
 async def gen_all():
-    oas_path = "tau_airline/input/openapi.yaml"
+    oas_path = "/Users/davidboaz/Documents/GitHub/tau_airline/input/openapi.yaml"
     tool_names = ["book_reservation"]
-    policy_paths = ["tau_airline/input/BookReservation.json"]
-    output_dir = "tau_airline/output"
+    policy_paths = ["/Users/davidboaz/Documents/GitHub/tau_airline/input/BookReservation.json"]
+    output_dir = "/Users/davidboaz/Documents/GitHub/tau_airline/output"
     now = datetime.now()
     out_folder = os.path.join(output_dir, now.strftime("%Y-%m-%d_%H_%M_%S"))
     os.makedirs(out_folder, exist_ok=True)
@@ -127,8 +102,6 @@ async def gen_tool_check_fn(case:str):
     item = tool.policy_items[0]
     # domain = SourceFile.load_from(os.path.join(cwd, "domain.py"))
     # check_fn = SourceFile.load_from(os.path.join(cwd, "check_book_reservation.py"))
-    check_fn = SourceFile.load_from(os.path.join(cwd, tool_name, py_extension(check_fn_module_name(item.name))))
-    test = SourceFile.load_from(os.path.join(cwd,  tool_name, py_extension(test_fn_module_name(item.name))))
     # tests = [
     #     SourceFile.load_from(os.path.join(cwd, "test_check_Baggage Allowance.py")),
     #     SourceFile.load_from(os.path.join(cwd, "test_check_Passenger Information.py")),

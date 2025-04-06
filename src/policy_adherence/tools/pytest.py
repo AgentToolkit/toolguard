@@ -105,7 +105,10 @@ def run(folder:str, test_file:str, report_file)->TestReport:
             "--json-report", 
             f"--json-report-file={report_file}"
         ], 
-        env={**os.environ, "PYTHONPATH": "."},
+        env={
+            **os.environ, 
+            "PYTHONPATH": "."
+        },
         cwd=folder)
     return read_test_report(os.path.join(folder, report_file))
 
