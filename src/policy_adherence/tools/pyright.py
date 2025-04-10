@@ -37,6 +37,9 @@ class DiagnosticsReport(BaseModel):
     generalDiagnostics: List[GeneralDiagnostic] 
     summary: Summary
 
+    def list_error_messages(self)->List[str]:
+        return list(set(d.message for d in self.generalDiagnostics if d.severity == ERROR))
+
 def run(folder:str, py_file:str, venv_name:str)->DiagnosticsReport:
     py_path = os.path.join(venv_name, "bin", "python3")
     res = subprocess.run([

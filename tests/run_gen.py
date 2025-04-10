@@ -48,8 +48,14 @@ def symlink_force(target, link_name):
 
 async def gen_all():
     oas_path = "/Users/davidboaz/Documents/GitHub/tau_airline/input/openapi.yaml"
-    tool_names = ["book_reservation"]
-    policy_paths = ["/Users/davidboaz/Documents/GitHub/tau_airline/input/BookReservation.json"]
+    tool_names = [
+        "cancel_reservation",
+        "book_reservation"
+    ]
+    policy_paths = [
+        "/Users/davidboaz/Documents/GitHub/tau_airline/input/CancelReservation.json"
+        # "/Users/davidboaz/Documents/GitHub/tau_airline/input/BookReservation.json"
+    ]
     output_dir = "/Users/davidboaz/Documents/GitHub/tau_airline/output"
     now = datetime.now()
     out_folder = os.path.join(output_dir, now.strftime("%Y-%m-%d_%H_%M_%S"))

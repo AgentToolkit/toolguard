@@ -144,40 +144,43 @@ class ToolCheckPolicyGenerator:
         await self.improve_tool_item_check_fn_loop(item, check_fn, tests)
         return tests
 
-    async def generate_tool_item_tests(self, item: ToolPolicyItem, check_fn: SourceFile, trial=0)-> SourceFile:
-        logger.debug(f"Generating Tests {item.name}... (trial={trial})")
+    async def generate_tool_item_tests(self, item: ToolPolicyItem, check_fn: SourceFile)-> SourceFile:
+        fn_name = check_fn_name(item.name)
         dep_tools = await self.dependent_tools(item)
         logger.debug(f"Dependencies of {item.name}: {dep_tools}")
 
-        fn_name = check_fn_name(item.name)
-        res_content = await anyio.to_thread.run_sync(
-            lambda: prompts.generate_tool_item_tests(fn_name, check_fn, item, self.common, self.domain, dep_tools)
-        )
-        test_content = extract_code_from_llm_response(res_content)
-        tests = SourceFile(
-            file_name= join(TESTS_DIR, self.tool.name, f"{test_fn_module_name(item.name)}.py"), 
-            content=test_content
-        )
-        tests.save(self.py_path)
-        tests.save_as(self.py_path, join(DEBUG_DIR, f"{trial}_{test_fn_module_name(item.name)}.py"))
+        errors = []
+        for trial_no in range(MAX_TEST_GEN_TRIALS):
+            logger.debug(f"Generating tool {item.name} tests. iteration {trial_no}")
+            first_time = trial_no == 0
+            if first_time:
+                gen_fn = lambda: prompts.generate_tool_item_tests(fn_name, check_fn, item, self.common, self.domain, dep_tools)
+            else:
+                gen_fn = lambda: prompts.improve_tool_tests(tests, self.domain, item, errors)
+            res_content = await anyio.to_thread.run_sync(gen_fn)
+            test_content = extract_code_from_llm_response(res_content)
+            tests = SourceFile(
+                file_name= join(TESTS_DIR, self.tool.name, f"{test_fn_module_name(item.name)}.py"), 
+                content=test_content
+            )
+            tests.save(self.py_path)
+            tests.save_as(self.py_path, join(DEBUG_DIR, f"{trial_no}_{test_fn_module_name(item.name)}.py"))
 
-        lint_report = pyright.run(self.py_path, tests.file_name, PY_ENV)
-        if lint_report.summary.errorCount>0:
-            logger.warning(f"Generated tests with {lint_report.summary.errorCount} Python errors {tests.file_name}.")
-            if trial < MAX_TEST_GEN_TRIALS:
-                return await self.generate_tool_item_tests(item, check_fn, trial+1)
-            raise Exception("Generated tests contain errors")
+            lint_report = pyright.run(self.py_path, tests.file_name, PY_ENV)
+            if lint_report.summary.errorCount>0:
+                logger.warning(f"Generated tests with {lint_report.summary.errorCount} Python errors {tests.file_name}.")
+                errors = lint_report.list_error_messages()
+                continue
 
-        #syntax ok, try to run it...
-        logger.debug(f"Generated Tests... (trial={trial})")
-        report_file_name = join(DEBUG_DIR, f"{trial}_{to_snake_case(item.name)}_report.json")
-        test_report = pytest.run(self.py_path, tests.file_name, report_file_name)
-
-        if test_report.all_tests_collected_successfully():
-            return tests
+            #syntax ok, try to run it...
+            logger.debug(f"Generated Tests... (trial={trial_no})")
+            report_file_name = join(DEBUG_DIR, f"{trial_no}_{to_snake_case(item.name)}_report.json")
+            test_report = pytest.run(self.py_path, tests.file_name, report_file_name)
+            if test_report.all_tests_collected_successfully():
+                return tests
+            errors = test_report.list_errors()
         
-        logger.debug(f"Tool {item.name} tests error. Retrying...")
-        return await self.generate_tool_item_tests(item, check_fn, trial+1)
+        raise Exception("Generated tests contain errors")
 
     async def dependent_tools(self, item: ToolPolicyItem)->set[str]:
         deps = await anyio.to_thread.run_sync(
@@ -197,38 +200,38 @@ class ToolCheckPolicyGenerator:
                 return check_fn
             
             logger.debug(f"Tool {item.name} check function unit-tests failed. Retrying...")
-            check_fn = await self.improve_check_fn(check_fn, errors, item, trial_no)
+            check_fn = await self.improve_check_fn(check_fn, errors, item)
         
         raise Exception(f"Could not generate check function for tool {item.name}")
 
-    async def improve_check_fn(self, prev_version:SourceFile, review_comments: List[str], item: ToolPolicyItem, trial=0)->SourceFile:
+    async def improve_check_fn(self, prev_version:SourceFile, review_comments: List[str], item: ToolPolicyItem)->SourceFile:
         module_name = check_fn_module_name(item.name)
-        logger.debug(f"Improving check function {module_name}... (trial = {trial})")
+        errors = []
+        for trial in range(MAX_TOOL_IMPROVEMENTS):
+            logger.debug(f"Improving check function {module_name}... (trial = {trial})")
+            res_content = await anyio.to_thread.run_sync(lambda:
+                prompts.improve_tool_check_fn(prev_version, self.domain, item, review_comments + errors)
+            )
+            body = extract_code_from_llm_response(res_content)
+            check_fn = SourceFile(
+                file_name=prev_version.file_name,
+                content=body
+            )
+            check_fn.save(self.py_path)
+            check_fn.save_as(self.py_path, join(DEBUG_DIR, f"{trial}_{module_name}.py"))
 
-        res_content = await anyio.to_thread.run_sync(lambda:
-            prompts.improve_tool_check_fn(prev_version, self.domain, item, review_comments)
-        )
-        body = extract_code_from_llm_response(res_content)
-        check_fn = SourceFile(
-            file_name=prev_version.file_name,
-            content=body
-        )
-        check_fn.save(self.py_path)
-        check_fn.save_as(self.py_path, join(DEBUG_DIR, f"{trial}_{module_name}.py"))
-
-        lint_report = pyright.run(self.py_path, check_fn.file_name, PY_ENV)
-        if lint_report.summary.errorCount>0:
-            SourceFile(
-                    file_name=join(DEBUG_DIR, f"{trial}_{module_name}_errors.json"), 
-                    content=lint_report.model_dump_json(indent=2)
-                ).save(self.py_path, )
-            logger.warning(f"Generated function {module_name} with {lint_report.summary.errorCount} errors.")
-            
-            if trial >= MAX_TOOL_IMPROVEMENTS:
-                raise Exception(f"Generation failed for tool {item.name}")
-            errors = [d.message for d in lint_report.generalDiagnostics if d.severity == pyright.ERROR]
-            return await self.improve_check_fn(check_fn, errors, item, trial+1)
-        return check_fn
+            lint_report = pyright.run(self.py_path, check_fn.file_name, PY_ENV)
+            if lint_report.summary.errorCount>0:
+                SourceFile(
+                        file_name=join(DEBUG_DIR, f"{trial}_{module_name}_errors.json"), 
+                        content=lint_report.model_dump_json(indent=2)
+                    ).save(self.py_path, )
+                logger.warning(f"Generated function {module_name} with {lint_report.summary.errorCount} errors.")
+                
+                errors = lint_report.list_error_messages()
+            return check_fn
+        
+        raise Exception(f"Generation failed for tool {item.name}")
     
     def create_initial_check_fns(self)->Tuple[SourceFile, List[SourceFile]]:
         tree = ast.parse(self.domain.content)

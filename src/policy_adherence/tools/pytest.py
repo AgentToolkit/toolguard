@@ -4,7 +4,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
-from typing import Any, List, Dict, Literal, Optional
+from typing import Any, List, Dict, Literal, Optional, Set
 from pydantic import BaseModel, Field
 
 from policy_adherence.types import SourceFile
@@ -78,12 +78,12 @@ class TestReport(BaseModel):
         return all([col.outcome == TestOutcome.passed for col in self.collectors])
     
     def list_errors(self)->List[str]:
-        errors = []
+        errors = set()
 
         #Python errors in the function under test
         for col in self.collectors:
             if col.outcome == TestOutcome.failed and col.longrepr:
-                errors.append(col.longrepr)
+                errors.add(col.longrepr)
 
         #applicative test failure
         for test in self.tests:
@@ -93,8 +93,8 @@ class TestReport(BaseModel):
                     case_desc = test.user_properties[0].get("docstring")
                     if case_desc:
                         error = f"""Test case {case_desc} failed with the following message:\n {test.call.crash.message}"""
-                errors.append(error)
-        return errors
+                errors.add(error)
+        return list(errors)
 
 def run(folder:str, test_file:str, report_file)->TestReport:
     subprocess.run([

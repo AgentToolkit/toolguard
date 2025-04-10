@@ -6,7 +6,13 @@ from programmatic_ai import generative
 model = "gpt-4o-2024-08-06"
 
 @generative(model=model, provider="azure", sdk="litellm")
-def generate_tool_item_tests(fn_under_test_name:str, fn_src:SourceFile, tool_item:ToolPolicyItem, common: SourceFile, domain:SourceFile, dependent_tool_names: Set[str])-> str:
+def generate_tool_item_tests(
+    fn_under_test_name:str, 
+    fn_src:SourceFile, 
+    tool_item:ToolPolicyItem, 
+    common: SourceFile, 
+    domain:SourceFile, 
+    dependent_tool_names: Set[str])-> str:
     """Generate Python unit tests for a function to verify tool-call compliance with policy constraints.
 
     This function creates unit tests to validate the behavior of a given function-under-test. 
@@ -62,12 +68,13 @@ from domain import *
     history.ask_bool.return_value = True #Mock that True is the answer to the question
 
     # mock functions and invoke function under test.
-    # failure message describe the test case
+
     with patch("check_create_reservation.get_user", return_value=user):
         with patch("check_create_reservation.get_hotel", return_value=hotel):
             try:
                 check_book_flight(args, history)
             except Exception as ex:
+                # failure message describe the test case
                 pytest.fail("The user cannot book room for a date in the past")
     ```
 
@@ -81,6 +88,23 @@ from domain import *
 
     Returns:
         str: Generated Python unit test code.
+    """
+    ...
+
+
+@generative(model=model, provider="azure", sdk="litellm")
+def improve_tool_tests(prev_impl:SourceFile, domain: SourceFile, tool: ToolPolicyItem, review_comments: List[str])-> str:
+    """
+    Improve the previous test functions (in Python) to check the given tool policy-items according to the review-comments.
+
+    Args:
+        prev_impl (SourceFile): previous implementation of a Python function.
+        domain (SourceFile): Python code defining available data types and other tool interfaces.
+        tool (ToolPolicy): Requirements for this tool.
+        review_comments (List[str]): Review comments on the current implementation. For example, pylint errors or Failed unit-tests.
+
+    Returns:
+        str: Improved implementation pytest test functions.
     """
     ...
 
@@ -159,23 +183,24 @@ def tool_information_dependencies(tool_name:str, policy: str, domain:SourceFile)
 @generative(model=model, provider="azure", sdk="litellm")
 def improve_tool_check_fn(prev_impl:SourceFile, domain: SourceFile, tool: ToolPolicyItem, review_comments: List[str])-> str:
     """
-    Improve the previous tool function implementation (in Python) according to the tool policy-items and review-comments.
+    Improve the previous tool-call check implementation (in Python) to cover all tool policy-items according to the review-comments.
 
     Args:
-        prev_impl (SourceFile): previous implementation of a Python function.
+        prev_impl (SourceFile): previous implementation of the tool-call check.
         domain (SourceFile): Python code defining available data types and other tool interfaces.
         tool (ToolPolicy): Requirements for this tool.
         review_comments (List[str]): Review comments on the current implementation. For example, pylint errors or Failed unit-tests.
 
     Returns:
-        str: Improved implementation Python code.
+        str: Improved implementation of the tool-call check.
 
     **Implementation Rules:**"
-    - ALL tool policy items must hold on the function arguments.
+    - ALL tool policy items must be validated on the tool arguments.
     - The code should be simple.
     - The code should be well documented.
-    - You should call other domain functions to get additional information from the backend. Make sure to import the other functions.
-    - You should call `chat_history.ask(question)` or `chat_history.ask_bool(question)` services to analyze the previous messages in this chat.
+    - You should just validate the tool-call. You should never call the tool itself.
+    - If needed, you may call other domain functions to get additional information from the backend. Make sure to import the other functions.
+    - If needed, you may call `chat_history.ask(question)` or `chat_history.ask_bool(question)` services to check if some interaction happened in this chat. Your question should be clear. For example: "did the user confirm the agent suggestion?".
     - History services are slow and expensive. Prefer calling domain functions over history services.
     """
     ...
