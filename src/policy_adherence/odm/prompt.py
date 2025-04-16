@@ -3,7 +3,6 @@
 from typing import List
 from programmatic_ai import generative
 
-from policy_adherence.odm.types import RuleInput
 from policy_adherence.types import SourceFile, ToolPolicyItem
 
 model = "gpt-4o-2024-08-06"

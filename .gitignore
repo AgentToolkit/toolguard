@@ -3,3 +3,5 @@
 /tau_airline
 src/.env
 **/__pycache__
+converted_model.dmn
+dmn_item_definitions.xml

@@ -11,3 +11,4 @@ flask
 langgraph
 markdown
 anyio
+pydantic-xml[lxml] #for DMN
