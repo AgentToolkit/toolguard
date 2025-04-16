@@ -8,7 +8,7 @@ import astor
 from policy_adherence.common.array import find
 from policy_adherence.common.str import to_camel_case
 from policy_adherence.tools.datamodel_codegen import run as dm_codegen
-from policy_adherence.common.open_api import OpenAPI, Operation, Parameter, ParameterIn, PathItem, Reference, RequestBody, Response, Schema, read_openapi
+from policy_adherence.common.open_api import OpenAPI, Operation, Parameter, ParameterIn, PathItem, Reference, RequestBody, Response, JSchema, read_openapi
 from policy_adherence.types import SourceFile
 
 def primitive_jschema_types_to_py(type:Optional[str], format:Optional[str])->Optional[str]:
@@ -132,11 +132,11 @@ class OpenAPICodeGenerator():
         fn.body.insert(0, doc)
         return fn
     
-    def map_oas_to_py_type(self, scm_or_ref:Union[Reference, Schema], oas:OpenAPI)->str | None:
+    def map_oas_to_py_type(self, scm_or_ref:Union[Reference, JSchema], oas:OpenAPI)->str | None:
         if isinstance(scm_or_ref, Reference):
             return scm_or_ref.ref.split("/")[-1]
 
-        scm = oas.resolve_ref(scm_or_ref, Schema)
+        scm = oas.resolve_ref(scm_or_ref, JSchema)
         py_type = primitive_jschema_types_to_py(scm.type, scm.format)
         if py_type:
             return py_type

@@ -1,6 +1,7 @@
 from typing import List, Optional, Union
 from pydantic_xml import BaseXmlModel, attr, element
-
+from policy_adherence.common.jschema import JSONSchemaTypes, JSchema
+from policy_adherence.common.ref import DocumentWithRef
 class DMNElement(BaseXmlModel):
     id: str|None = attr(default=None)
     description: str|None = attr(default=None)
@@ -66,8 +67,9 @@ class Definitions(NamedElement,
             "feel": "http://www.omg.org/spec/FEEL/20140401"
         }):
     namespace: str|None = attr(default=None)
-    # expressionLanguage: Optional[str] = attr(default="https://www.omg.org/spec/DMN/20240513/FEEL/")
-    # typeLanguage: Optional[str] = attr(default="https://www.omg.org/spec/DMN/20240513/FEEL/")
+    expressionLanguage: Optional[str] = attr(default="https://www.omg.org/spec/DMN/20240513/FEEL/")
+    typeLanguage: Optional[str] = attr(default="https://www.omg.org/spec/DMN/20240513/FEEL/")
+
     itemDefinition: List[ItemDefinition] = element(default=[])
     decisions: List[Decision] = element(default=[])
     inputs: List[InputData] = element(default=[])
@@ -76,14 +78,47 @@ class Definitions(NamedElement,
     # class Config:
     #     xml_ns = ''  # default namespace (no prefix)
     #     xml_ns_url = "https://www.omg.org/spec/DMN/20191111/MODEL/" 
-
+    def __str__(self)->str:
+        return self.to_xml(
+            pretty_print=True,
+            encoding='unicode',
+            standalone=True,
+            # exclude_unset = True,
+            exclude_none=True
+        )
     def save(self, filename:str):
         with open(filename, "w") as f:
-            dmn_xml = self.to_xml(
-                pretty_print=True,
-                encoding='UTF-8',
-                standalone=True,
-                # exclude_unset = True,
-                exclude_none=True
-            )
-            f.write(dmn_xml.decode('utf-8'))
+            f.write(str(self))
+
+
+
+def convert_json_type_to_dmn(json_type):
+    mapping = {
+        JSONSchemaTypes.string: "string",
+        JSONSchemaTypes.integer: "integer",
+        JSONSchemaTypes.number: "double",
+        JSONSchemaTypes.boolean: "boolean",
+        JSONSchemaTypes.array: "list"
+    }
+    return mapping.get(json_type, "Any")
+
+def map_schema(name:str, schema:JSchema, doc:DocumentWithRef)->ItemDefinition:
+    item = ItemDefinition(name=name, id=name )
+    if schema.allOf:
+        items = [map_schema(name, doc.resolve_ref(scm, JSchema), doc) for scm in schema.allOf]
+        for it in items:
+            item.itemComponent.extend(it.itemComponent)
+
+    if schema.type:
+        if schema.type == JSONSchemaTypes.object:
+            for prop, prop_schema in schema.properties.items() or {}:
+                child = map_schema(prop, prop_schema, doc)
+                item.itemComponent.append(child)
+        elif schema.type == JSONSchemaTypes.array:
+            item.isCollection = True
+            if schema.items:
+                item.typeRef = convert_json_type_to_dmn(schema.items.type)
+        else:
+            item.typeRef = convert_json_type_to_dmn(schema.type)
+
+    return item

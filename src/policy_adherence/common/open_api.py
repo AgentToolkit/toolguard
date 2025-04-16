@@ -2,35 +2,10 @@ from enum import StrEnum
 from pydantic import BaseModel, Field, HttpUrl
 from typing import List, Dict, Optional, Any, TypeVar, Union
 
-from policy_adherence.common.array import not_none
 from policy_adherence.common.dict import find_ref
 from policy_adherence.common.http import MEDIA_TYPE_APP_JSON
-
-class JSONSchemaTypes(StrEnum):
-    string = "string"
-    number = "number"
-    integer = "integer"
-    boolean = "boolean"
-    array = "array"
-    object = "object"
-
-class Reference(BaseModel):
-    ref: str = Field(..., alias="$ref")
-
-class Schema(BaseModel):
-    type: Optional[JSONSchemaTypes] = None
-    properties: Optional[Dict[str, Union[Reference, 'Schema']]] = None
-    items: Optional[Union[Reference, 'Schema']] = None
-    additionalProperties: Optional[Union['Schema', bool]] = None
-    format: Optional[str] = None
-    enum: Optional[list] = None
-    default: Optional[Any] = None
-    description: Optional[str] = None
-    example: Optional[Any] = None
-    allOf: Optional[List[Union[Reference, 'Schema']]] = None
-    
-    def __str__(self) -> str:
-        return self.model_dump_json(exclude_none=True, indent=2)
+from policy_adherence.common.jschema import JSchema, Reference
+from policy_adherence.common.ref import DocumentWithRef
 
 class Contact(BaseModel):
     name: Optional[str] = None
@@ -78,7 +53,7 @@ class Tag(BaseModel):
 
 
 class MediaType(BaseModel):
-    schema_: Optional[Union[Reference, Schema]] = Field(None, alias="schema")
+    schema_: Optional[Union[Reference, JSchema]] = Field(None, alias="schema")
     example: Optional[Any] = None
     examples: Optional[Dict[str, Any]] = None
 
@@ -115,7 +90,7 @@ class Parameter(BaseModel):
     description: Optional[str] = None
     in_: ParameterIn = Field(ParameterIn.query, alias="in")
     required: Optional[bool] = None
-    schema_: Optional[Union[Reference, Schema]] = Field(None, alias="schema")
+    schema_: Optional[Union[Reference, JSchema]] = Field(None, alias="schema")
 
 
 class Operation(BaseModel):
@@ -157,7 +132,7 @@ class PathItem(BaseModel):
         return {k: v for k, v in d.items() if v is not None}
 
 class Components(BaseModel):
-    schemas: Optional[Dict[str, Schema]] = None
+    schemas: Optional[Dict[str, JSchema]] = None
     responses: Optional[Dict[str, Response]] = None
     parameters: Optional[Dict[str, Parameter]] = None
     examples: Optional[Dict[str, Any]] = None
@@ -168,8 +143,7 @@ class Components(BaseModel):
     callbacks: Optional[Dict[str, Any]] = None
     pathItems: Optional[Dict[str, PathItem]] = None
 
-BaseModelT = TypeVar("BaseModelT", bound=BaseModel)
-class OpenAPI(BaseModel):
+class OpenAPI(DocumentWithRef):
     openapi: str = Field(..., pattern=r"^3\.\d\.\d+(-.+)?$")
     info: Info
     jsonSchemaDialect: Optional[HttpUrl] = "https://spec.openapis.org/oas/3.1/dialect/WORK-IN-PROGRESS"
@@ -186,12 +160,6 @@ class OpenAPI(BaseModel):
             for op in path_item.operations.values():
                 if op.operationId == operationId:
                     return op
-                
-    def resolve_ref(self, obj: Reference | BaseModelT | None, object_type: type[BaseModelT])->BaseModelT | None:
-        if isinstance(obj, Reference):
-            tmp = find_ref(self.model_dump(), obj.ref)
-            return object_type.model_validate(tmp)
-        return obj
                 
 import json
 import yaml

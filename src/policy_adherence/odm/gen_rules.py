@@ -5,7 +5,7 @@ from typing import List
 import uuid
 
 
-from policy_adherence.common.open_api import OpenAPI, RequestBody, Schema
+from policy_adherence.common.open_api import OpenAPI, RequestBody, JSchema
 from policy_adherence.odm.prompt import improve_tool_rules
 from policy_adherence.types import SourceFile, ToolPolicy
 DOMAIN_PY = "domain.py"
@@ -27,7 +27,7 @@ async def generate_tools_check_rules(app_name:str, tools:List[ToolPolicy], out_f
             assert op
             req_body = op_only_oas.resolve_ref(op.requestBody, RequestBody)
             assert req_body.content_json
-            req_schema = op_only_oas.resolve_ref(req_body.content_json.schema_, Schema)
+            req_schema = op_only_oas.resolve_ref(req_body.content_json.schema_, JSchema)
             bom_src = SourceFile(
                 file_name=f"DataModel/schemas/my_project/datamodel/CreateReservation.schema.json",
                 content=str(req_schema))
