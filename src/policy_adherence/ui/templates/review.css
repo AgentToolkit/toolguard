@@ -1,0 +1,46 @@
+body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+}
+
+.policy {
+    margin-bottom: 15px;
+    padding: 10px;
+    border-left: 4px solid #007bff;
+    background-color: #f8f9fa;
+    position: relative;
+}
+
+.policy:hover .delete-icon {
+    display: inline-block;
+}
+
+.policy input {
+    border: none;
+    background: transparent;
+    width: 80%;
+    padding: 5px;
+}
+
+.policy input:hover, .policy input:focus {
+    border: 1px solid #ccc;
+}
+
+.delete-icon {
+    display: none;
+    cursor: pointer;
+    color: red;
+    position: absolute;
+    right: 10px;
+    top: 10px;
+}
+
+.add-icon {
+    cursor: pointer;
+    color: green;
+    margin-left: 10px;
+}

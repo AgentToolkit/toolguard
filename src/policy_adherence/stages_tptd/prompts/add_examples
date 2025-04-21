@@ -15,12 +15,12 @@ If only one type of example is missing (violating or compliance), generate only 
 Do not repeat or modify existing examples—only add new ones.
 
 2. Generate Violating Examples (if missing):
-Provide at least three new violating examples that highlight different ways the policy could be breached.
+Provide new violating examples that highlight different ways the policy could be breached.
 Cover common mistakes, edge cases, and boundary conditions.
 Clearly state why each example violates the policy.
 
 3. Generate Compliance Examples (if missing):
-Provide at least three new compliance examples demonstrating correct adherence to the policy.
+Provide new compliance examples demonstrating correct adherence to the policy.
 Ensure compliance cases clearly illustrate why they meet the policy’s requirements.
 
 4. Ensure Full Coverage:
@@ -33,14 +33,14 @@ Maintain the correct structure:
 
 {
     { "violating_examples": [
-        "Example 1: A user attempts to call ToolX without providing the required authentication token. Since the policy mandates that an authentication token must be present, this violates the rule.",
-        "Example 2: The input parameters for ToolX exceed the allowed character limit of 500, but the request is still made. This violates the policy, as inputs must comply with the character constraints.",
-        "Example 3: A request to ToolX includes a restricted keyword that is explicitly mentioned in the policy as disallowed. This makes the request non-compliant."
+        "A user attempts to call ToolX without providing the required authentication token. Since the policy mandates that an authentication token must be present, this violates the rule.",
+        "The input parameters for ToolX exceed the allowed character limit of 500, but the request is still made. This violates the policy, as inputs must comply with the character constraints.",
+        "A request to ToolX includes a restricted keyword that is explicitly mentioned in the policy as disallowed. This makes the request non-compliant."
     ]},
     { "compliance_examples": [
-        "Example 1: A user successfully provides a valid authentication token before calling ToolX, ensuring compliance with the policy.",
-        "Example 2: The input parameters for ToolX remain within the allowed character limit, following the policy requirements.",
-        "Example 3: A request is made to ToolX with a properly formatted and authorized query, containing no restricted keywords."
+        "A user successfully provides a valid authentication token before calling ToolX, ensuring compliance with the policy.",
+        "The input parameters for ToolX remain within the allowed character limit, following the policy requirements.",
+        "A request is made to ToolX with a properly formatted and authorized query, containing no restricted keywords."
     ]}
 
 }

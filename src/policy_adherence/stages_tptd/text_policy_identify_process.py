@@ -18,7 +18,9 @@ class PolicyIdentifier:
 	def __init__(self):
 		workflow = StateGraph(TPTDState)
 		workflow.add_node("policy_creator", self.policy_creator_node)
-		workflow.add_node("merge_and_split",self.merge_and_split)
+		#workflow.add_node("merge_and_split",self.merge_and_split)
+		workflow.add_node("split", self.split)
+		workflow.add_node("merge", self.merge)
 		workflow.add_node("review_policy",self.review_policy)
 		workflow.add_node("add_policies", self.add_policies)
 		workflow.add_node("add_references",self.add_references)
@@ -30,8 +32,11 @@ class PolicyIdentifier:
 		workflow.set_entry_point("policy_creator")
 		
 		workflow.add_edge("policy_creator", "add_policies")
-		workflow.add_conditional_edges("add_policies", lambda state: "merge_and_split" if state.get("stop", False) else "add_policies" )
-		workflow.add_edge("merge_and_split", "review_policy")
+		#workflow.add_conditional_edges("add_policies", lambda state: "merge_and_split" if state.get("stop", False) else "add_policies" )
+		#workflow.add_edge("merge_and_split", "review_policy")
+		workflow.add_conditional_edges("add_policies",lambda state: "split" if state.get("stop", False) else "add_policies")
+		workflow.add_edge("split", "merge")
+		workflow.add_edge("merge", "review_policy")
 		workflow.add_edge("review_policy", "add_references")
 		workflow.add_edge("add_references", "reference_correctness")
 		workflow.add_edge("reference_correctness", "example_creator")
@@ -71,7 +76,33 @@ class PolicyIdentifier:
 		save_output(state["outdir"], f"{state['target_tool']}_ADD_{state['iteration']}.json", TPTD)
 		return state
 	
+
+	def split(self, state: TPTDState) -> TPTDState:
+		# todo: consider addition step to split policy by policy and not overall
+		print("split")
+		system_prompt = read_prompt_file("split")
+		TPTD = state['TPTD']
+		user_content = f"Policy Document:{state['policy_text']}\nTools Descriptions:{json.dumps(state['tools'])}\nTarget Tool:{json.dumps(state['target_tool_description'])}\nTPTD: {json.dumps(TPTD)}"
+		response = llm.chat_json(generate_messages(system_prompt, user_content))
+		TPTD = response
+		
+		state.update({"TPTD": TPTD})
+		save_output(state["outdir"], f"{state['target_tool']}_split.json", TPTD)
+		return state
 	
+	def merge(self, state: TPTDState) -> TPTDState:
+		# todo: consider addition step to split policy by policy and not overall
+		print("merge")
+		system_prompt = read_prompt_file("merge")
+		TPTD = state['TPTD']
+		user_content = f"Policy Document:{state['policy_text']}\nTools Descriptions:{json.dumps(state['tools'])}\nTarget Tool:{json.dumps(state['target_tool_description'])}\nTPTD: {json.dumps(TPTD)}"
+		response = llm.chat_json(generate_messages(system_prompt, user_content))
+		TPTD = response
+		
+		state.update({"TPTD": TPTD})
+		save_output(state["outdir"], f"{state['target_tool']}_merge.json", TPTD)
+		return state
+
 	
 	def merge_and_split(self, state: TPTDState) -> TPTDState:
 		#todo: consider addition step to split policy by policy and not overall
@@ -99,7 +130,8 @@ class PolicyIdentifier:
 		}
 		
 		for r in reviews:
-			print(f"{r['is_relevant']}\t{r['is_tool_specific']}\t{r['can_be_validated']}\t{r['is_actionable']}\t{r['is_self_contained']}\t{r['score']}\t")
+			print(f"{r['is_relevant'] if 'is_relevant' in r else ''}\t{r['is_tool_specific'] if 'is_tool_specific' in r else ''}\t{r['can_be_validated'] if 'can_be_validated' in r else ''}\t{r['is_actionable'] if 'is_actionable' in r else ''}\t{r['is_self_contained'] if 'is_self_contained' in r else ''}\t{r['score'] if 'score' in r else ''}\t")
+
 			counts["is_relevant"] += r["is_relevant"]
 			counts["is_tool_specific"] += r["is_tool_specific"]
 			counts["can_be_validated"] += r["can_be_validated"]
@@ -217,6 +249,8 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='parser')
 	parser.add_argument('--model-type', type=str,default='ASURE')
 	parser.add_argument('--model-name', type=str,default='gpt-4o-2024-08-06')
+	#parser.add_argument('--policy-path', type=str, default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-policies-for-non-existing-tools-rev.md')
+	#parser.add_argument('--policy-path',type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-policies-for-non-existing-tools.md')
 	parser.add_argument('--policy-path', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki.md')
 	parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline')
 	#parser.add_argument('--functions-schema', type=str, default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/airline.json')
@@ -236,7 +270,7 @@ if __name__ == '__main__':
 	fsummary = {}
 	for k, v in functions.items():
 		fsummary[k] = v['description']
-
+	print(json.dumps(fsummary))
 	for function_name, function_data in functions.items():
 		fname = function_data["name"]
 		input_state = {

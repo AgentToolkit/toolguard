@@ -32,13 +32,13 @@ Ensure all rules within each policy are covered. If a policy contains multiple c
 Output Format (JSON):
 {
     { "violating_examples": [
-        "Example 1: A user attempts to call ToolX without providing the required authentication token. Since the policy mandates that an authentication token must be present, this violates the rule.",
-        "Example 2: The input parameters for ToolX exceed the allowed character limit of 500, but the request is still made. This violates the policy, as inputs must comply with the character constraints.",
-        "Example 3: A request to ToolX includes a restricted keyword that is explicitly mentioned in the policy as disallowed. This makes the request non-compliant."
+        "A user attempts to call ToolX without providing the required authentication token. Since the policy mandates that an authentication token must be present, this violates the rule.",
+        "The input parameters for ToolX exceed the allowed character limit of 500, but the request is still made. This violates the policy, as inputs must comply with the character constraints.",
+        "A request to ToolX includes a restricted keyword that is explicitly mentioned in the policy as disallowed. This makes the request non-compliant."
     ]},
     { "compliance_examples": [
-        "Example 1: A user successfully provides a valid authentication token before calling ToolX, ensuring compliance with the policy.",
-        "Example 2: The input parameters for ToolX remain within the allowed character limit, following the policy requirements.",
-        "Example 3: A request is made to ToolX with a properly formatted and authorized query, containing no restricted keywords."
+        "A user successfully provides a valid authentication token before calling ToolX, ensuring compliance with the policy.",
+        "The input parameters for ToolX remain within the allowed character limit, following the policy requirements.",
+        "A request is made to ToolX with a properly formatted and authorized query, containing no restricted keywords."
     ]}
 }

@@ -23,7 +23,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-	return render_template('index.html', text=policy_text, tools=tools_data)
+	return render_template('coverage.html', text=policy_text, tools=tools_data)
 
 
 @app.route('/highlight', methods=['POST'])
@@ -45,10 +45,13 @@ def highlight():
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='parser')
-	parser.add_argument('--policy-path', type=str,
-						default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki.md')
-	parser.add_argument('--outdir', type=str,
-						default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final')
+	#parser.add_argument('--policy-path', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-salesforce-policies.md')
+	#parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final with salesforce')
+	#parser.add_argument('--policy-path', type=str, default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-policies-for-non-existing-tools.md')
+	#parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final non existing tools')
+	parser.add_argument('--policy-path', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki.md')
+	#parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final')
+	parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final copy 4')
 	args = parser.parse_args()
 	policy_path = args.policy_path
 	outdir = args.outdir
@@ -86,4 +89,4 @@ if __name__ == '__main__':
 	}
 					
 			
-	app.run(debug=True)
+	app.run(debug=True,port=5002)
