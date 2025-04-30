@@ -34,9 +34,9 @@ DEBUG_DIR = "debug"
 TESTS_DIR = "tests"
 RUNTIME_COMMON_PY = "common.py"
 DOMAIN_PY = "domain.py"
-HISTORY_PARAM = "chat_history"
+HISTORY_PARAM = "history"
 HISTORY_PARAM_TYPE = "ChatHistory"
-TOOLS_PARAM = "tools"
+API_PARAM = "api"
 
 def check_fn_name(name:str)->str:
     return to_snake_case(f"check_{name}")
@@ -264,7 +264,7 @@ class ToolCheckPolicyGenerator:
                 fn_args.args.pop(0)
         args = copy.deepcopy(fn_args.args)
         history_arg = ast.arg(arg=HISTORY_PARAM, annotation=ast.Name(id=HISTORY_PARAM_TYPE, ctx=ast.Load()))
-        tools_arg = ast.arg(arg=TOOLS_PARAM, annotation=ast.Name(id=api_cls.name, ctx=ast.Load()))
+        tools_arg = ast.arg(arg=API_PARAM, annotation=ast.Name(id=api_cls.name, ctx=ast.Load()))
         
         fn_docstring = fn_doc_string(args, history_arg, tools_arg)
         fn_args.args.extend([history_arg, tools_arg])
@@ -286,7 +286,7 @@ class ToolCheckPolicyGenerator:
         
         fn_body = [ast.Expr(value=ast.Constant(value=fn_docstring, kind=None))]
         for item in self.tool.policy_items:
-            params = [arg.arg for arg in args]+[HISTORY_PARAM, TOOLS_PARAM]
+            params = [arg.arg for arg in args]+[HISTORY_PARAM, API_PARAM]
             fn_body.append(
                 py.call_fn(check_fn_name(item.name), *params) 
             )
