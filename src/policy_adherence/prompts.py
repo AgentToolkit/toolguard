@@ -47,10 +47,11 @@ from domain import *
     from unittest.mock import MagicMock, patch
 
     # domain:
-    def get_user(user_id):
-        ...
-    def get_hotel(hotel_id):
-        ...
+    class SomeAPI(Protocol):
+        def get_user(self, user_id):
+            ...
+        def get_hotel(self, hotel_id):
+            ...
 
     # function call arguments
     args = {
@@ -59,23 +60,24 @@ from domain import *
         hotel_id: ....
     }
 
-    # mock return values:
-    user = User.model_construct(...)
-    hotel = Hotel.model_construct(...)
-
     # mock the history service:
     history = MagicMock()
     history.ask_bool.return_value = True #Mock that True is the answer to the question
 
-    # mock functions and invoke function under test.
+    # mock other tools function return values 
+    user = User.model_construct(...)
+    hotel = Hotel.model_construct(...)
 
-    with patch("check_create_reservation.get_user", return_value=user):
-        with patch("check_create_reservation.get_hotel", return_value=hotel):
-            try:
-                check_book_flight(args, history)
-            except Exception as ex:
-                # failure message describe the test case
-                pytest.fail("The user cannot book room for a date in the past")
+    api = MagicMock()
+    api.get_user.return_value = user
+    api.get_hotel.return_value = hotel
+    
+    #invoke function under test.
+    try:
+        check_book_flight(args, history, api)
+    except Exception as ex:
+        # failure message describe the test case
+        pytest.fail("The user cannot book room for a date in the past")
     ```
 
     Args:
@@ -140,16 +142,17 @@ def tool_information_dependencies(tool_name:str, policy: str, domain:SourceFile)
         pass
     class Insurance:
         pass
-    def buy_car(car:Car, owner_id:str, insurance_id:str):
-        pass
-    def get_person(id:str) -> Person:
-        pass
-    def get_insurance(id:str) -> Insurance:
-        pass
-    def delete_car(car:Car):
-        pass
-    def list_all_cars_owned_by(id:str): List[Car]
-        pass
+    class CarAPI(Protocol):
+        def buy_car(self, car:Car, owner_id:str, insurance_id:str):
+            pass
+        def get_person(self, id:str) -> Person:
+            pass
+        def get_insurance(self, id:str) -> Insurance:
+            pass
+        def delete_car(self, car:Car):
+            pass
+        def list_all_cars_owned_by(self, id:str): List[Car]
+            pass
     "
     }
 
@@ -195,12 +198,13 @@ def improve_tool_check_fn(prev_impl:SourceFile, domain: SourceFile, policy_item:
         str: Improved implementation of the tool-call check.
 
     **Implementation Rules:**"
+    - Do not change the function signature.
     - ALL tool policy items must be validated on the tool arguments.
     - The code should be simple.
     - The code should be well documented.
     - You should just validate the tool-call. You should never call the tool itself.
-    - If needed, you may call other domain functions to get additional information from the backend. Make sure to import the other functions.
-    - If needed, you may call `chat_history.ask(question)` or `chat_history.ask_bool(question)` services to check if some interaction happened in this chat. Your question should be clear. For example: "did the user confirm the agent suggestion?".
+    - If needed, you may use the `api` interface to get additional information from the backend.
+    - If needed, you may call `history.ask(question)` or `history.ask_bool(question)` services to check if some interaction happened in this chat. Your question should be clear. For example: "did the user confirm the agent suggestion?".
     - History services are slow and expensive. Prefer calling domain functions over history services.
     """
     ...

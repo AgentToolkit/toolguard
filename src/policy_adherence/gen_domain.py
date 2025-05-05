@@ -36,21 +36,18 @@ class OpenAPICodeGenerator():
         self.cwd = cwd
 
     def generate_domain(self, oas_file:str, domain_py_file:str)->SourceFile:
+        #types
         types_src = dm_codegen(oas_file)
 
-        api_src = self.generate_api(domain_py_file, oas_file)
+        #apis
+        api_src = self.generate_api(oas_file, types_src)
 
-        file_path = os.path.join(self.cwd, domain_py_file)
-        content = f"""{types_src}
-# Tool interfaces
-{api_src}
-        """
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write(content)
+        content = f"{types_src}\n\n# Tool interfaces\n{api_src}\n"
+        src = SourceFile(file_name=domain_py_file, content=content)
+        src.save(self.cwd)
+        return src
 
-        return SourceFile(file_name=domain_py_file, content=content)
-
-    def generate_api(self, domain_py_file:str, oas_file:str)->str:
+    def generate_api(self, oas_file:str, types_src: str)->str:
         oas = read_openapi(oas_file)
         
         new_body = []

@@ -360,92 +360,80 @@ class Reservation(ReservationBase):
     status: Optional[ResevationStatus] = None
 
 # Tool interfaces
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Protocol
 
 
-def calculate(query: CalculateParametersQuery) ->str:
-    """Calculate the result of a mathematical expression."""
-    pass
+class TaubenchAirline(Protocol):
 
+    def calculate(self, query: CalculateParametersQuery) ->str:
+        """Calculate the result of a mathematical expression."""
+        pass
 
-def book_reservation(request: CreateReservation) ->Reservation:
-    """Creates a reservation"""
-    pass
+    def book_reservation(self, request: CreateReservation) ->Reservation:
+        """Creates a reservation"""
+        pass
 
+    def get_reservation_details(self, reservation_id: str) ->Reservation:
+        """Get the reservation."""
+        pass
 
-def get_reservation_details(reservation_id: str) ->Reservation:
-    """Get the reservation."""
-    pass
+    def cancel_reservation(self, reservation_id: str) ->Reservation:
+        """Cancel the whole reservation."""
+        pass
 
+    def update_reservation_baggages(self, reservation_id: str, request:
+        UpdateReservationBaggagesRequest) ->Reservation:
+        """Update the baggage information of a reservation."""
+        pass
 
-def cancel_reservation(reservation_id: str) ->Reservation:
-    """Cancel the whole reservation."""
-    pass
+    def update_reservation_flights(self, reservation_id: str, request:
+        UpdateReservationFlightsRequest) ->Reservation:
+        """Update the flight information of a reservation."""
+        pass
 
+    def update_reservation_passengers(self, reservation_id: str, request:
+        UpdateReservationPassengersRequest) ->Reservation:
+        """Update the passenger information of a reservation."""
+        pass
 
-def update_reservation_baggages(reservation_id: str, request:
-    UpdateReservationBaggagesRequest) ->Reservation:
-    """Update the baggage information of a reservation."""
-    pass
+    def get_scheduled_flight(self, flight_id: str) ->ScheduledFlight:
+        """Get the details of a scheduled flight. For example, returns the flight origin, destination, scheduled detaprture and arrival times."""
+        pass
 
+    def search_direct_flight(self, query: SearchDirectFlightParametersQuery
+        ) ->List[FoundFlight]:
+        """Search direct flights between two cities on a specific date."""
+        pass
 
-def update_reservation_flights(reservation_id: str, request:
-    UpdateReservationFlightsRequest) ->Reservation:
-    """Update the flight information of a reservation."""
-    pass
+    def search_onestop_flight(self, query: SearchOnestopFlightParametersQuery
+        ) ->List[List[FoundFlight]]:
+        """Search one-stop flights between two cities on a specific date."""
+        pass
 
+    def get_flight_instance(self, flight_id: str, date: datetime.date
+        ) ->FlightInstance:
+        """Get the details of a flight instance in a specific date. For example, returns the flight status, available seats and prices."""
+        pass
 
-def update_reservation_passengers(reservation_id: str, request:
-    UpdateReservationPassengersRequest) ->Reservation:
-    """Update the passenger information of a reservation."""
-    pass
+    def list_airports(self) ->List[Any]:
+        """List all airports available in the system"""
+        pass
 
+    def get_user_details(self, user_id: str) ->User:
+        """Get the details of an user."""
+        pass
 
-def get_schduled_flight(flight_id: str) ->ScheduledFlight:
-    """Get the details of a flight. For example, returns the flight origin, destination, scheduled detaprture and arrival times."""
-    pass
+    def send_certificate(self, user_id: str, query:
+        SendCertificateParametersQuery) ->str:
+        """Send a certificate to a user. Be careful!"""
+        pass
 
+    def think(self, request: ThinkRequest) ->str:
+        """Use the tool to think about something. It will not obtain new information or change the database, but just append the thought to the log. Use it when complex reasoning is needed."""
+        pass
 
-def search_direct_flight(query: SearchDirectFlightParametersQuery
-    ) ->List[FoundFlight]:
-    """Search direct flights between two cities on a specific date."""
-    pass
+    def transfer_to_human_agents(self, request: TransferToHumanAgentsRequest
+        ) ->str:
+        """Transfer the user to a human agent, with a summary of the user's issue. Only transfer if the user explicitly asks for a human agent, or if the user's issue cannot be resolved by the agent with the available tools."""
+        pass
 
-
-def search_onestop_flight(query: SearchOnestopFlightParametersQuery
-    ) ->List[List[FoundFlight]]:
-    """Search one-stop flights between two cities on a specific date."""
-    pass
-
-
-def get_flight_instance(flight_id: str, date: datetime.date) ->FlightInstance:
-    """Get the details of a flight instance in a specific date. For example, returns the flight status, available seats and prices."""
-    pass
-
-
-def list_airports() ->List[Any]:
-    """List all airports available in the system"""
-    pass
-
-
-def get_user_details(user_id: str) ->User:
-    """Get the details of an user."""
-    pass
-
-
-def send_certificate(user_id: str, query: SendCertificateParametersQuery
-    ) ->str:
-    """Send a certificate to a user. Be careful!"""
-    pass
-
-
-def think(request: ThinkRequest) ->str:
-    """Use the tool to think about something. It will not obtain new information or change the database, but just append the thought to the log. Use it when complex reasoning is needed."""
-    pass
-
-
-def transfer_to_human_agents(request: TransferToHumanAgentsRequest) ->str:
-    """Transfer the user to a human agent, with a summary of the user's issue. Only transfer if the user explicitly asks for a human agent, or if the user's issue cannot be resolved by the agent with the available tools."""
-    pass
-
-        

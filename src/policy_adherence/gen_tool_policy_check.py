@@ -50,7 +50,7 @@ def test_fn_name(name:str)->str:
 def test_fn_module_name(name:str)->str:
     return to_snake_case(test_fn_name(name))
 
-def fn_doc_string(args: list[ast.arg], history_arg, tools_arg):
+def fn_doc_string(args: list[ast.arg], history_arg, api_arg):
     app_args_doc = "\n    ".join([f"{arg.arg} ({arg.annotation.id})" for arg in args])
     
     return f"""
@@ -59,7 +59,7 @@ Checks that a tool call comply with a policy.
 Args:
     {app_args_doc}
     {history_arg.arg} ({history_arg.annotation.id}): provide question-answer services over the past chat messages.
-    {tools_arg.arg} ({tools_arg.annotation.id}): api to access other tools.
+    {api_arg.arg} ({api_arg.annotation.id}): api to access other tools.
 
 Raises:
     PolicyViolationException: If the request violates the policy.
@@ -264,10 +264,10 @@ class ToolCheckPolicyGenerator:
                 fn_args.args.pop(0)
         args = copy.deepcopy(fn_args.args)
         history_arg = ast.arg(arg=HISTORY_PARAM, annotation=ast.Name(id=HISTORY_PARAM_TYPE, ctx=ast.Load()))
-        tools_arg = ast.arg(arg=API_PARAM, annotation=ast.Name(id=api_cls.name, ctx=ast.Load()))
+        api_arg = ast.arg(arg=API_PARAM, annotation=ast.Name(id=api_cls.name, ctx=ast.Load()))
         
-        fn_docstring = fn_doc_string(args, history_arg, tools_arg)
-        fn_args.args.extend([history_arg, tools_arg])
+        fn_docstring = fn_doc_string(args, history_arg, api_arg)
+        fn_args.args.extend([history_arg, api_arg])
 
         py.create_init_py(join(self.py_path, to_snake_case(self.app_name), to_snake_case(self.tool.name)))
         
