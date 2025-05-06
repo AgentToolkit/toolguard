@@ -1,7 +1,7 @@
 import argparse
 import json
 import os
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 import markdown
 
@@ -244,7 +244,7 @@ class PolicyIdentifier:
 		return state
 	
 
-def step1_main(policy_text:str, fsummary:Dict, fdetails:Dict, step1_output_dir:str,tools:List[str]=None):
+def step1_main(policy_text:str, fsummary:Dict, fdetails:Dict, step1_output_dir:str, tools:Optional[List[str]]=None):
 	if not os.path.isdir(step1_output_dir):
 		os.makedirs(step1_output_dir)
 		
