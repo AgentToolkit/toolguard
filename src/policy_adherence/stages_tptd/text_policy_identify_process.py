@@ -1,15 +1,17 @@
 import argparse
 import json
 import os
-from typing import List
+from typing import List, Dict
 
 import markdown
 
 from langgraph.graph import StateGraph
 
+from policy_adherence.common.open_api import OpenAPI
 from policy_adherence.llm.azure_wrapper import AzureLitellm
 from policy_adherence.stages_tptd.utils import read_prompt_file, generate_messages, save_output, TPTDState, \
 	find_mismatched_references
+from tests.op_only_oas import op_only_oas
 
 model = 'gpt-4o-2024-08-06'
 llm = AzureLitellm(model)
@@ -241,80 +243,80 @@ class PolicyIdentifier:
 		save_output(state["outdir"], f"{state['target_tool']}_ADD_examples{state['iteration']}.json", TPTD)
 		return state
 	
-
+def step1_main(policy_text:str,fsummary:Dict,fdetails:Dict,outdir:str):
+	for fname, detail in fdetails.items():
+		input_state = {
+			"policy_text": policy_text,
+			"tools": fsummary,
+			"target_tool": fname,
+			"target_tool_description": detail,
+			"outdir": os.path.join(outdir, "process")
+		}
+		p2 = PolicyIdentifier()
+		final_output = p2.executor.invoke(input_state)
+		print(json.dumps(final_output))
+		tmpoutdir = os.path.join(outdir, "final")
+		outcontent = final_output["TPTD"]
+		
+		with open(os.path.join(tmpoutdir, fname + ".json"), "w") as outfile:
+			outfile.write(json.dumps(outcontent))
 	
+
 
 if __name__ == '__main__':
 	
 	parser = argparse.ArgumentParser(description='parser')
-	parser.add_argument('--model-type', type=str,default='ASURE')
-	parser.add_argument('--model-name', type=str,default='gpt-4o-2024-08-06')
+	#parser.add_argument('--model-type', type=str,default='ASURE')
+	#parser.add_argument('--model-name', type=str,default='gpt-4o-2024-08-06')
 	#parser.add_argument('--policy-path', type=str, default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-policies-for-non-existing-tools-rev.md')
 	#parser.add_argument('--policy-path',type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-policies-for-non-existing-tools.md')
 	parser.add_argument('--policy-path', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki.md')
 	parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline')
-	#parser.add_argument('--functions-schema', type=str, default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/airline.json')
+
+	parser.add_argument('--oas', type=str, default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/airline.json')
 	parser.add_argument('--functions-schema', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/fc_schema.json')
+
 	args = parser.parse_args()
 	policy_path = args.policy_path
 	outdir = args.outdir
-	model_type = args.model_type
-	model_name = args.model_name
+	#model_type = args.model_type
+	#model_name = args.model_name
 	functions_schema = args.functions_schema
+	oas = args.oas
 
 	policy_text = open(policy_path, 'r',encoding='utf-8').read()
 	policy_text = markdown.markdown(policy_text)
-	with open(functions_schema, 'r') as file:
-		functions = json.load(file)
-	
+
 	fsummary = {}
-	for k, v in functions.items():
-		fsummary[k] = v['description']
-	print(json.dumps(fsummary))
-	for function_name, function_data in functions.items():
-		fname = function_data["name"]
-		input_state = {
-						"policy_text": policy_text,
-						"tools": fsummary,
-						"target_tool": fname,
-						"target_tool_description": function_data,
-						"outdir":os.path.join(outdir,"process")
-						}
-		
+	fdetails = {}
+	if functions_schema:
+		with open(functions_schema,'r',encoding='utf-8') as file:
+			functions = json.load(file)
+		for k, v in functions.items():
+			fsummary[k] = v['description']
+		print(json.dumps(fsummary))
+		fdetails = functions
+	else:
+		with open(oas,'r',encoding='utf-8') as file:
+			functions = json.load(file)
+
+		if 'paths' in functions:
+			for path, methods in functions["paths"].items():
+				for method, details in methods.items():
+					if isinstance(details, dict) and "operationId" in details:
+						operation_id = details["operationId"]
+						description = details.get("description", "No description available.")
+						fsummary[operation_id] = description
+	
+			for path, methods in functions["paths"].items():
+				for method, details in methods.items():
+					if isinstance(details, dict) and "operationId" in details:
+						fname = details["operationId"]
+						oas = OpenAPI.model_validate(functions)
+						op_oas = op_only_oas(oas, fname)
+						print(fname)
+						fdetails[fname] = op_oas
 						
+	step1_main(policy_text,fsummary,fdetails,outdir)
 	
 
-	
-	# if 'paths' in functions:
-	# 	for path, methods in functions["paths"].items():
-	# 		for method, details in methods.items():
-	# 			if isinstance(details, dict) and "operationId" in details:
-	# 				operation_id = details["operationId"]
-	# 				description = details.get("description", "No description available.")
-	# 				fsummary[operation_id] = description
-	#
-	# 	for path, methods in functions["paths"].items():
-	# 		# if path != "/reservations":
-	# 		# 	print(path)
-	# 		# 	continue
-	# 		for method, details in methods.items():
-	# 			if isinstance(details, dict) and "operationId" in details:
-	# 				fname = details["operationId"]
-	# 				input_state = {
-	# 					"policy_text": policy_text,
-	# 					"tools": fsummary,
-	# 					"target_tool": fname,
-	# 					"target_tool_description": {path:methods},
-	# 					"outdir":os.path.join(outdir,"process")
-	# 				}
-	# 				break
-					
-		p2 = PolicyIdentifier()
-		final_output = p2.executor.invoke(input_state)
-		print(json.dumps(final_output))
-		tmpoutdir = os.path.join(outdir,"final")
-		outcontent = final_output["TPTD"]
-		
-		#out = json.loads(outcontent)
-		with open(os.path.join(tmpoutdir, fname +  ".json"), "w") as outfile:
-			outfile.write(json.dumps(outcontent))

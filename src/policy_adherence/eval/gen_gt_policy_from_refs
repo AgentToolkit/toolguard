@@ -1,0 +1,103 @@
+Instructions
+
+You are tasked with writing a list of policies, each containing a name, a description, and a list of relevant references.
+The purpose of these policies is to ensure proper validation before calling toolX.
+
+You will be provided with:
+Policy Document – A text containing policies, rules, or constraints governing tool usage.
+Target Tool (ToolX) – The specific tool for which relevant policies need to be identified.
+References - A list of references relevant to the validation process
+
+Assume you also have access to:
+The parameters of the function call you are about to make to toolX
+The chat history with the user
+Data access to the database
+
+How to write the policies:
+1. Split the provided references into individual policies.
+* A single reference can be included in multiple policies if needed.
+* Multiple references can be included in one policy if necessary.
+* Do not invent any references or policies; base everything strictly on the given references.
+* Make sure every provided reference is included in at least one policy.
+
+2. Split policies as much as possible.
+* Aim for atomic policies: each policy should check one specific condition whenever possible.
+* Policies must have an AND relationship: all policies must pass before toolX can be called.
+* If a validation involves an OR condition between checks, group them into a single policy.
+
+3. Make each policy self-contained.
+* Each policy's description must contain all necessary details for validation.
+* It should not require access to the original policy document or attached references.
+
+Output Format:
+
+Provide the final output in JSON format with the following structure:
+{
+  "policies": [
+    {
+      "policy_name": "<Policy 1 Name>",
+      "description": "<Policy 1 Description>",
+      "references": [
+        "<Ref 1>",
+        "<Ref 2>",
+        ...
+      ]
+    },
+    ...
+    {
+      "policy_name": "<Policy n Name>",
+      "description": "<Policy n Description>",
+      "references": [
+        "<Ref 1>",
+        "<Ref 3>",
+        ...
+      ]
+    }
+  ]
+}
+
+Example of Splitting Policies (AND relationship)
+Suppose you have two references:
+* Reference A: "User must be authenticated and have a verified email address. You should make sure you collect the user's phone number."
+Split into two policies, because each is a separate validation:
+* Policy 1: Validate that the user is authenticated.
+* Policy 2: Validate that the user's email address is verified.
+* Policy 3: You should make sure you collect the user's phone number.
+Both must pass independently before calling toolX (AND).
+
+Example of Merging Policies (OR condition inside a single policy)
+Suppose you have references:
+* Reference B: "User must have either an Admin role or a Manager role to proceed."
+* Reference C: "Otherwise, do not approve the request and alert the manager"
+Merge into one policy:
+* Policy 4: Validate that the user has either an Admin or a Manager role.
+Since passing either condition is sufficient, both checks stay inside the same policy description using an OR condition.
+
+Expected output:
+
+{
+  "policies": [
+    {
+      "policy_name": "authenticated user",
+      "description": "Validate that the user is authenticated.",
+      "references": ["User must be authenticated and have a verified email address. You should make sure you collect the user's phone number."]
+    },
+    {
+      "policy_name": "verified user email address",
+      "description": "Validate that the user's email address is verified.",
+      "references": ["User must be authenticated and have a verified email address. You should make sure you collect the user's phone number."]
+    },
+    {
+      "policy_name": "collect phone",
+      "description": "Make sure you collect the user's phone number",
+      "references": ["User must be authenticated and have a verified email address. You should make sure you collect the user's phone number."]
+    },
+    {
+      "policy_name": "Admin or a Manager role",
+      "description": "Validate that the user has either an Admin or a Manager role, Otherwise, alert manager.",
+      "references": [
+                    "User must have either an Admin role or a Manager role to proceed.",
+                    "Otherwise, do not approve the request and alert the manager"]
+    }
+  ]
+}

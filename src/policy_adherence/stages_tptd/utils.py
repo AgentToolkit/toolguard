@@ -1,54 +1,9 @@
-from typing import Dict, List, Any, Optional, re, Literal
+from typing import Dict, Any
 import os
-import re
-from difflib import get_close_matches
+
 import json
 from typing import List, Optional
 
-
-class Policy:
-	def __init__(self, name: str, description: str, references: List[str],
-				 violating_examples: Optional[List[str]] = None, compliance_examples: Optional[List[str]] = None):
-		self.name = name
-		self.description = description
-		self.references = references
-		self.violating_examples = violating_examples or []
-		self.compliance_examples = compliance_examples or []
-	
-	def __repr__(self):
-		return (f"Policy(name={self.name}, description={self.description}, "
-				f"references={self.references}, violating_examples={self.violating_examples}, "
-				f"compliance_examples={self.compliance_examples})")
-
-
-class Policies:
-	def __init__(self, policies_json: str):
-		self.policies = self._parse_policies(policies_json)
-	
-	def _parse_policies(self, policies_json: str) -> List[Policy]:
-		try:
-			data = json.loads(policies_json)
-			policies_list = data.get("policies", [])
-			
-			if isinstance(policies_list, str) and "no relevant policies" in policies_list.lower():
-				return []
-			
-			return [
-				Policy(
-					name=policy["policy_name"],
-					description=policy["description"],
-					references=policy["references"],
-					violating_examples=policy.get("violating_examples"),
-					compliance_examples=policy.get("compliance_examples")
-				)
-				for policy in policies_list
-			]
-		except (json.JSONDecodeError, KeyError) as e:
-			print(f"Error parsing policies JSON: {e}")
-			return []
-	
-	def __repr__(self):
-		return f"Policies({self.policies})"
 
 
 class TPTDState(Dict[str, Any]):
@@ -84,39 +39,6 @@ def save_output(outdir: str, filename: str, content: Any):
 
 
 
-def reviewer_should_stop(state: TPTDState) -> bool:
-	if state.get("review_score", {}).get("score", 0) == 5:
-		# state.update({"iteration": 0})
-		# state.update({"stop":True})
-		# print(state.get("stop",False))
-		return True
-	return False
-
-
-def fixer_should_stop(state: TPTDState) -> bool:
-	if state["iteration"] >= 3:
-		# state.update({"iteration": 0})
-		# state.update({"stop": True})
-		return True
-	return False
-
-
-def route_by_status(state: TPTDState):
-	print(state.get("reference_mismatch", {}))
-	print(state.get("stop",False))
-	if len(state.get("reference_mismatch", {})) > 0:
-		return "reference_fixer"
-	elif state.get("stop",False):
-		return "final"
-	else:
-		return "coverage_reviewer"
-
-
-def ref_fixer_should_stop(state: TPTDState) -> bool:
-	if state.get("stop",False):
-		return True
-	return False
-
 
 def normalize_text(text):
 	"""Normalize text by removing punctuation, converting to lowercase, and standardizing spaces."""
@@ -128,11 +50,11 @@ def split_reference_if_both_parts_exist(reference, policy_text):
 	for split_point in range(1, len(words)):
 		part1 = ' '.join(words[:split_point])
 		part2 = ' '.join(words[split_point:])
-		
+
 		normalized_part1 = normalize_text(part1)
 		normalized_part2 = normalize_text(part2)
 		normalized_policy_text = normalize_text(policy_text)
-		
+
 		if normalized_part1 in normalized_policy_text and normalized_part2 in normalized_policy_text:
 			start_idx1 = normalized_policy_text.find(normalized_part1)
 			end_idx1 = start_idx1 + len(part1)

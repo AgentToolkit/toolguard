@@ -2,10 +2,11 @@ from enum import StrEnum
 from pydantic import BaseModel, Field, HttpUrl
 from typing import List, Dict, Optional, Any, TypeVar, Union
 
+from policy_adherence.common.array import not_none
 from policy_adherence.common.dict import find_ref
 from policy_adherence.common.http import MEDIA_TYPE_APP_JSON
-from policy_adherence.common.jschema import JSchema, Reference
-from policy_adherence.common.ref import DocumentWithRef
+from policy_adherence.common.jschema import JSchema
+from policy_adherence.common.ref import Reference
 
 
 class Contact(BaseModel):
@@ -148,7 +149,10 @@ class Components(BaseModel):
 	pathItems: Optional[Dict[str, PathItem]] = None
 
 
-class OpenAPI(DocumentWithRef):
+BaseModelT = TypeVar("BaseModelT", bound=BaseModel)
+
+
+class OpenAPI(BaseModel):
 	openapi: str = Field(..., pattern=r"^3\.\d\.\d+(-.+)?$")
 	info: Info
 	jsonSchemaDialect: Optional[HttpUrl] = "https://spec.openapis.org/oas/3.1/dialect/WORK-IN-PROGRESS"
@@ -165,6 +169,12 @@ class OpenAPI(DocumentWithRef):
 			for op in path_item.operations.values():
 				if op.operationId == operationId:
 					return op
+	
+	def resolve_ref(self, obj: Reference | BaseModelT | None, object_type: type[BaseModelT]) -> BaseModelT | None:
+		if isinstance(obj, Reference):
+			tmp = find_ref(self.model_dump(), obj.ref)
+			return object_type.model_validate(tmp)
+		return obj
 
 
 import json
