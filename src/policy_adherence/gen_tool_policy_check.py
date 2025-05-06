@@ -3,8 +3,6 @@ import asyncio
 import copy
 import os
 from os.path import join
-import anyio
-import anyio.to_thread
 from typing import Any, List, Tuple
 from loguru import logger
 from policy_adherence.common.array import find
@@ -54,7 +52,7 @@ def fn_doc_string(args: list[ast.arg], history_arg, api_arg):
     app_args_doc = "\n    ".join([f"{arg.arg} ({arg.annotation.id})" for arg in args])
     
     return f"""
-Checks that a tool call comply with a policy.
+Checks that a tool call complies with a policy.
 
 Args:
     {app_args_doc}
@@ -150,7 +148,8 @@ class ToolCheckPolicyGenerator:
 
     async def generate_tool_item_tests(self, item: ToolPolicyItem, check_fn: SourceFile)-> SourceFile:
         fn_name = check_fn_name(item.name)
-        dep_tools = await self.dependent_tools(item)
+        dep_tools = await prompts.tool_information_dependencies(item.name, item.description, self.domain)
+        dep_tools = set(dep_tools) #workaround. generative AI
         logger.debug(f"Dependencies of {item.name}: {dep_tools}")
 
         errors = []
@@ -158,10 +157,9 @@ class ToolCheckPolicyGenerator:
             logger.debug(f"Generating tool {item.name} tests. iteration {trial_no}")
             first_time = trial_no == 0
             if first_time:
-                gen_fn = lambda: prompts.generate_tool_item_tests(fn_name, check_fn, item, self.common, self.domain, dep_tools)
+                res_content = await prompts.generate_tool_item_tests(fn_name, check_fn, item, self.common, self.domain, dep_tools)
             else:
-                gen_fn = lambda: prompts.improve_tool_tests(tests, self.domain, item, errors)
-            res_content = await anyio.to_thread.run_sync(gen_fn)
+                res_content = await prompts.improve_tool_tests(tests, self.domain, item, errors)
             test_content = extract_code_from_llm_response(res_content)
             tests = SourceFile(
                 file_name= join(TESTS_DIR, self.tool.name, f"{test_fn_module_name(item.name)}.py"), 
@@ -185,13 +183,7 @@ class ToolCheckPolicyGenerator:
             errors = test_report.list_errors()
         
         raise Exception("Generated tests contain errors")
-
-    async def dependent_tools(self, item: ToolPolicyItem)->set[str]:
-        deps = await anyio.to_thread.run_sync(
-            lambda: prompts.tool_information_dependencies(item.name, item.description, self.domain)
-        )
-        return set(deps)
-
+    
     async def improve_tool_item_check_fn_loop(self, item: ToolPolicyItem, check_fn: SourceFile, tests:SourceFile)->SourceFile:
         for trial_no in range(MAX_TOOL_IMPROVEMENTS):
             report_file_name = join(DEBUG_DIR, f"{trial_no}_{to_snake_case(item.name)}_report.json")
@@ -213,9 +205,7 @@ class ToolCheckPolicyGenerator:
         errors = []
         for trial in range(MAX_TOOL_IMPROVEMENTS):
             logger.debug(f"Improving check function {module_name}... (trial = {trial})")
-            res_content = await anyio.to_thread.run_sync(lambda:
-                prompts.improve_tool_check_fn(prev_version, self.domain, item, review_comments + errors)
-            )
+            res_content = await prompts.improve_tool_check_fn(prev_version, self.domain, item, review_comments + errors)
             body = extract_code_from_llm_response(res_content)
             check_fn = SourceFile(
                 file_name=prev_version.file_name,

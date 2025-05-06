@@ -6,7 +6,7 @@ from programmatic_ai import generative
 model = "gpt-4o-2024-08-06"
 
 @generative(model=model, provider="azure", sdk="litellm")
-def generate_tool_item_tests(
+async def generate_tool_item_tests(
     fn_under_test_name:str, 
     fn_src:SourceFile, 
     tool_item:ToolPolicyItem, 
@@ -83,7 +83,7 @@ from domain import *
     Args:
         fn_under_test_name (str): the name of the function under test
         fn_src (SourceFile): Source code containing the function-under-test signature.
-        tool (ToolPolicy): Specification of the function-under-test, including positive and negative examples.
+        tool_item (ToolPolicyItem): Specification of the function-under-test, including positive and negative examples.
         common (SourceFile): utility functions the test may use
         domain (SourceFile): available data types and interfaces needed by the tests.
         dependent_tool_names(Set[str]): other tool names that this tool depends on
@@ -95,14 +95,14 @@ from domain import *
 
 
 @generative(model=model, provider="azure", sdk="litellm")
-def improve_tool_tests(prev_impl:SourceFile, domain: SourceFile, tool: ToolPolicyItem, review_comments: List[str])-> str:
+async def improve_tool_tests(prev_impl:SourceFile, domain: SourceFile, tool: ToolPolicyItem, review_comments: List[str])-> str:
     """
     Improve the previous test functions (in Python) to check the given tool policy-items according to the review-comments.
 
     Args:
         prev_impl (SourceFile): previous implementation of a Python function.
         domain (SourceFile): Python code defining available data types and other tool interfaces.
-        tool (ToolPolicy): Requirements for this tool.
+        tool (ToolPolicyItem): Requirements for this tool.
         review_comments (List[str]): Review comments on the current implementation. For example, pylint errors or Failed unit-tests.
 
     Returns:
@@ -112,7 +112,7 @@ def improve_tool_tests(prev_impl:SourceFile, domain: SourceFile, tool: ToolPolic
 
 
 @generative(model=model, provider="azure", sdk="litellm")
-def tool_information_dependencies(tool_name:str, policy: str, domain:SourceFile)-> List[str]:
+async def tool_information_dependencies(tool_name:str, policy: str, domain:SourceFile)-> List[str]:
     """
     List other tools that the given tool depends on.
 
@@ -122,14 +122,14 @@ def tool_information_dependencies(tool_name:str, policy: str, domain:SourceFile)
         domain (SourceFile): Python code defining available data types and other tool interfaces
 
     Returns:
-        List[str]: dependent tool names
+        Set[str]: dependent tool names
 
     **Dependency Rules:**
     - Tool available information is: from it function arguments, or from calling other tools.
     - The function analyzes information dependency only on other tools.
     - Information dependency can be only on tools that are immutable. That is, that retieve data only, but do not modify the environment.
     - A dependency in another-tool exists only if the policy mention information is not available in the arguments, but can accessed by calling the other tool.
-    - The list of dependencies can be empty, with one, or multiple tools.
+    - The set of dependencies can be empty, with one, or multiple tools.
     
     **Example: ** 
 ```
@@ -161,21 +161,21 @@ def tool_information_dependencies(tool_name:str, policy: str, domain:SourceFile)
         "tool_name": "buy_car", 
         "policy": "when buying a new car, you should check that the car owner has a driving licence and that the insurance is valid.",
         "domain": domain
-    ) == ["get_person", "get_insurance"]
+    ) == {"get_person", "get_insurance"}
 
     # According to the policy, the `get_insurance` operation does not depend on any other operation
     assert tool_dependencies(
         "tool_name": "get_insurance", 
         "policy": "when buying a new car, you should check that the car owner has a driving licence and that the insurance is valid.",
         "domain": domain
-    ) == []
+    ) == {}
 
     # According to the policy, the `delete_car` operation does not depend on any other operation
     assert tool_dependencies(
         "tool_name": "delete_car", 
         "policy": "when buying a new car, you should check that the car owner has a driving licence and that the insurance is valid.",
         "domain": domain
-    ) == []
+    ) == {}
 
     ```
 
@@ -184,7 +184,7 @@ def tool_information_dependencies(tool_name:str, policy: str, domain:SourceFile)
 
 
 @generative(model=model, provider="azure", sdk="litellm")
-def improve_tool_check_fn(prev_impl:SourceFile, domain: SourceFile, policy_item: ToolPolicyItem, review_comments: List[str])-> str:
+async def improve_tool_check_fn(prev_impl:SourceFile, domain: SourceFile, policy_item: ToolPolicyItem, review_comments: List[str])-> str:
     """
     Improve the previous tool-call check implementation (in Python) to cover all tool policy-items according to the review-comments.
 
