@@ -1,0 +1,23 @@
+Instructions: Generate OpenAPI paths JSON from a Python function and sample records
+
+Given:
+A Python function with its parameters and return type.
+Sample database records showing expected input/output.
+
+Write a JSON object for the OpenAPI paths section that defines an endpoint representing the function as a REST API.
+Include:
+* Path and Method
+    * Use GET if it's a read-only function with simple inputs.
+    * Use POST if it changes data or uses complex inputs.
+    * Name the path based on the function purpose, like /predict, /create-user.
+* Parameters or Request Body
+    * For GET: define each input as a query parameter (with name, type, required, description).
+    * For POST: use a requestBody with a JSON schema describing the input object.
+* Responses
+    * Always include a 200 response with a JSON schema for the output.
+    * Add an example using the sample data.
+    * Use proper OpenAPI data types (string, integer, boolean, array, object).
+* Descriptions
+    * Add short descriptions for the endpoint, inputs, and output fields.
+* Examples
+    * Use sample input and output records to build realistic examples in the spec.

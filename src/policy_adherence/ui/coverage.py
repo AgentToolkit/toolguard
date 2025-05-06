@@ -48,10 +48,15 @@ if __name__ == '__main__':
 	#parser.add_argument('--policy-path', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-salesforce-policies.md')
 	#parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final with salesforce')
 	#parser.add_argument('--policy-path', type=str, default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-policies-for-non-existing-tools.md')
+	#parser.add_argument('--policy-path', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-salesforce-policies-rev.md')
+	#parser.add_argument('--policy-path', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-policies-for-non-existing-tools-rev.md')
 	#parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final non existing tools')
 	parser.add_argument('--policy-path', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki.md')
+	parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/GroundTruth')
 	#parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final')
-	parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final copy 4')
+	#parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final copy 4')
+	#parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final_non-existing-tools-rev')
+	#parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final wiki-with-salesforce-policies-rev')
 	args = parser.parse_args()
 	policy_path = args.policy_path
 	outdir = args.outdir
@@ -59,11 +64,12 @@ if __name__ == '__main__':
 	with open(policy_path, 'r', encoding='utf-8') as f:
 		policy_text = markdown.markdown(f.read())
 		#policy_text = f.read()
-	tools_data = defaultdict(list)
+	tools_data = {}
 	for filename in os.listdir(outdir):
 		if filename.endswith(".json"):
 			name = filename.replace(".json","")
 			print(name)
+			tools_data[name]=[]
 			with open(os.path.join(outdir,filename),) as f:
 				data = json.load(f)
 				if isinstance(data["policies"], str):
@@ -71,6 +77,8 @@ if __name__ == '__main__':
 				for p in data["policies"]:
 					for r in p["references"]:
 						tools_data[name].append(r)
+	tools_data=dict(sorted(tools_data.items()))
+	
 	
 	
 	def normalize_text(text):
