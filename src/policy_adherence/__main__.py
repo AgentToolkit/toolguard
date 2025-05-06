@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import os
+from os.path import join
 import sys
 from typing import Dict
 
@@ -15,6 +16,7 @@ from loguru import logger
 from policy_adherence.common.open_api import OpenAPI
 from policy_adherence.gen_tool_policy_check import generate_tools_check_fns
 from policy_adherence.stages_tptd.text_policy_identify_process import step1_main
+from policy_adherence.types import ToolChecksCodeGenerationResult, ToolPolicy, ToolPolicyItem
 from tests.op_only_oas import op_only_oas
 
 
@@ -48,17 +50,21 @@ def run_or_validate_step1(policy_text, oas_file:str, step1_path, forct_step1):
 	step1_main(policy_text, fsummary, fdetails, step1_path)
 
 
-async def run_step2(oas_path:str, step1_path:str, step2_path:str):
+async def run_step2(oas_path:str, step1_path:str, step2_path:str)->ToolChecksCodeGenerationResult:
 	os.makedirs(step2_path, exist_ok=True)
 	
-	# tool_policies = [load_tool_policy(tool_policy_path, tool_name)
-	# 				 for tool_name, tool_policy_path
-	# 				 in tool_policy_paths.items()]
-	#
-	# return await generate_tools_check_fns("my_app", tool_policies, step2_path, oas_path)
+	files = [f for f in os.listdir(step1_path) 
+		  if os.path.isfile(join(step1_path, f)) and f.endswith(".json")]
+	
+	tool_policies = []
+	for file in files:
+		tool_name = file[:-len(".json")]
+		tool_policies.append(load_tool_policy(join(step1_path, file), tool_name))
+	
+	return await generate_tools_check_fns("my_app", tool_policies, step2_path, oas_path)
 
 def main(policy_text:str, oas_file:str, step1_path:str, step2_path:str, forct_step1:bool):
-	run_or_validate_step1(policy_text, oas_file, step1_path, forct_step1)
+	# run_or_validate_step1(policy_text, oas_file, step1_path, forct_step1)
 	result = asyncio.run(run_step2(oas_file, step1_path, step2_path))
 
 	print(f"Domain: {result.domain_file}")
@@ -82,6 +88,20 @@ def read_oas_file(filepath:str)->Dict:
 	except Exception as e:
 		raise ValueError(f"Failed to parse file: {e}")
 
+def load_tool_policy(file_path:str, tool_name:str)->ToolPolicy:
+    with open(file_path, "r") as file:
+        d = json.load(file)
+    
+    items = [ToolPolicyItem(
+                name=item.get("policy_name"),
+                description = item.get("description"),
+                references = item.get("references"),
+                compliance_examples = item.get("compliance_examples"),
+                violation_examples = item.get("violating_examples")
+            )
+            for item in d.get("policies", [])
+            if not item.get("skip")]
+    return ToolPolicy(name=tool_name, policy_items=items)
 
 
 if __name__ == '__main__':
@@ -103,11 +123,5 @@ if __name__ == '__main__':
 	policy_text = open(policy_path, 'r', encoding='utf-8').read()
 	policy_text = markdown.markdown(policy_text)
 
-	main(policy_text, oas_file, os.path.join(args.out_dir,args.step1_dir_name), os.path.join(args.out_dir,args.step2_dir_name), args.force_step1)
+	main(policy_text, oas_file, join(args.out_dir,args.step1_dir_name), join(args.out_dir,args.step2_dir_name), args.force_step1)
 	
-
-	
-	
-
-
-

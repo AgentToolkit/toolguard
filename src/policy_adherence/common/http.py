@@ -1,9 +1,9 @@
 #from enum import StrEnum
 
+from enum import StrEnum
 from functools import cache
 from typing import List
 
-from policy_adherence.common.myenum import StrEnum
 
 MEDIA_TYPE_APP_JSON = "application/json"
 MEDIA_TYPE_MULTIPART_FORM = "multipart/form-data"
