@@ -8,7 +8,7 @@ from typing import List
 from dotenv import load_dotenv
 from loguru import logger
 
-from policy_adherence.types import SourceFile, ToolPolicy, ToolPolicyItem
+from policy_adherence.data_types import SourceFile, ToolPolicy, ToolPolicyItem
 from policy_adherence.common.open_api import OpenAPI
 
 model = "gpt-4o-2024-08-06"

@@ -7,7 +7,7 @@ import uuid
 
 from policy_adherence.common.open_api import OpenAPI, RequestBody, JSchema
 from policy_adherence.odm.prompt import improve_tool_rules
-from policy_adherence.types import SourceFile, ToolPolicy
+from policy_adherence.data_types import SourceFile, ToolPolicy
 DOMAIN_PY = "domain.py"
 
 async def generate_tools_check_rules(app_name:str, tools:List[ToolPolicy], out_folder:str, op_only_oas:OpenAPI):

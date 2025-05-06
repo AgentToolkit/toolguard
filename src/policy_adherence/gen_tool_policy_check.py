@@ -10,7 +10,7 @@ from policy_adherence.common import py
 from policy_adherence.common.str import to_snake_case
 from policy_adherence.gen_domain import OpenAPICodeGenerator
 import policy_adherence.prompts as prompts
-from policy_adherence.types import SourceFile, ToolChecksCodeResult, ToolPolicy, ToolPolicyItem, ToolPolicyItem
+from policy_adherence.data_types import SourceFile, ToolChecksCodeResult, ToolPolicy, ToolPolicyItem, ToolPolicyItem
 import policy_adherence.tools.pyright as pyright
 import policy_adherence.tools.pytest as pytest
 from policy_adherence.utils import extract_code_from_llm_response
@@ -19,7 +19,7 @@ import asyncio
 from pathlib import Path
 from typing import List
 from loguru import logger
-from policy_adherence.types import SourceFile, ToolChecksCodeGenerationResult, ToolPolicy
+from policy_adherence.data_types import SourceFile, ToolChecksCodeGenerationResult, ToolPolicy
 import policy_adherence.tools.venv as venv
 import policy_adherence.tools.pyright as pyright
 

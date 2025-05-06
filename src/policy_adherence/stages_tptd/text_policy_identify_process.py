@@ -243,31 +243,35 @@ class PolicyIdentifier:
 		save_output(state["outdir"], f"{state['target_tool']}_ADD_examples{state['iteration']}.json", TPTD)
 		return state
 	
-def step1_main(policy_text:str,fsummary:Dict,fdetails:Dict,outdir:str):
-	if not os.path.isdir(outdir):
-		os.makedirs(outdir)
+
+def step1_main(policy_text:str, fsummary:Dict, fdetails:Dict, step1_output_dir:str,tools:List[str]=None):
+	if not os.path.isdir(step1_output_dir):
+		os.makedirs(step1_output_dir)
 		
-	process_dir = os.path.join(outdir,"process")
+	process_dir = os.path.join(step1_output_dir, "process")
 	if not os.path.isdir(process_dir):
 		os.makedirs(process_dir)
 	
 	for fname, detail in fdetails.items():
-		input_state = {
-			"policy_text": policy_text,
-			"tools": fsummary,
-			"target_tool": fname,
-			"target_tool_description": detail,
-			"outdir": process_dir
-		}
-		p2 = PolicyIdentifier()
-		final_output = p2.executor.invoke(input_state)
-		print(json.dumps(final_output))
-		#tmpoutdir = os.path.join(outdir, "final")
-		outcontent = final_output["TPTD"]
-		
-		with open(os.path.join(outdir, fname + ".json"), "w") as outfile:
-			outfile.write(json.dumps(outcontent))
-	
+		if tools is None or fname in tools:
+			print(fname)
+			input_state = {
+				"policy_text": policy_text,
+				"tools": fsummary,
+				"target_tool": fname,
+				"target_tool_description": detail,
+				"outdir": process_dir
+			}
+			p2 = PolicyIdentifier()
+			final_output = p2.executor.invoke(input_state)
+			print(json.dumps(final_output))
+			#tmpoutdir = os.path.join(outdir, "final")
+			outcontent = final_output["TPTD"]
+			print(outcontent)
+			print(os.path.join(step1_output_dir, fname + ".json"))
+			with open(os.path.join(step1_output_dir, fname + ".json"), "w") as outfile1:
+				outfile1.write(json.dumps(outcontent))
+
 
 
 if __name__ == '__main__':
@@ -278,7 +282,7 @@ if __name__ == '__main__':
 	#parser.add_argument('--policy-path', type=str, default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-policies-for-non-existing-tools-rev.md')
 	#parser.add_argument('--policy-path',type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-policies-for-non-existing-tools.md')
 	parser.add_argument('--policy-path', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki.md')
-	parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline')
+	parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/output1')
 
 	parser.add_argument('--oas', type=str, default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/airline.json')
 	parser.add_argument('--functions-schema', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/fc_schema.json')
@@ -321,7 +325,6 @@ if __name__ == '__main__':
 						fname = details["operationId"]
 						oas = OpenAPI.model_validate(functions)
 						op_oas = op_only_oas(oas, fname)
-						print(fname)
 						fdetails[fname] = op_oas
 						
 	step1_main(policy_text,fsummary,fdetails,outdir)

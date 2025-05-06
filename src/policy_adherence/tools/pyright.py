@@ -4,7 +4,7 @@ import subprocess
 from pydantic import BaseModel
 from typing import List, Optional
 
-from policy_adherence.types import SourceFile
+from policy_adherence.data_types import SourceFile
 
 ERROR = "error"
 WARNING = "warning"

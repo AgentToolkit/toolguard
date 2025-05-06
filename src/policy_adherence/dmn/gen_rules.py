@@ -7,7 +7,7 @@ from policy_adherence.common.open_api import OpenAPI, RequestBody, JSchema
 from policy_adherence.common.str import to_snake_case
 from policy_adherence.dmn import dmn
 from policy_adherence.dmn.prompt import improve_tool_rules
-from policy_adherence.types import SourceFile, ToolPolicy
+from policy_adherence.data_types import SourceFile, ToolPolicy
 
 async def generate_tools_check_rules(app_name:str, tools:List[ToolPolicy], out_folder:str, op_only_oas:OpenAPI):
     app_root = join(out_folder, app_name)

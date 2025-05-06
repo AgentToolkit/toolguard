@@ -4,7 +4,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from policy_adherence.llm.azure_wrapper import AzureLitellm
 from policy_adherence.prompts import tool_information_dependencies
-from policy_adherence.types import SourceFile
+from policy_adherence.data_types import SourceFile
 
 load_dotenv()
 

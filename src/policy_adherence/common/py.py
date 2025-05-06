@@ -5,7 +5,7 @@ from typing import List
 import astor
 
 from policy_adherence.common.str import to_snake_case
-from policy_adherence.types import SourceFile
+from policy_adherence.data_types import SourceFile
 
 def py_extension(filename:str)->str:
     return filename if filename.endswith(".py") else filename+".py" 

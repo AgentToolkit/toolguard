@@ -1,12 +1,16 @@
 import json
 import os
 from typing import List, Dict
-
+import time
 from litellm import completion
 from litellm.types.utils import ModelResponse
 import openai
+from litellm.exceptions import RateLimitError
 
 from src.policy_adherence.llm.llm_model import LLM_model
+
+
+
 
 
 class AzureLitellm(LLM_model):
@@ -18,16 +22,35 @@ class AzureLitellm(LLM_model):
             custom_llm_provider= "azure")
 		return response
 	
-	def chat_json(self, messages: List[Dict])->Dict:
-		response =  completion(
-            messages=messages,
-            model=self.model_name,
-			response_format={"type": "json_object"},
-            custom_llm_provider= "azure")
-		res = response["choices"][0]["message"]["content"]
-		return json.loads(res)
+	# def chat_json(self, messages: List[Dict])->Dict:
+	# 	response =  completion(
+    #         messages=messages,
+    #         model=self.model_name,
+	# 		response_format={"type": "json_object"},
+    #         custom_llm_provider= "azure")
+	# 	res = response["choices"][0]["message"]["content"]
+	# 	return json.loads(res)
 	
-	
+	def chat_json(self, messages: List[Dict], max_retries: int = 5, backoff_factor: float = 1.5) -> Dict:
+		retries = 0
+		while retries < max_retries:
+			try:
+				response = completion(
+					messages=messages,
+					model=self.model_name,
+					response_format={"type": "json_object"},
+					custom_llm_provider="azure"
+				)
+				res = response["choices"][0]["message"]["content"]
+				return json.loads(res)
+			except RateLimitError as e:
+				wait_time = backoff_factor ** retries
+				print(f"Rate limit hit. Retrying in {wait_time:.1f} seconds... (attempt {retries + 1}/{max_retries})")
+				time.sleep(wait_time)
+				retries += 1
+			except Exception as e:
+				raise RuntimeError(f"Unexpected error during chat completion: {e}")
+		raise RuntimeError("Exceeded maximum retries due to rate limits.")
 	
 # class AzureWrepper(LLM_model):
 # 	def __init__(self, model_name:str="gpt-4o-2024-08-06", temperature:float=0.7):

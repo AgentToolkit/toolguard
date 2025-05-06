@@ -7,7 +7,7 @@ import subprocess
 from typing import Any, List, Dict, Literal, Optional, Set
 from pydantic import BaseModel, Field
 
-from policy_adherence.types import SourceFile
+from policy_adherence.data_types import SourceFile
 
 
 class TestOutcome(StrEnum):

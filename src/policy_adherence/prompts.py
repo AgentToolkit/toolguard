@@ -1,6 +1,6 @@
 
 from typing import List, Set
-from policy_adherence.types import SourceFile, ToolPolicyItem
+from policy_adherence.data_types import SourceFile, ToolPolicyItem
 from programmatic_ai import generative
 
 model = "gpt-4o-2024-08-06"
