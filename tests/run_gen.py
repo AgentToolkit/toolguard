@@ -4,11 +4,13 @@ import json
 import os
 import sys
 import yaml
-from typing import List
-from dotenv import load_dotenv
 from loguru import logger
 
-from policy_adherence.data_types import SourceFile, ToolPolicy, ToolPolicyItem
+#important to load the env variables BEFORE policy_adherence library (so programmatic_ai configuration will take place)
+import dotenv
+dotenv.load_dotenv() 
+
+from policy_adherence.data_types import ToolPolicy, ToolPolicyItem
 from policy_adherence.common.open_api import OpenAPI
 
 model = "gpt-4o-2024-08-06"
@@ -17,7 +19,7 @@ model = "gpt-4o-2024-08-06"
 # settings.provider = "azure"
 # settings.model = model
 # settings.sdk = "litellm"
-from policy_adherence.gen_tool_policy_check import ToolCheckPolicyGenerator, check_fn_module_name, generate_tools_check_fns, test_fn_module_name
+from policy_adherence.gen_tool_policy_check import generate_tools_check_fns
     
 def read_oas(file_path:str)->OpenAPI:
     with open(file_path, "r") as file:
@@ -70,7 +72,6 @@ async def gen_all():
             print(f"\t{test.file_name}")
     
 if __name__ == '__main__':
-    load_dotenv()
     logger.remove()
     logger.add(sys.stdout, colorize=True, format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> <level>{message}</level>")
 

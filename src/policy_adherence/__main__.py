@@ -9,9 +9,11 @@ import markdown
 import json
 import yaml
 from pathlib import Path
-
-from dotenv import load_dotenv
 from loguru import logger
+
+#important to load the env variables BEFORE policy_adherence library (so programmatic_ai configuration will take place)
+import dotenv
+dotenv.load_dotenv() 
 
 from policy_adherence.common.open_api import OpenAPI
 from policy_adherence.data_types import ToolPolicy, ToolPolicyItem, ToolChecksCodeGenerationResult
@@ -116,7 +118,6 @@ def load_tool_policy(file_path:str, tool_name:str)->ToolPolicy:
 
 
 if __name__ == '__main__':
-	load_dotenv()
 	logger.remove()
 	logger.add(sys.stdout, colorize=True, format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> <level>{message}</level>")
 	
