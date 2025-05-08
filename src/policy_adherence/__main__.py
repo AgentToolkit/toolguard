@@ -58,7 +58,7 @@ def run_or_validate_step1(policy_text:str, oas_file:str, step1_out_dir:str, forc
 					op_oas = op_only_oas(oas, fname)
 					print(fname)
 					fdetails[fname] = op_oas
-	
+
 	step1_main(policy_text, fsummary, fdetails, step1_out_dir, tools)
 
 
@@ -127,10 +127,11 @@ if __name__ == '__main__':
 	parser.add_argument('--oas', type=str, help='Path to an OpenAPI specification file describing the available tools. *.json or *.yaml formats. the `operation_id`s should match the tool name. eg: `/Users/me/airline/openapi.json`')
 	parser.add_argument('--out-dir', type=str, help='Path to an output folder where the generated artifacts will be written. eg: `/Users/me/airline/outdir2')
 	parser.add_argument('--force-step1', action='store_true', default=False, help='Force execution of step 1, even if the artifacts already exist in the output folder. (default: False)')
-	parser.add_argument('--run-step2', action='store_false', default=True, help='Execute step 2 (default: True)')
+	parser.add_argument('--run-step2', dest='run_step2', action='store_true',help='Execute step 2')
+	parser.add_argument('--skip-step2', dest='run_step2', action='store_false',help='Skip step 2')
+	parser.set_defaults(run_step2=True)
 	parser.add_argument('--step1-dir-name', type=str, default='Step1', help='Step1 folder name under the output folder')
 	parser.add_argument('--step2-dir-name', type=str, default='Step2', help='Step2 folder name under the output folder')
-	#parser.add_argument('--tools',nargs='+',  default=None,  help='Optional list of tool items')
 	parser.add_argument('--tools', nargs='+', default=None, help='Optional list of tool names. These are a subset of the tools in the openAPI operation ids.')
 
 

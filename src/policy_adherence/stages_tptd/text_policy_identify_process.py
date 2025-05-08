@@ -251,7 +251,6 @@ def step1_main(policy_text:str, fsummary:Dict, fdetails:Dict, step1_output_dir:s
 	process_dir = os.path.join(step1_output_dir, "process")
 	if not os.path.isdir(process_dir):
 		os.makedirs(process_dir)
-	
 	for fname, detail in fdetails.items():
 		if tools is None or fname in tools:
 			print(fname)

@@ -10,7 +10,7 @@ import json
 
 
 
-class PRSent:
+class ReferenceEval:
 	
 	def __init__(self,gt_dir: str, generated_dir: str):
 		avgs = [0,0,0]
@@ -97,4 +97,4 @@ if __name__ == '__main__':
 	#gendir = '/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final oas'
 	gendir = '/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final my json'
 
-	PRSent(gtdir, gendir)
+	ReferenceEval(gtdir, gendir)
