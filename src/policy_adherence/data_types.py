@@ -57,8 +57,8 @@ class ToolPolicy(BaseModel):
 class ToolChecksCodeResult(BaseModel):
     tool: ToolPolicy
     tool_check_file: SourceFile
-    item_check_files: List[SourceFile]
-    test_files: List[SourceFile]
+    item_check_files: List[SourceFile|None]
+    test_files: List[SourceFile|None]
 
 class ToolChecksCodeGenerationResult(BaseModel):
     output_path: str

@@ -153,10 +153,14 @@ class ToolCheckPolicyGenerator:
             test_files=items_tests
         )
 
-    async def generate_tool_item_tests_and_check_fn(self, item: ToolPolicyItem, check_fn: SourceFile)->SourceFile:
-        tests = await self.generate_tool_item_tests(item, check_fn)
-        await self.improve_tool_item_check_fn_loop(item, check_fn, tests)
-        return tests
+    async def generate_tool_item_tests_and_check_fn(self, item: ToolPolicyItem, check_fn: SourceFile)->SourceFile|None:
+        try:
+            tests = await self.generate_tool_item_tests(item, check_fn)
+            await self.improve_tool_item_check_fn_loop(item, check_fn, tests)
+            return tests
+        except Exception as ex:
+            logger.error(ex)
+            return None
 
     async def generate_tool_item_tests(self, item: ToolPolicyItem, check_fn: SourceFile)-> SourceFile:
         fn_name = check_fn_name(item.name)

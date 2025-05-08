@@ -22,7 +22,7 @@ class GeneralDiagnostic(BaseModel):
     severity: str
     message: str
     range: Range
-    rule: str
+    rule: Optional[str] = None
 
 class Summary(BaseModel):
     filesAnalyzed: int
