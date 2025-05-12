@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from policy_adherence.llm.azure_wrapper import AzureLitellm
+from policy_adherence.llm.litellm_model import LitellmModel
 from policy_adherence.prompts import tool_information_dependencies
 from policy_adherence.data_types import SourceFile
 
@@ -12,7 +12,7 @@ current_dir = str(Path(__file__).parent)
 domain = SourceFile.load_from(current_dir, "_tau_airline_domain.py")
 
 model = "gpt-4o-2024-08-06"
-llm = AzureLitellm(model)
+llm = LitellmModel(model)
 
 def test_dependencies_passangers():
     policy = """

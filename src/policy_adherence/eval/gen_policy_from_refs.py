@@ -1,7 +1,7 @@
 import json
 import os
 
-from policy_adherence.llm.azure_wrapper import AzureLitellm
+from policy_adherence.llm.litellm_model import LitellmModel
 from policy_adherence.stages_tptd.utils import generate_messages
 
 
@@ -19,7 +19,7 @@ class GenPolicyFromRefs:
 			
 			
 		model = 'gpt-4o-2024-08-06'
-		llm = AzureLitellm(model)
+		llm = LitellmModel(model)
 		
 		
 		for tool_file in os.listdir(dir):

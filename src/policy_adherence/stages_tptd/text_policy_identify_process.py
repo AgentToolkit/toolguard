@@ -8,16 +8,18 @@ import markdown
 from langgraph.graph import StateGraph
 
 from policy_adherence.common.open_api import OpenAPI
-from policy_adherence.llm.azure_wrapper import AzureLitellm
+from policy_adherence.llm.litellm_model import LitellmModel
+from policy_adherence.llm.llm_model import LLM_model
 from policy_adherence.stages_tptd.utils import read_prompt_file, generate_messages, save_output, TPTDState, \
 	find_mismatched_references
 from tests.op_only_oas import op_only_oas
+import dotenv
+dotenv.load_dotenv()
 
-model = 'gpt-4o-2024-08-06'
-llm = AzureLitellm(model)
 
 class PolicyIdentifier:
-	def __init__(self):
+	def __init__(self,model:str='gpt-4o-2024-08-06'):
+		self.llm = LitellmModel(model)
 		workflow = StateGraph(TPTDState)
 		workflow.add_node("policy_creator", self.policy_creator_node)
 		#workflow.add_node("merge_and_split",self.merge_and_split)
@@ -55,7 +57,7 @@ class PolicyIdentifier:
 		system_prompt = system_prompt.replace("ToolX",state["target_tool"])
 		print(json.dumps(state['target_tool_description']))
 		user_content = f"Policy Document:{state['policy_text']}\nTools Descriptions:{json.dumps(state['tools'])}\nTarget Tool:{json.dumps(state['target_tool_description'])}"
-		response = llm.chat_json(generate_messages(system_prompt, user_content))
+		response = self.llm.chat_json(generate_messages(system_prompt, user_content))
 		state.update({"TPTD": response, "iteration": 0})
 		save_output(state["outdir"], f"{state['target_tool']}_0.json", response)
 		return state
@@ -67,7 +69,7 @@ class PolicyIdentifier:
 		system_prompt = read_prompt_file("add_policies")
 		TPTD = state['TPTD']
 		user_content = f"Policy Document:{state['policy_text']}\nTools Descriptions:{json.dumps(state['tools'])}\nTarget Tool:{json.dumps(state['target_tool_description'])}\nTPTD: {json.dumps(TPTD)}"
-		response = llm.chat_json(generate_messages(system_prompt, user_content))
+		response = self.llm.chat_json(generate_messages(system_prompt, user_content))
 		for policy in response["policies"]:
 			policy["iteration"] = state["iteration"]
 			TPTD["policies"].append(policy)
@@ -85,7 +87,7 @@ class PolicyIdentifier:
 		system_prompt = read_prompt_file("split")
 		TPTD = state['TPTD']
 		user_content = f"Policy Document:{state['policy_text']}\nTools Descriptions:{json.dumps(state['tools'])}\nTarget Tool:{json.dumps(state['target_tool_description'])}\nTPTD: {json.dumps(TPTD)}"
-		response = llm.chat_json(generate_messages(system_prompt, user_content))
+		response = self.llm.chat_json(generate_messages(system_prompt, user_content))
 		TPTD = response
 		
 		state.update({"TPTD": TPTD})
@@ -98,7 +100,7 @@ class PolicyIdentifier:
 		system_prompt = read_prompt_file("merge")
 		TPTD = state['TPTD']
 		user_content = f"Policy Document:{state['policy_text']}\nTools Descriptions:{json.dumps(state['tools'])}\nTarget Tool:{json.dumps(state['target_tool_description'])}\nTPTD: {json.dumps(TPTD)}"
-		response = llm.chat_json(generate_messages(system_prompt, user_content))
+		response = self.llm.chat_json(generate_messages(system_prompt, user_content))
 		TPTD = response
 		
 		state.update({"TPTD": TPTD})
@@ -112,7 +114,7 @@ class PolicyIdentifier:
 		system_prompt = read_prompt_file("merge_and_split")
 		TPTD = state['TPTD']
 		user_content = f"Policy Document:{state['policy_text']}\nTools Descriptions:{json.dumps(state['tools'])}\nTarget Tool:{json.dumps(state['target_tool_description'])}\nTPTD: {json.dumps(TPTD)}"
-		response = llm.chat_json(generate_messages(system_prompt, user_content))
+		response = self.llm.chat_json(generate_messages(system_prompt, user_content))
 		TPTD = response
 		
 		state.update({"TPTD": TPTD})
@@ -154,7 +156,7 @@ class PolicyIdentifier:
 			reviews = []
 			for iteration in range(5):
 				user_content = f"Policy Document:{state['policy_text']}\nTools Descriptions:{json.dumps(state['tools'])}\nTarget Tool:{json.dumps(state['target_tool_description'])}\npolicy: {json.dumps(policy)}"
-				response = llm.chat_json(generate_messages(system_prompt, user_content))
+				response = self.llm.chat_json(generate_messages(system_prompt, user_content))
 				is_self_contained = response["is_self_contained"]
 				if not is_self_contained:
 					policy["description"] = response["alternative_description"]
@@ -181,7 +183,7 @@ class PolicyIdentifier:
 		for policy in TPTD["policies"]:
 			policy["references"] = []
 			user_content = f"Policy Document:{state['policy_text']}\nTools Descriptions:{json.dumps(state['tools'])}\nTarget Tool:{json.dumps(state['target_tool_description'])}\npolicy: {json.dumps(policy)}"
-			response = llm.chat_json(generate_messages(system_prompt, user_content))
+			response = self.llm.chat_json(generate_messages(system_prompt, user_content))
 			policy["references"] = response["references"]
 			
 		state.update({"TPTD": TPTD})
@@ -206,7 +208,7 @@ class PolicyIdentifier:
 		TPTD = state["TPTD"]
 		for policy in TPTD["policies"]:
 			user_content = f"Policy Document:{state['policy_text']}\nTools Descriptions:{json.dumps(state['tools'])}\nTarget Tool:{json.dumps(state['target_tool_description'])}\nPolicy:{policy}"
-			response = llm.chat_json(generate_messages(system_prompt, user_content))
+			response = self.llm.chat_json(generate_messages(system_prompt, user_content))
 			if 'violating_examples' in response:
 				policy["violating_examples"] = response["violating_examples"]
 				
@@ -223,7 +225,7 @@ class PolicyIdentifier:
 		TPTD = state["TPTD"]
 		for policy in TPTD["policies"]:
 			user_content = f"Policy Document:{state['policy_text']}\nTools Descriptions:{json.dumps(state['tools'])}\nTarget Tool:{json.dumps(state['target_tool_description'])}\nPolicy:{policy}"
-			response = llm.chat_json(generate_messages(system_prompt, user_content))
+			response = self.llm.chat_json(generate_messages(system_prompt, user_content))
 			if 'violating_examples' in response:
 				for vexample in response["violating_examples"]:
 					#vexample["iteration"] = state["iteration"]
@@ -244,7 +246,7 @@ class PolicyIdentifier:
 		return state
 	
 
-def step1_main(policy_text:str, fsummary:Dict, fdetails:Dict, step1_output_dir:str, tools:Optional[List[str]]=None):
+def step1_main(policy_text:str, fsummary:Dict, fdetails:Dict, step1_output_dir:str,model, tools:Optional[List[str]]=None):
 	if not os.path.isdir(step1_output_dir):
 		os.makedirs(step1_output_dir)
 		
@@ -261,7 +263,7 @@ def step1_main(policy_text:str, fsummary:Dict, fdetails:Dict, step1_output_dir:s
 				"target_tool_description": detail,
 				"outdir": process_dir
 			}
-			p2 = PolicyIdentifier()
+			p2 = PolicyIdentifier(model)
 			final_output = p2.executor.invoke(input_state)
 			print(json.dumps(final_output))
 			#tmpoutdir = os.path.join(outdir, "final")
@@ -274,10 +276,10 @@ def step1_main(policy_text:str, fsummary:Dict, fdetails:Dict, step1_output_dir:s
 
 
 if __name__ == '__main__':
-	
 	parser = argparse.ArgumentParser(description='parser')
 	#parser.add_argument('--model-type', type=str,default='ASURE')
 	#parser.add_argument('--model-name', type=str,default='gpt-4o-2024-08-06')
+	parser.add_argument("--model-name",type=str,default='meta-llama/llama-3-3-70b-instruct')
 	#parser.add_argument('--policy-path', type=str, default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-policies-for-non-existing-tools-rev.md')
 	#parser.add_argument('--policy-path',type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-policies-for-non-existing-tools.md')
 	parser.add_argument('--policy-path', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki.md')
@@ -285,6 +287,7 @@ if __name__ == '__main__':
 
 	parser.add_argument('--oas', type=str, default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/airline.json')
 	parser.add_argument('--functions-schema', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/fc_schema.json')
+	parser.add_argument('--tools', nargs='+', default=['book_reservation.py'], help='Optional list of tool names. These are a subset of the tools in the openAPI operation ids.')
 
 	args = parser.parse_args()
 	policy_path = args.policy_path
@@ -326,6 +329,6 @@ if __name__ == '__main__':
 						op_oas = op_only_oas(oas, fname)
 						fdetails[fname] = op_oas
 						
-	step1_main(policy_text,fsummary,fdetails,outdir)
+	step1_main(policy_text,fsummary,fdetails,outdir,args.model_name,args.tools)
 	
 

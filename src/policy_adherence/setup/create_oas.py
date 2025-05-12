@@ -1,7 +1,7 @@
 import json
 import os
 
-from policy_adherence.llm.azure_wrapper import AzureLitellm
+from policy_adherence.llm.litellm_model import LitellmModel
 from policy_adherence.stages_tptd.utils import read_prompt_file, generate_messages
 
 
@@ -12,7 +12,7 @@ class CreateOAS:
 		self.tools_dir = tools_dir
 		self.out_file = out_file
 		model = 'gpt-4o-2024-08-06'
-		self.llm = AzureLitellm(model)
+		self.llm = LitellmModel(model)
 	
 		operations = {}
 		with open(os.path.join(os.path.dirname(__file__), "prompt"), "r") as f:

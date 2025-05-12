@@ -36,7 +36,7 @@ def validate_files_exist(oas, step1_path):
 	return True
 
 
-def run_or_validate_step1(policy_text:str, oas_file:str, step1_out_dir:str, force_step1:bool, tools:Optional[List[str]]=None):
+def run_or_validate_step1(policy_text:str, oas_file:str, step1_out_dir:str, force_step1:bool,model_name:str, tools:Optional[List[str]]=None):
 	oas = read_oas_file(oas_file)
 	if not(force_step1) and validate_files_exist(oas, step1_out_dir):
 		return
@@ -59,7 +59,9 @@ def run_or_validate_step1(policy_text:str, oas_file:str, step1_out_dir:str, forc
 					print(fname)
 					fdetails[fname] = op_oas
 
-	step1_main(policy_text, fsummary, fdetails, step1_out_dir, tools)
+
+	step1_main(policy_text, fsummary, fdetails, step1_out_dir,model_name, tools)
+
 
 
 async def step2(oas_path:str, step1_path:str, step2_path:str, tools:Optional[List[str]]=None)->ToolChecksCodeGenerationResult:
@@ -75,8 +77,8 @@ async def step2(oas_path:str, step1_path:str, step2_path:str, tools:Optional[Lis
 	
 	return await generate_tools_check_fns("my_app", tool_policies, step2_path, oas_path)
 
-def main(policy_text:str, oas_file:str, step1_out_dir:str, step2_out_dir:str, force_step1:bool, run_step2:bool, tools:List[str]=None):
-	run_or_validate_step1(policy_text, oas_file, step1_out_dir, force_step1, tools)
+def main(policy_text:str, oas_file:str, step1_out_dir:str, step2_out_dir:str, force_step1:bool, run_step2:bool,step1_model_name:str='gpt-4o-2024-08-06',step2_model_name:str='gpt-4o-2024-08-06', tools:List[str]=None):
+	run_or_validate_step1(policy_text, oas_file, step1_out_dir, force_step1,step1_model_name, tools)
 	if run_step2:
 		result = asyncio.run(step2(oas_file, step1_out_dir, step2_out_dir, tools))
 		print(f"Domain: {result.domain_file}")
@@ -132,6 +134,8 @@ if __name__ == '__main__':
 	parser.set_defaults(run_step2=True)
 	parser.add_argument('--step1-dir-name', type=str, default='Step1', help='Step1 folder name under the output folder')
 	parser.add_argument('--step2-dir-name', type=str, default='Step2', help='Step2 folder name under the output folder')
+	parser.add_argument('--step1-model-name', type=str, default='gpt-4o-2024-08-06', help='Model to use for generating in step 1')
+	parser.add_argument('--step2-model-name', type=str, default='gpt-4o-2024-08-06', help='Model to use for generating in step 2')
 	parser.add_argument('--tools', nargs='+', default=None, help='Optional list of tool names. These are a subset of the tools in the openAPI operation ids.')
 
 
@@ -148,6 +152,8 @@ if __name__ == '__main__':
 		step2_out_dir = os.path.join(args.out_dir, args.step2_dir_name), 
 		force_step1 = args.force_step1,
 		run_step2 = args.run_step2,
+		step1_model_name = args.step1_model_name,
+		step2_model_name=args.step2_model_name,
 		tools = args.tools
 	)
 	
