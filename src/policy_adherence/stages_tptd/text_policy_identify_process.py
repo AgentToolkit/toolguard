@@ -157,9 +157,15 @@ class PolicyIdentifier:
 			for iteration in range(5):
 				user_content = f"Policy Document:{state['policy_text']}\nTools Descriptions:{json.dumps(state['tools'])}\nTarget Tool:{json.dumps(state['target_tool_description'])}\npolicy: {json.dumps(policy)}"
 				response = self.llm.chat_json(generate_messages(system_prompt, user_content))
-				is_self_contained = response["is_self_contained"]
-				if not is_self_contained:
-					policy["description"] = response["alternative_description"]
+				if "is_self_contained" in response:
+					is_self_contained = response["is_self_contained"]
+					if not is_self_contained:
+						if "alternative_description" in response:
+							policy["description"] = response["alternative_description"]
+						else:
+							print("Error: review is_self_contained is false but no alternative_description.")
+				else:
+					print("Error: review did not provide is_self_contained.")
 				reviews.append(response)
 			archive,comments = self.move2archive(reviews)
 			print(archive)
@@ -184,7 +190,11 @@ class PolicyIdentifier:
 			policy["references"] = []
 			user_content = f"Policy Document:{state['policy_text']}\nTools Descriptions:{json.dumps(state['tools'])}\nTarget Tool:{json.dumps(state['target_tool_description'])}\npolicy: {json.dumps(policy)}"
 			response = self.llm.chat_json(generate_messages(system_prompt, user_content))
-			policy["references"] = response["references"]
+			if "references" in response:
+				policy["references"] = response["references"]
+			else:
+				print("Error! no references in response")
+				print(response)
 			
 		state.update({"TPTD": TPTD})
 		save_output(state["outdir"], f"{state['target_tool']}_ref.json", TPTD)

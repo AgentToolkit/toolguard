@@ -117,7 +117,14 @@ class LitellmModel(LLM_model):
 					)
 					res = response["choices"][0]["message"]["content"]
 					res = self.extract_json_from_string(res)
-					return res
+					if res is None:
+						wait_time = backoff_factor ** retries
+						print(f"Error: not json format. Retrying in {wait_time:.1f} seconds... (attempt {retries + 1}/{max_retries})")
+						print(response["choices"][0]["message"]["content"])
+						time.sleep(wait_time)
+						retries += 1
+					else:
+						return res
 				else:
 					response = completion(
 						messages=messages,
@@ -147,8 +154,24 @@ class LitellmModel(LLM_model):
 				print(f"Failed to decode JSON: {e}")
 				return None
 		else:
+			## for rits?
+			match = re.search(r'(\{[\s\S]*\})', s)
+			if match:
+				json_str = match.group(1)
+				try:
+					return json.loads(json_str)
+				except json.JSONDecodeError as e:
+					print("response:")
+					print(s)
+					print("match:")
+					print(match.group(1))
+					print("Failed to parse JSON:", e)
+					return None
+			
 			print("No JSON found in the string.")
+			print(s)
 			return None
+		
 	
 	
 if __name__ == '__main__':
