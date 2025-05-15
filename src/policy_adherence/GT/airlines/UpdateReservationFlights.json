@@ -272,50 +272,6 @@
             ]
         },
         {
-            "policy_name": "Policy Adherence Required",
-            "description": "When using 'UpdateReservationFlights', ensure all actions strictly adhere to airline policies. Reject any requests violating policy restrictions, such as those pertaining to modifying basic economy flights, maintaining consistent cabin class across all flight segments, or using correct payment methods for upgrades. Prior to invoking the tool, confirm that all parameters, such as reservation ID, cabin class, flight details, and payment ID, comply with policy requirements, including ensuring no modification of the flight status that is not allowed (e.g., 'on time', 'delayed', 'flying').",
-            "references": [
-                "The agent must first obtain the user id and the reservation id.",
-                "Change flights: Basic economy flights cannot be modified. Other reservations can be modified without changing the origin, destination, and trip type. Some flight segments can be kept, but their prices will not be updated based on the current price. The API does not check these for the agent, so the agent must make sure the rules apply before calling the API!",
-                "Change cabin: all reservations, including basic economy, can change cabin without changing the flights. Cabin changes require the user to pay for the difference between their current cabin and the new cabin class. Cabin class must be the same across all the flights in the same reservation; changing cabin for just one flight segment is not possible.",
-                "Payment: If the flights are changed, the user needs to provide one gift card or credit card for payment or refund method. The agent should ask for the payment or refund method instead."
-            ],
-            "iteration_added": 0,
-            "violating_examples": [
-                "An agent attempts to use UpdateReservationFlights for a basic economy reservation, trying to change the flight from 'HAT100' to 'HAT101'. This violates the policy because basic economy flights cannot be modified.",
-                "An agent initiates the UpdateReservationFlights call to change the flights of a reservation but uses different cabin classes for different flight segments. This breaches the policy, as all flight segments must have the same cabin class.",
-                "The agent calls UpdateReservationFlights using a payment ID not listed in the user's profile for the cabin upgrade. This policy violation arises because the payment method must be from the user's existing profile.",
-                "An agent proceeds to use UpdateReservationFlights for a reservation where the flight status is 'delayed', attempting to alter it nonetheless. This action disregards the policy which prohibits changing flights that are on time, delayed, or flying.",
-                "The agent attempts to modify the flight's origin and destination via UpdateReservationFlights while keeping the cabin class the same. This is a policy violation as the modification is not permitted to change the origin or destination.",
-                "The agent uses UpdateReservationFlights to change a flight to 'HAT202' while the reservation is for a flight with the status 'on time'. This violates the policy that modifications are not allowed for on-time flights.",
-                "An attempt is made to call UpdateReservationFlights without verifying if the payment method is stored in the user profile, resulting in a breach of policy by using an unvalidated payment method.",
-                "The agent tries to modify only one flight segment to change its cabin class via UpdateReservationFlights, but this violates the rule that requires a consistent cabin class across all segments.",
-                "An agent uses UpdateReservationFlights to change a flight's cabin class but provides flight segments with mismatched dates, causing an inconsistency that violates the policy requirement for consistent flight details across segments.",
-                "The agent ignores user confirmation and directly uses UpdateReservationFlights to modify flight details, breaching the policy stipulation for explicit user consent before any database update.",
-                "An agent makes a call to UpdateReservationFlights for a reservation with the user-provided outdated reservation date, which doesn't align with the current policy that demands accurate details for flight modifications."
-            ],
-            "compliance_examples": [
-                "Before calling UpdateReservationFlights, the agent confirms the reservation is not for a basic economy class and that all flight segments will retain the same cabin class. This ensures compliance with the airline's policy of consistent cabin class modifications.",
-                "An agent checks that the user can provide a valid payment method from their user profile to cover any additional costs, adhering to the policy requirement before processing cabin upgrades with UpdateReservationFlights.",
-                "The agent verifies all flights in the UpdateReservationFlights call remain within the same origin and destination parameters as the original booking, complying with the policy that prohibits such changes.",
-                "The agent makes sure the reservation ID provided is correct and valid before calling UpdateReservationFlights, confirming the necessary policy compliance regarding input parameters.",
-                "To ensure compliance, the agent only invokes UpdateReservationFlights after obtaining both user and reservation IDs, as well as verifying all flights intended for update still have a status of 'available'.",
-                "Prior to using UpdateReservationFlights, the agent double-checks that the reservation involves flights that have an 'available' status, aligning with the policy that disallows modifications on flights with any other status, ensuring adherence to policy rules.",
-                "The agent ensures that all parameters provided for UpdateReservationFlights, including reservation ID, flight details, and payment method, are valid and conform to user profile records, satisfying the policy's accuracy requirements.",
-                "In preparation to execute UpdateReservationFlights, the agent secures explicit user approval for any policy-compliant modifications, thereby maintaining strict observance of policy mandates.",
-                "Before proceeding with UpdateReservationFlights, the agent verifies the reservation involves flights that have an 'available' status, thereby adhering to the policy that prohibits changes on flights that are on time, delayed, or flying.",
-                "An agent validates that the reservation modification does not attempt to change the trip type or the original origin and destination, thus complying with the policy regarding reservation consistency.",
-                "Prior to calling UpdateReservationFlights, the agent confirms that the reservation ID and user ID are correctly obtained, ensuring they are valid and match user profile data, which aligns with the requirement for correct input parameters.",
-                "To comply with the policy, the agent checks that all segments in the UpdateReservationFlights request use a single payment method listed in the user profile, thereby following the user's existing profile constraints.",
-                "The agent refrains from altering any reservation that includes a basic economy flight, following the policy that prohibits such modifications.",
-                "Before invoking UpdateReservationFlights, the agent meticulously checks that all flights to be updated have 'available' status and does not attempt changes on any other status, adhering to policy requirements.",
-                "An operation to UpdateReservationFlights is initiated only after confirming that the proposed modifications retain the original origin and destination, ensuring policy compliance regarding flight route consistency.",
-                "Before executing UpdateReservationFlights, the agent successfully gathers accurate user feedback for changes and obtains user confirmation, ensuring all modifications comply with the policy of gathering user consent.",
-                "The agent checks that the flight details within the UpdateReservationFlights request include matching origin and destination parameters as the initial booking, adhering to the policy to prevent unauthorized changes.",
-                "To adhere to the policy, the agent ensures that the payment ID used in the UpdateReservationFlights matches entries in the user's profile, avoiding any unauthorized payment method use."
-            ]
-        },
-         {
             "policy_name": "payment in user data",
             "description": "Verify that all payment methods are pre-registered in the user profile before proceeding with booking to maintain security and database integrity.",
             "references": [

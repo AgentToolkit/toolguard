@@ -40,7 +40,7 @@
         },
         {
             "policy_name": "User ID and User Profile Verification",
-            "description": "Before invoking ToolX (BookReservation), make sure that the user's ID is correctly obtained and matches the system records. After verifying the user ID, gather necessary booking information such as trip type, origin, and destination prior to making the reservation using ToolX.",
+            "description": "Before invoking ToolX (BookReservation), make sure that the user's ID is correctly obtained. After verifying the user ID, gather necessary booking information such as trip type, origin, and destination prior to making the reservation using ToolX.",
             "references": [
                 "The agent must first obtain the user id, then ask for the trip type, origin, destination."
             ],
@@ -125,7 +125,7 @@
         },
         {
             "policy_name": "Passenger Information Completeness",
-            "description": "Ensure all required passenger details are collected and verified for each reservation using BookReservation. Limit to five passengers per reservation, with details including first name, last name, and date of birth. Ensure all passengers are in the same cabin class.",
+            "description": "Ensure all required passenger details are collected. Limit to five passengers per reservation, with details including first name, last name, and date of birth. Ensure all passengers are in the same cabin class.",
             "references": [
                 "Passengers: Each reservation can have at most five passengers. The agent needs to collect the first name, last name, and date of birth for each passenger. All passengers must fly the same flights in the same cabin."
             ],
