@@ -54,37 +54,6 @@
          ]
       },
       {
-            "policy_name": "payment in user data",
-            "description": "Verify that all payment methods are pre-registered in the user profile before proceeding with booking to maintain security and database integrity.",
-            "references": [
-                "All payment methods must already be in user profile for safety reasons."
-            ],
-            "iteration_added": 0,
-            "violating_examples": [
-                "Example 1: A user attempts to book a reservation using two credit cards. The policy mandates that no more than one credit card can be used for a reservation. This violates the rule.",
-                "Example 2: During reservation, a user inputs four gift cards. This violates the policy rule that allows for only up to three gift cards per reservation.",
-                "Example 3: A user submits a booking request where the payment method includes a travel certificate not listed in the user profile. This violates the policy as all payment methods must be pre-registered in the user profile.",
-                "Example 4: A booking attempt is made using a travel certificate, a credit card, and an additional travel certificate for balance. According to the policy, multiple travel certificates are not allowed per reservation, making this a violation.",
-                "Example 5: The booking data included the use of an unverified payment method\u2014a newly added gift card not synced with the user profile\u2014resulting in a policy breach.",
-                "Example 6: A user tries to book a reservation using two travel certificates. This violates the policy, which allows only one travel certificate per reservation.",
-                "Example 7: The booking request includes three credit cards, exceeding the maximum limit of one credit card allowed by the policy. This constitutes a violation.",
-                "Example 8: Upon making a reservation, the user provides payment details for a new credit card that isn't in the user's pre-registered profile list, breaching the policy's requirement for pre-registered payment methods."
-            ],
-            "compliance_examples": [
-                "Example 1: A reservation is made using a single credit card that is already registered in the user's profile. This is compliant with the policy, as it uses one credit card and matches the profile information.",
-                "Example 2: The user books a flight using one travel certificate and two gift cards (all pre-registered in their profile). There's no attempt to exceed the maximum allowed number of cards, ensuring compliance.",
-                "Example 3: A user uses one credit card and one gift card that are already stored in their user profile. This adheres to the payment method restriction policy as the number of payment types remains within allowed limits.",
-                "Example 4: The user completes a reservation with one registered travel certificate and one prior-listed credit card. The combination meets the policy requirements by not exceeding the tool's constraints.",
-                "Example 5: A booking is processed using three pre-registered gift cards and a credited credit card, without any travel certificate. This follows the policy by not surpassing the stipulated payment methods.",
-                "Example 6: A user successfully books a flight using one travel certificate and one credit card, both of which are pre-registered in their profile. This complies with the policy as it uses the allowed types and numbers of payment methods.",
-                "Example 7: A reservation is completed using only two gift cards and no travel certificate or credit card. Both gift cards are pre-existing in the user's profile, ensuring adherence to the policy's guidelines.",
-                "Example 8: The booking transaction involves a credit card and up to three gift cards, with all selected payment methods pre-registered in the user's profile, staying compliant with the policy.",
-                "Example 9: The user books a reservation using one pre-registered travel certificate and one pre-registered gift card. This is compliant as it adheres to the allowed limit of each payment method type.",
-                "Example 10: A booking is successfully made using a single pre-registered credit card with no travel certificates, ensuring policy compliance by not exceeding the maximum number of credit cards.",
-                "Example 11: The reservation goes through with one pre-registered gift card and two additional pre-registered gift cards, staying within the policy limit of three gift cards maximum."
-            ]
-        },
-      {
          "policy_name":"Only Add Checked Bags",
          "description":"ToolX can update the baggage information of an existing reservation, allowing users to add additional checked bags. Removing checked bags from the reservation is not permitted. Ensure the payment method for any additional non-free baggage is provided at invocation.",
          "references":[
@@ -122,7 +91,8 @@
          "policy_name":"Ensure Payment Methods Are Pre-Authorized",
          "description":"Before invoking UpdateReservationBaggages, ensure all payment methods such as travel certificates, credit cards, and gift cards are pre-authorized and appear in the user's profile. Use a maximum of one travel certificate, one credit card, and up to three gift cards per reservation as per company policy.",
          "references":[
-            "<p>Payment: each reservation can use at most one travel certificate, at most one credit card, and at most three gift cards. The remaining amount of a travel certificate is not refundable. All payment methods must already be in user profile for safety reasons.</p>"
+            "Payment: each reservation can use at most one travel certificate, at most one credit card, and at most three gift cards. The remaining amount of a travel certificate is not refundable.",
+            "All payment methods must already be in user profile for safety reasons."
          ],
          "iteration_added":1,
          "violating_examples":[
@@ -163,7 +133,8 @@
          "policy_name":"Charge for Extra Baggage Items",
          "description":"To use the UpdateReservationBaggages tool effectively, verify the user's membership level (regular, silver, or gold) and cabin class (basic economy, economy, business). This will determine the number of free checked bags allowed. Charge $50 for each additional baggage item beyond the free allowance according to the user's membership and cabin class entitlements.",
          "references":[
-            "Checked bag allowance: If the booking user is a regular member, 0 free checked bag for each basic economy passenger, 1 free checked bag for each economy passenger, and 2 free checked bags for each business passenger. If the booking user is a silver member, 1 free checked bag for each basic economy passenger, 2 free checked bag for each economy passenger, and 3 free checked bags for each business passenger. If the booking user is a gold member, 2 free checked bag for each basic economy passenger, 3 free checked bag for each economy passenger, and 3 free checked bags for each business passenger. Each extra baggage is 50 dollars."
+            "Checked bag allowance: If the booking user is a regular member, 0 free checked bag for each basic economy passenger, 1 free checked bag for each economy passenger, and 2 free checked bags for each business passenger. If the booking user is a silver member, 1 free checked bag for each basic economy passenger, 2 free checked bag for each economy passenger, and 3 free checked bags for each business passenger. If the booking user is a gold member, 2 free checked bag for each basic economy passenger, 3 free checked bag for each economy passenger, and 3 free checked bags for each business passenger.",
+            "Each extra baggage is 50 dollars."
          ],
          "iteration_added":1,
          "violating_examples":[

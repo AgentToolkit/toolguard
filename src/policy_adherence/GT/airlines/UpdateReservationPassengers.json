@@ -41,7 +41,8 @@
             "policy_name": "Passenger Information Completeness",
             "description": "Ensure all passengers including first name, last name, and date of birth. Ensure all passengers are in the same cabin class.",
             "references": [
-                "The agent needs to collect the first name, last name, and date of birth for each passenger. All passengers must fly the same flights in the same cabin."
+                "The agent needs to collect the first name, last name, and date of birth for each passenger.",
+                "All passengers must fly the same flights in the same cabin."
             ],
             "iteration_added": 1,
             "violating_examples": [
@@ -58,7 +59,8 @@
             "policy_name": "Passenger Modification Limitation",
             "description": "Users are restricted to only updating passenger details such as names or dates of birth within existing reservations. They are not allowed to alter the total number of passengers included in a booking. This limitation applies even when handed over to human agents.",
             "references": [
-                "Change passengers: The user can modify passengers but cannot modify the number of passengers. This is something that even a human agent cannot assist with."
+                "Change passengers: The user can modify passengers but cannot modify the number of passengers.",
+                "This is something that even a human agent cannot assist with."
             ],
             "iteration_added": 0,
             "violating_examples": [

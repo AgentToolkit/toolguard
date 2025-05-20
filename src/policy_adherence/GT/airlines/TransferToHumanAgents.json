@@ -6,7 +6,7 @@
             "references": [
                 "You should transfer the user to a human agent if and only if the request cannot be handled within the scope of your actions.",
                 "The agent can only cancel the whole trip that is not flown. If any of the segments are already used, the agent cannot help and transfer is needed.",
-              "Transfer the user to a human agent, with a summary of the user's issue. Only transfer if the user explicitly asks for a human agent, or if the user's issue cannot be resolved by the agent with the available tools.", 
+                "Transfer the user to a human agent, with a summary of the user's issue. Only transfer if the user explicitly asks for a human agent, or if the user's issue cannot be resolved by the agent with the available tools.",
 				"Change passengers: The user can modify passengers but cannot modify the number of passengers. This is something that even a human agent cannot assist with."
             ],
             "iteration_added": 0,

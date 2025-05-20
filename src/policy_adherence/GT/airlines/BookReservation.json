@@ -75,10 +75,12 @@
             ]
         },
         {
-            "policy_name": "Flight Status Restrictions - Available",
-            "description": "Flights chosen for booking using ToolX must have the status 'available' to ensure that they have not taken off and have seats and prices listed for booking.",
+            "policy_name": "Flight Status Restrictions",
+            "description": "Flights chosen for booking using ToolX must have the status 'available' to ensure that they have not taken off and have seats and prices listed for booking. Flights with status 'delayed', 'on time', or 'flying' cannot be booked.",
             "references": [
-                "If the status is \"available\", the flight has not taken off, available seats and prices are listed."
+                "If the status is \"available\", the flight has not taken off, available seats and prices are listed.",
+                "If the status is \"delayed\" or \"on time\", the flight has not taken off, cannot be booked.",
+                "If the status is \"flying\", the flight has taken off but not landed, cannot be booked."
             ],
             "iteration_added": 2,
             "violating_examples": [
@@ -87,7 +89,10 @@
                 "A reservation request is made for a flight with the status 'on time'. Although the agent lists the flight details including the departure and arrival times, the flight cannot be booked because it doesn't have the status 'available', leading to a policy violation.",
                 "An agent attempts to book a round-trip from LAX to DFW for a user, but the departure flight's status is 'on time', which is not permissible as per the policy that only allows booking flights with 'available' status.",
                 "A user tries to book a flight from ORD to ATL using the BookReservation tool, overlooking the fact that the flight status is 'delayed'. Proceeding with this booking request violates the policy that mandates only 'available' flights can be booked.",
-                "A reservation is attempted for a flight where the status is 'cancelled'. Despite knowing that only flights with 'available' status can be booked, the agent proceeds, resulting in a policy breach."
+                "A reservation is attempted for a flight where the status is 'cancelled'. Despite knowing that only flights with 'available' status can be booked, the agent proceeds, resulting in a policy breach.",
+                "An agent attempts to book a reservation for a flight with the status 'delayed'. Despite the policy clearly stating that 'delayed' flights cannot be booked, the agent initiates the booking process, which directly violates this restriction.",
+                "While updating a booking for a user, an agent includes a flight with the status 'on time' in the reservation. This violates the flight status restriction policy as 'on time' flights are not allowed to be booked.",
+                "A user requests booking for a flight that is currently 'flying'. The agent proceeds with the booking tool without checking the flight status, thereby breaching the policy that explicitly prohibits booking flights with the 'flying' status."
             ],
             "compliance_examples": [
                 "A user requests to book a flight from SFO to LAX on June 20th. The agent checks the flight information and confirms that the flight status is 'available' before proceeding with the booking using the BookReservation tool. This adheres to the policy requirements.",
@@ -95,23 +100,7 @@
                 "When prompted to reserve a seat for a round-trip journey, the agent double-checks that all flights included in the itinerary have the status 'available'. Each flight is confirmed before proceeding, demonstrating proper adherence to the policy.",
                 "While booking a flight from DEN to ORD on July 15th, the agent verifies that the selected flight, HAT234, has the status 'available' before initiating the booking. Ensuring compliance with the policy by confirming the flight's availability before proceeding.",
                 "An agent processes a reservation request for a flight from JFK to MCO. The tool confirms that the flight status is 'available', fulfilling the policy requirements, resulting in a successful booking process.",
-                "A user wants to reserve a flight from SEA to LAX. The agent uses the BookReservation tool and checks that the flight status is 'available' before completing the booking, ensuring compliance with the booking policy."
-            ]
-        },
-        {
-            "policy_name": "Flight Status Restrictions - Not Bookable",
-            "description": "Flights with status 'delayed', 'on time', or 'flying' cannot be booked.",
-            "references": [
-                "If the status is \"delayed\" or \"on time\", the flight has not taken off, cannot be booked.",
-                "If the status is \"flying\", the flight has taken off but not landed, cannot be booked."
-            ],
-            "iteration_added": 2,
-            "violating_examples": [
-                "An agent attempts to book a reservation for a flight with the status 'delayed'. Despite the policy clearly stating that 'delayed' flights cannot be booked, the agent initiates the booking process, which directly violates this restriction.",
-                "While updating a booking for a user, an agent includes a flight with the status 'on time' in the reservation. This violates the flight status restriction policy as 'on time' flights are not allowed to be booked.",
-                "A user requests booking for a flight that is currently 'flying'. The agent proceeds with the booking tool without checking the flight status, thereby breaching the policy that explicitly prohibits booking flights with the 'flying' status."
-            ],
-            "compliance_examples": [
+                "A user wants to reserve a flight from SEA to LAX. The agent uses the BookReservation tool and checks that the flight status is 'available' before completing the booking, ensuring compliance with the booking policy.",
                 "An agent checks the flight status before attempting to book and discovers that the desired flight is 'delayed'. Acknowledging the policy, the agent informs the user about the restriction and does not proceed with the booking.",
                 "Before finalizing a reservation, the agent ensures that all selected flights have the status 'available'. By confirming this status, the agent adheres to the policy, as only 'available' flights are eligible for booking.",
                 "A user requests a booking for a specific flight, and upon checking, the agent notices the flight is 'on time'. In compliance with the policy, the agent informs the user about the restriction and suggests considering alternative flights that are bookable.",
@@ -127,7 +116,8 @@
             "policy_name": "Passenger Information Completeness",
             "description": "Ensure all required passenger details are collected. Limit to five passengers per reservation, with details including first name, last name, and date of birth. Ensure all passengers are in the same cabin class.",
             "references": [
-                "Passengers: Each reservation can have at most five passengers. The agent needs to collect the first name, last name, and date of birth for each passenger. All passengers must fly the same flights in the same cabin."
+                "Passengers: Each reservation can have at most five passengers. The agent needs to collect the first name, last name, and date of birth for each passenger.",
+                "All passengers must fly the same flights in the same cabin."
             ],
             "iteration_added": 1,
             "violating_examples": [
@@ -144,7 +134,8 @@
             "policy_name": "Database Safety Payment Method Restriction",
             "description": "Ensure each reservation through BookReservation uses a maximum of one travel certificate, one credit card, and up to three gift cards. Verify that all payment methods are pre-registered in the user profile before proceeding with booking to maintain security and database integrity.",
             "references": [
-                "Payment: each reservation can use at most one travel certificate, at most one credit card, and at most three gift cards. The remaining amount of a travel certificate is not refundable. All payment methods must already be in user profile for safety reasons."
+                "Payment: each reservation can use at most one travel certificate, at most one credit card, and at most three gift cards. The remaining amount of a travel certificate is not refundable.",
+                "All payment methods must already be in user profile for safety reasons."
             ],
             "iteration_added": 0,
             "violating_examples": [
@@ -230,10 +221,12 @@
             ]
         },
         {
-            "policy_name": "Single Travel Certificate Usage",
+            "policy_name": "Payment Restrictions",
             "description": "Ensure that when using the BookReservation tool, each reservation uses no more than one travel certificate. Any remaining balance on the certificate is non-refundable. Confirm that all payment methods, including travel certificates, are pre-stored in the user's profile to ensure safety.",
             "references": [
-                "Payment: each reservation can use at most one travel certificate, at most one credit card, and at most three gift cards. The remaining amount of a travel certificate is not refundable. All payment methods must already be in user profile for safety reasons."
+                "Payment: each reservation can use at most one travel certificate, at most one credit card, and at most three gift cards.",
+                "The remaining amount of a travel certificate is not refundable.",
+                "All payment methods must already be in user profile for safety reasons."
             ],
             "iteration_added": 2,
             "violating_examples": [
@@ -245,27 +238,6 @@
                 "Example 1: A user calls the BookReservation tool and books a round-trip using a single travel certificate that is already saved in their profile, ensuring compliance with the policy.",
                 "Example 2: In compliance with the policy, a user books a flight using one travel certificate and one credit card, both of which are pre-stored in the user\u2019s profile, without expecting a refund on any remaining certificate balance.",
                 "Example 3: A user successfully makes a booking with BookReservation using one travel certificate and two gift cards from their profile, assuring no violation of the policy that limits the number of travel certificates to one."
-            ]
-        },
-        {
-            "policy_name": "Limited Gift Card Usage",
-            "description": "During the booking process for a reservation using ToolX, you can utilize a maximum of three gift cards as a payment method. Ensure these gift cards and any other payment methods (such as travel certificates or credit cards) are already part of the user's profile for security purposes.",
-            "references": [
-                "Payment: each reservation can use at most one travel certificate, at most one credit card, and at most three gift cards. The remaining amount of a travel certificate is not refundable. All payment methods must already be in user profile for safety reasons."
-            ],
-            "iteration_added": 2,
-            "violating_examples": [
-                "Example 1: A user attempts to make a reservation using four gift cards, each valued at $25, to cover the total cost of $100. This violates the policy, as only a maximum of three gift cards can be utilized in a single reservation.",
-                "Example 2: During the booking process, the agent tries to use two travel certificates alongside two gift cards, even though the policy stipulates that only one travel certificate can be used per reservation. This misstep violates the policy.",
-                "Example 3: The agent uses a gift card that is not stored in the user's profile as a payment method during the BookReservation tool call. This violates the policy requirement that all payment methods must be pre-existing in the user's profile for security reasons."
-            ],
-            "compliance_examples": [
-                "Example 1: A user decides to book a flight reservation and utilizes three gift cards, each valued at $50, which are all listed in the user's profile. This complies with the policy, as the maximum allowable number of three gift cards is used correctly.",
-                "Example 2: In a reservation process, an agent uses one travel certificate already present in the user's profile to cover part of the cost, and two gift cards to cover the rest. This adheres to the policy by using only one travel certificate and two gift cards within permitted limits.",
-                "Example 3: The agent successfully processes a booking by using a single credit card as the payment method, which is stored in the user's profile. This scenario follows the policy, as it uses a credit card appropriately without combining it with multiple restricted payment methods.",
-                "Example 4: The agent books a reservation using three gift cards, a travel certificate, and a credit card, all of which are already stored in the user's profile. This adheres to the policy as it utilizes only one travel certificate, one credit card, and the maximum of three gift cards allowed.",
-                "Example 5: During the booking process, the agent uses two gift cards and one credit card from the user's profile to complete the transaction. It complies with the policy by staying within the restrictions on the number of payment methods available.",
-                "Example 6: The user provides one gift card along with two credit cards from their profile to complete the booking. This adheres to policy limits as only one gift card is used, and the credit cards are the stored payment methods available."
             ]
         }
     ],

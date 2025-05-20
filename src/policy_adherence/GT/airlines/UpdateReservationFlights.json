@@ -40,10 +40,12 @@
             ]
         },
         {
-            "policy_name": "Flight Status Restrictions - Available",
+            "policy_name": "Flight Status Restrictions",
             "description": "Flights chosen for booking using ToolX must have the status 'available' to ensure that they have not taken off and have seats and prices listed for booking.",
             "references": [
-                "If the status is \"available\", the flight has not taken off, available seats and prices are listed."
+                "If the status is \"available\", the flight has not taken off, available seats and prices are listed.",
+                "If the status is \"delayed\" or \"on time\", the flight has not taken off, cannot be booked.",
+                "If the status is \"flying\", the flight has taken off but not landed, cannot be booked."
             ],
             "iteration_added": 2,
             "violating_examples": [
@@ -52,7 +54,10 @@
                 "A reservation request is made for a flight with the status 'on time'. Although the agent lists the flight details including the departure and arrival times, the flight cannot be booked because it doesn't have the status 'available', leading to a policy violation.",
                 "An agent attempts to book a round-trip from LAX to DFW for a user, but the departure flight's status is 'on time', which is not permissible as per the policy that only allows booking flights with 'available' status.",
                 "A user tries to book a flight from ORD to ATL using the BookReservation tool, overlooking the fact that the flight status is 'delayed'. Proceeding with this booking request violates the policy that mandates only 'available' flights can be booked.",
-                "A reservation is attempted for a flight where the status is 'cancelled'. Despite knowing that only flights with 'available' status can be booked, the agent proceeds, resulting in a policy breach."
+                "A reservation is attempted for a flight where the status is 'cancelled'. Despite knowing that only flights with 'available' status can be booked, the agent proceeds, resulting in a policy breach.",
+                "An agent attempts to book a reservation for a flight with the status 'delayed'. Despite the policy clearly stating that 'delayed' flights cannot be booked, the agent initiates the booking process, which directly violates this restriction.",
+                "While updating a booking for a user, an agent includes a flight with the status 'on time' in the reservation. This violates the flight status restriction policy as 'on time' flights are not allowed to be booked.",
+                "A user requests booking for a flight that is currently 'flying'. The agent proceeds with the booking tool without checking the flight status, thereby breaching the policy that explicitly prohibits booking flights with the 'flying' status."
             ],
             "compliance_examples": [
                 "A user requests to book a flight from SFO to LAX on June 20th. The agent checks the flight information and confirms that the flight status is 'available' before proceeding with the booking using the BookReservation tool. This adheres to the policy requirements.",
@@ -60,23 +65,7 @@
                 "When prompted to reserve a seat for a round-trip journey, the agent double-checks that all flights included in the itinerary have the status 'available'. Each flight is confirmed before proceeding, demonstrating proper adherence to the policy.",
                 "While booking a flight from DEN to ORD on July 15th, the agent verifies that the selected flight, HAT234, has the status 'available' before initiating the booking. Ensuring compliance with the policy by confirming the flight's availability before proceeding.",
                 "An agent processes a reservation request for a flight from JFK to MCO. The tool confirms that the flight status is 'available', fulfilling the policy requirements, resulting in a successful booking process.",
-                "A user wants to reserve a flight from SEA to LAX. The agent uses the BookReservation tool and checks that the flight status is 'available' before completing the booking, ensuring compliance with the booking policy."
-            ]
-        },
-        {
-            "policy_name": "Flight Status Restrictions - Not Bookable",
-            "description": "Flights with status 'delayed', 'on time', or 'flying' cannot be booked.",
-            "references": [
-                "If the status is \"delayed\" or \"on time\", the flight has not taken off, cannot be booked.",
-                "If the status is \"flying\", the flight has taken off but not landed, cannot be booked."
-            ],
-            "iteration_added": 2,
-            "violating_examples": [
-                "An agent attempts to book a reservation for a flight with the status 'delayed'. Despite the policy clearly stating that 'delayed' flights cannot be booked, the agent initiates the booking process, which directly violates this restriction.",
-                "While updating a booking for a user, an agent includes a flight with the status 'on time' in the reservation. This violates the flight status restriction policy as 'on time' flights are not allowed to be booked.",
-                "A user requests booking for a flight that is currently 'flying'. The agent proceeds with the booking tool without checking the flight status, thereby breaching the policy that explicitly prohibits booking flights with the 'flying' status."
-            ],
-            "compliance_examples": [
+                "A user wants to reserve a flight from SEA to LAX. The agent uses the BookReservation tool and checks that the flight status is 'available' before completing the booking, ensuring compliance with the booking policy.",
                 "An agent checks the flight status before attempting to book and discovers that the desired flight is 'delayed'. Acknowledging the policy, the agent informs the user about the restriction and does not proceed with the booking.",
                 "Before finalizing a reservation, the agent ensures that all selected flights have the status 'available'. By confirming this status, the agent adheres to the policy, as only 'available' flights are eligible for booking.",
                 "A user requests a booking for a specific flight, and upon checking, the agent notices the flight is 'on time'. In compliance with the policy, the agent informs the user about the restriction and suggests considering alternative flights that are bookable.",
@@ -92,7 +81,8 @@
             "policy_name": "Obtain Payment Method for Flight Changes",
             "description": "When updating a flight reservation using the UpdateReservationFlights tool, the agent must ensure that a valid payment method, either a gift card or a credit card stored in the user's profile, is provided for any additional costs or refunds associated with the change.",
             "references": [
-                "Payment: If the flights are changed, the user needs to provide one gift card or credit card for payment or refund method. The agent should ask for the payment or refund method instead."
+                "Payment: If the flights are changed, the user needs to provide one gift card or credit card for payment or refund method.",
+                "The agent should ask for the payment or refund method instead."
             ],
             "iteration_added": 1,
             "violating_examples": [
@@ -127,7 +117,8 @@
             "policy_name": "Non-Modifiable Basic Economy Flights",
             "description": "Basic economy flights cannot be modified.",
             "references": [
-                "<p>Change flights: Basic economy flights cannot be modified. Other reservations can be modified without changing the origin, destination, and trip type. Some flight segments can be kept, but their prices will not be updated based on the current price. The API does not check these for the agent, so the agent must make sure the rules apply before calling the API!</p>"
+                "Change flights: Basic economy flights cannot be modified. Other reservations can be modified without changing the origin, destination, and trip type. Some flight segments can be kept, but their prices will not be updated based on the current price.",
+                "The API does not check these for the agent, so the agent must make sure the rules apply before calling the API!"
             ],
             "iteration_added": 1,
             "violating_examples": [
@@ -160,7 +151,6 @@
             "policy_name": "Adherence to API Rules by Agents",
             "description": "Agents using the 'UpdateReservationFlights' tool must verify the following before invocation: (1) Basic economy flights cannot be modified. (2) For other reservations, changes can be made without altering the origin, destination, or trip type. (3) Flight segments retained in a reservation do not have updated prices; ensure these conditions are met manually as they are not enforced by the API.",
             "references": [
-                "Change flights: Basic economy flights cannot be modified. Other reservations can be modified without changing the origin, destination, and trip type. Some flight segments can be kept, but their prices will not be updated based on the current price. The API does not check these for the agent, so the agent must make sure the rules apply before calling the API!",
                 "The agent must first obtain the user id and the reservation id."
             ],
             "iteration_added": 1,
@@ -221,54 +211,6 @@
                 "The agent receives a reservation update request, and switches all four flight segments from 'business' to 'economy' class as per the user's instructions. This uniform change across all segments demonstrates compliance with the 'Cabin Class Consistency' policy.",
                 "An agent processes a user's request to change all flight segments in their multi-leg journey to 'business' class, ensuring each segment within the reservation reflects the updated cabin class and adheres to the policy.",
                 "While updating a flight reservation, the agent verifies the cabin class change request to ensure uniformity, then applies the switch from 'economy' to 'business' consistently across all five segments in the user's itinerary, thus maintaining compliance with the policy."
-            ]
-        },
-        {
-            "policy_name": "Modifiable Non-Basic Economy Reservations",
-            "description": "To modify a reservation using UpdateReservationFlights, ensure the reservation is not basic economy, and validate that the origin, destination, and trip type remain intact. These verifications should be performed before using the tool.",
-            "references": [
-                "Change flights: Basic economy flights cannot be modified. Other reservations can be modified without changing the origin, destination, and trip type. Some flight segments can be kept, but their prices will not be updated based on the current price. The API does not check these for the agent, so the agent must make sure the rules apply before calling the API!"
-            ],
-            "iteration_added": 1,
-            "violating_examples": [
-                "An agent attempts to use UpdateReservationFlights to modify a reservation with a cabin class of 'basic_economy' without checking if it is modifiable. Since basic economy flights cannot be modified, this is a clear violation of the policy.",
-                "The agent tries to change a 'round_trip' reservation to a 'one_way' while invoking UpdateReservationFlights. This violates the policy as it requires the trip type to remain unchanged.",
-                "An update to a reservation is initiated via UpdateReservationFlights, where the origin is altered from 'JFK' to 'LAX'. This violates the policy since the origin should not change when modifying a reservation.",
-                "When calling UpdateReservationFlights, the agent fails to verify the reservation type, and proceeds with a modification on a 'basic_economy' reservation regardless. This oversight directly breaches the policy.",
-                "An attempt is made to modify a reservation using UpdateReservationFlights, where the destination is changed from 'SFO' to 'SEA'. This violates the requirement that the destination must remain unchanged during modification.",
-                "An agent uses UpdateReservationFlights to change a reservation's cabin class while thinking that the API will handle checking if the change is possible. However, the API doesn't check this, leading to a violation as the reservation was in 'basic_economy', and changing cabin class is not allowed.",
-                "During an UpdateReservationFlights call, an agent attempts to modify a reservation identified as 'basic_economy', thinking it was 'economy', leading to a violation since basic economy reservations cannot be altered. This results from not verifying the reservation type beforehand.",
-                "An agent decides to modify a booking using UpdateReservationFlights without ensuring that the cabin class is not 'basic_economy'. The agent proceeds with the modification regardless, violating the policy that prohibits changes to basic economy reservations.",
-                "The agent uses UpdateReservationFlights to modify a reservation and inadvertently excludes some flight segments from the modification call. This omission breaches the policy, which requires all segments to be included in the array even if unchanged.",
-                "During an UpdateReservationFlights operation, an agent mistakenly attempts to update flights for a reservation with a different user ID than the original booking. This violates the policy as it fails to ensure compatibility with the user's reservation details.",
-                "An agent tries to update a reservation's flight details using UpdateReservationFlights without checking if the payment method exists in the user's profile. This violates the policy because the payment info must be verified beforehand.",
-                "An agent uses UpdateReservationFlights to change a reservation where the destination city changes from one airport to another within the same city (e.g., LHD to LHJ in Los Angeles). This violates the policy as the destination should remain unchanged.",
-                "A user requests to update their reservation flights without checking the cabin class, which inadvertently attempts to modify it from 'business' to 'economy'. This breaches the policy since the cabin class must not be altered.",
-                "During a flight update, the agent inadvertently mixes two reservations' flight numbers, leading to a change where some flights were not originally part of the reservation. This error violates the policy, as all flights included must pertain to the original reservation.",
-                "UpdateReservationFlights is called with incorrect or incomplete flight segment data, missing flight numbers for some segments of the reservation but proceeding with the API call. This constitutes a breach of the rule requiring inclusion of all segments.",
-                "An agent tries to modify a reservation using UpdateReservationFlights and neglects to include all original flight segments in the request. This violates the policy requirement that the entire itinerary must be considered, even if no changes are made to certain segments.",
-                "During a flight modification request, the agent includes a payment method that is not present in the user\u2019s profile, contravening the policy that mandates such verification beforehand.",
-                "UpdateReservationFlights is used where the agent alters flight segments from the original reservation without checking the user's verification, breaching the policy's provisions on unchanged flight segments."
-            ],
-            "compliance_examples": [
-                "The agent ensures the reservation is not a 'basic_economy' type before using UpdateReservationFlights to attempt any modifications, adhering strictly to the policy.",
-                "Before calling UpdateReservationFlights, the agent verifies that the origin and destination match the original booking (E.g., 'LAX' to 'JFK') in a reservation to maintain policy compliance.",
-                "An agent successfully modifies a reservation using UpdateReservationFlights, ensuring that the reservation maintains its current trip type of 'one_way' and does not attempt to change it.",
-                "Before making any changes, the agent confirms the reservation\u2019s cabin class is 'economy', not 'basic_economy', aligning with policy requirements for modification.",
-                "A compliant use of UpdateReservationFlights is exemplified by an agent confirming that both origin ('BOS') and destination ('MIA') remain fixed as per the original booking when processing a reservation modification.",
-                "The agent checks and confirms that all flight segments are included in the UpdateReservationFlights API call for modification while ensuring no segment prices are altered as per policy, illustrating compliant usage.",
-                "A reservation originally created with a 'round_trip' trip type is correctly modified without altering the trip type during UpdateReservationFlights execution, demonstrating adherence to the policy requirements.",
-                "The agent reviews the user profile to confirm the reservation is 'economy' class before proceeding with changes via UpdateReservationFlights, showing adherence to modification policies.",
-                "An agent checks that the trip type of the reservation remains 'round_trip' before executing an update with UpdateReservationFlights, ensuring compliance with the policy's stipulations.",
-                "Before calling UpdateReservationFlights, the agent ensures all original flight segments are included in the API call and all conditions of origin, destination, and unchanged segment prices are met.",
-                "An agent ensures the reservation's payment method is accurately linked to a verified user profile entry before proceeding with UpdateReservationFlights, adhering to safety protocols and policy compliance.",
-                "The agent methodically checks that the reservation's trip type remains 'round_trip' and confirms the flight numbers correspond to the intended reservation before updating using UpdateReservationFlights.",
-                "Before executing an UpdateReservationFlights call, the agent verifies all segments including flight number and date, ensuring they match the existing flight details without any changes in origin or destination.",
-                "An agent properly uses UpdateReservationFlights by confirming the reservation's cabin class remains 'economy', and ensures that only allowed changes are made, in conformity with policy guidelines.",
-                "Before proceeding with flight modifications, the agent verifies the flights' origin and destination align with those detailed in the original reservation. The agent uses UpdateReservationFlights successfully without attempting to adjust these parameters.",
-                "The agent carefully reviews and confirms that all original flight details, including origin, destination, and trip type, remain consistent before making modifications using UpdateReservationFlights.",
-                "An agent properly uses UpdateReservationFlights to update a reservation by ensuring the linked payment method is verified in the user's profile, demonstrating adherence to the policy protocols.",
-                "Before calling UpdateReservationFlights, the agent checks that the cabin class is set to 'economy' and not 'basic_economy', confirming compliance with the policy requirements for modifying reservations."
             ]
         },
         {

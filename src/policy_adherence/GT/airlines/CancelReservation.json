@@ -40,7 +40,7 @@
         },
         {
             "policy_name": "User ID and User Profile Verification",
-            "description": "Before invoking ToolX (BookReservation), make sure that the user's ID is correctly obtained and matches the system records. After verifying the user ID, gather necessary booking information such as trip type, origin, and destination prior to making the reservation using ToolX.",
+            "description": "Before invoking ToolX (BookReservation), make sure that the user's ID is correctly obtained. After verifying the user ID, gather necessary booking information such as trip type, origin, and destination prior to making the reservation using ToolX.",
             "references": [
                 "The agent must first obtain the user id, then ask for the trip type, origin, destination."
             ],
@@ -111,11 +111,10 @@
             ]
         },
         {
-            "policy_name": "Flexible Cancellation Policy",
+            "policy_name": "Travel Insurance Policy",
             "description": "For using the CancelReservation function, ensure the following conditions are met: (1) Cancelling is within 24 hours of booking; (2) The airline has cancelled the flight. Additionally, basic economy and economy flights require purchased travel insurance, and applicable policy conditions must be met for cancellation. Business class reservations can always be cancelled if they have not yet flown. Always verify the reservation ID and eligibility criteria before invoking CancelReservation.",
             "references": [
-                "Travel insurance: the agent should ask if the user wants to buy the travel insurance, which is 30 dollars per passenger and enables full refund if the user needs to cancel the flight given health or weather reasons.",
-                "All reservations can be cancelled within 24 hours of booking, or if the airline cancelled the flight. Otherwise, basic economy or economy flights can be cancelled only if travel insurance is bought and the condition is met, and business flights can always be cancelled. The rules are strict regardless of the membership status. The API does not check these for the agent, so the agent must make sure the rules apply before calling the API!"
+                "Travel insurance: the agent should ask if the user wants to buy the travel insurance, which is 30 dollars per passenger and enables full refund if the user needs to cancel the flight given health or weather reasons."
             ],
             "iteration_added": 2,
             "violating_examples": [
@@ -143,10 +142,11 @@
             ]
         },
         {
-            "policy_name": "Conditional Economy Cancellations",
+            "policy_name": "Conditional Cancellations",
             "description": "For reservations in economy and basic economy classes, ensure the following conditions are met before using the CancelReservation tool: travel insurance must have been obtained during the initial booking, and the reason for cancellation should be due to health or adverse weather conditions. These conditions are necessary for processing cancellations.",
             "references": [
-                "All reservations can be cancelled within 24 hours of booking, or if the airline cancelled the flight. Otherwise, basic economy or economy flights can be cancelled only if travel insurance is bought and the condition is met, and business flights can always be cancelled. The rules are strict regardless of the membership status. The API does not check these for the agent, so the agent must make sure the rules apply before calling the API!"
+                "All reservations can be cancelled within 24 hours of booking, or if the airline cancelled the flight. Otherwise, basic economy or economy flights can be cancelled only if travel insurance is bought and the condition is met, and business flights can always be cancelled. The rules are strict regardless of the membership status.",
+                "The API does not check these for the agent, so the agent must make sure the rules apply before calling the API!"
             ],
             "iteration_added": 2,
             "violating_examples": [
@@ -175,53 +175,6 @@
                 "An agent receives a request to cancel an economy class reservation due to a forecast of severe weather, verifies the user had obtained travel insurance at booking, and proceeds to cancel, following policy requirements.",
                 "A basic economy reservation is successfully canceled because the user had travel insurance, and the reason for cancellation is a sudden health emergency, aligning with the strict policy conditions for cancellation.",
                 "For a cancellation of an economy flight citing adverse weather, the agent checks that travel insurance was purchased at booking time and proceeds, adhering to the policy requirements."
-            ]
-        },
-        {
-            "policy_name": "Unconditional Business Cancellations",
-            "description": "Business class reservations can be cancelled at any point if neither membership status nor travel insurance imposes restrictions. Ensure no segments of the trip have been used before proceeding with the cancellation. Utilize the CancelReservation tool, providing the reservation ID, to complete the cancellation process.",
-            "references": [
-                "<p>All reservations can be cancelled within 24 hours of booking, or if the airline cancelled the flight. Otherwise, basic economy or economy flights can be cancelled only if travel insurance is bought and the condition is met, and business flights can always be cancelled. The rules are strict regardless of the membership status. The API does not check these for the agent, so the agent must make sure the rules apply before calling the API!</p>",
-                "<p>The agent can only cancel the whole trip that is not flown. If any of the segments are already used, the agent cannot help and transfer is needed.</p>"
-            ],
-            "iteration_added": 1,
-            "violating_examples": [
-                "An agent attempts to cancel a business class reservation using the CancelReservation tool without checking if any segments of the trip have already been used. The policy clearly requires confirmation that no segments have been flown before cancellation.",
-                "A cancel request for a business class trip is made without verifying the reservation ID, leading to an incorrect cancellation attempt. As the policy dictates, the reservation ID must be accurately provided to the CancelReservation tool for a valid cancellation.",
-                "The agent tries to cancel a business reservation immediately after booking but forgets to ensure the trip is entirely unused before proceeding. This violates the policy because the cancellation can only occur for trips where no part has been flown.",
-                "An agent receives a request to cancel a business class reservation and proceeds without actually obtaining explicit confirmation from the user about any active flight segments. The policy requires all trip segments to be unflown prior to using CancelReservation.",
-                "The reservation ID used in calling CancelReservation corresponds to an already partially flown business trip, but the agent did not verify this. The policy violation here is failing to uphold the restriction against cancelling used trip segments.",
-                "An agent attempts to cancel a business class reservation immediately after a flight segment has taken off without checking for the flown status. This directly contravenes the policy that mandates verification of the entire trip's unused status.",
-                "A request is made to cancel a business class trip where the agent does not validate if travel insurance restrictions apply, mistakenly assuming all business class cancellations are unconditional. This oversight contradicts the policy\u2019s requirement for thorough vetting.",
-                "The agent processes a cancellation for a business class reservation without verifying that the reservation ID matches the one in the user profile. Entering an incorrect ID breaches the policy requirement for accurate cancellation requests.",
-                "After receiving a request, the agent skips the confirmation step to ascertain that no segments of the business class trip have commenced, directly violating the policy that demands such verification before tool invocation.",
-                "An agent mistakenly cancels a business class reservation using information from a regular membership profile, disregarding the differentiation policy outlining that neither membership status nor travel insurance should impose restrictions on such cancellations.",
-                "An agent calls the CancelReservation tool for a business class reservation without verifying the reservation with the user profile. The policy requires confirmation that the reservation ID is accurate and belongs to the correct user before processing.",
-                "The agent proceeds with cancelling a business class trip without checking the status of the flights. Since some flights have already taken off, this breaches the policy which only allows cancellation of unflown reservations.",
-                "After a user request, the agent directly cancels a business reservation without verifying that neither membership status nor insurance restrictions apply. This contradicts the policy's requirement for thorough verification.",
-                "An agent skips confirming the business reservation status with the correct reservation ID, assuming the ID specified is correct. This violates the policy requiring ID verification before cancellation."
-            ],
-            "compliance_examples": [
-                "Before calling CancelReservation, the agent checks that the reservation ID corresponds to a business class field and confirms no segments of the trip have been used. The cancellation then proceeds successfully, adhering to the policy guidelines.",
-                "Upon receiving a cancellation request, the agent verifies that the flight is a business class trip, confirms all segments are unused, and supplies the correct reservation ID to CancelReservation, complying with the policy's requirements.",
-                "The cancellation of a business class reservation is processed correctly after confirming with the user that no flights have been taken and ensuring the reservation ID is accurately used in the CancelReservation invocation.",
-                "A request to cancel a business class reservation is followed by a thorough check to ensure all conditions of the policy are met \u2014 unused segments, accurate reservation ID \u2014 before proceeding with a successful cancellation.",
-                "The agent validates that the reservation ID specified belongs to a business class reservation that has not commenced any flights. Once confirmed, the CancelReservation is correctly executed, illustrating full compliance with the policy.",
-                "The agent initiates the cancellation of a business class reservation after confirming that no flights in the reservation have commenced. They ensure the reservation ID provided is correct and the process aligns with the policy guidelines, successfully executing the CancelReservation tool.",
-                "An agent receives a business class cancellation request and meticulously verifies that every segment of the trip is unused. They validate the reservation ID and use the CancelReservation tool without issue, demonstrating appropriate compliance.",
-                "Upon reviewing a cancellation request, the agent confirms the reservation is of business class and that all flights remain unflown. The correct reservation ID is submitted to CancelReservation, and the cancellation is processed according to policy.",
-                "The agent receives a request to cancel a business class reservation. They first check the reservation's status to confirm that all flight segments remain unflown. After verification, they input the correct reservation ID into the CancelReservation tool, ensuring adherence to policy.",
-                "An agent is asked to cancel a business class reservation and ensures each flight associated with the reservation hasn't been flown. After confirming, they accurately enter the reservation ID into the CancelReservation tool, complying with the policy conditions.",
-                "In response to a cancellation request for a business class reservation, the agent meticulously checks and confirms that the reservation ID is correct and that all related flights are unflown. The cancellation proceeds correctly with the CancelReservation tool, showcasing full adherence to the policy.",
-                "The agent follows protocol by first confirming that the entire business class reservation is unflown and that the reservation ID is precise before conducting the cancellation through CancelReservation, thus complying with the policy.",
-                "Upon receiving a business class cancellation request, the agent confirms with the user that no part of the trip has been flown and inputs the exact reservation ID to CancelReservation, successfully adhering to the policy.",
-                "Before executing the CancelReservation tool, the agent ensures through user confirmation and reservation checks that the business class trips have no segments flown, which aligns with the policy requirements.",
-                "The agent efficiently processes a business class trip cancellation by verifying the reservation ID's accuracy, confirming the reservation is wholly unused, and meticulously following all policy guidelines for cancellation.",
-                "In handling a request to cancel a business class reservation, the agent cross-verifies the absence of flown segments and inputs the correct reservation ID, thus executing the CancelReservation in total compliance with policy dictates.",
-                "Prior to using CancelReservation, the agent verifies the reservation ID against the user profile and confirms with the user that no flight segments have been used, complying with policy standards.",
-                "Upon trying to cancel a business reservation, the agent checks all segments are unflown and ensures input of the exact reservation ID, perfectly adhering to the policy before executing the process.",
-                "An agent receives instructions to cancel a business reservation, confirms there are no flown segments, verifies membership restrictions do not apply, and inputs the accurate reservation ID into CancelReservation as per policy guidelines.",
-                "Before initiating a business reservation cancellation, the agent confirms flight status and checks membership criteria do not restrict cancellation. Only then do they provide the reservation ID, showcasing full policy compliance."
             ]
         },
         {
