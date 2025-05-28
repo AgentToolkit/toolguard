@@ -3,7 +3,7 @@ from typing import List, Set
 from policy_adherence.data_types import FileTwin, ToolPolicyItem
 from programmatic_ai import generative
 
-@generative()
+@generative
 async def generate_tool_item_tests(
     fn_under_test_name:str, 
     fn_src: FileTwin, 
@@ -92,7 +92,7 @@ from domain import *
     ...
 
 
-@generative()
+@generative
 async def improve_tool_tests(prev_impl:FileTwin, domain: FileTwin, tool: ToolPolicyItem, review_comments: List[str])-> str:
     """
     Improve the previous test functions (in Python) to check the given tool policy-items according to the review-comments.
@@ -109,7 +109,7 @@ async def improve_tool_tests(prev_impl:FileTwin, domain: FileTwin, tool: ToolPol
     ...
 
 
-@generative()
+@generative
 async def tool_information_dependencies(tool_name:str, policy: str, domain:FileTwin)-> List[str]:
     """
     List other tools that the given tool depends on.
@@ -181,7 +181,7 @@ async def tool_information_dependencies(tool_name:str, policy: str, domain:FileT
     ...
 
 
-@generative()
+@generative
 async def improve_tool_check_fn(prev_impl:FileTwin, domain: FileTwin, policy_item: ToolPolicyItem, review_comments: List[str])-> str:
     """
     Improve the previous tool-call check implementation (in Python) to cover all tool policy-items according to the review-comments.

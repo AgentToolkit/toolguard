@@ -52,7 +52,7 @@ async def gen_all():
     oas_path = "/Users/davidboaz/Documents/GitHub/tau_airline/input/openapi.yaml"
     tool_policy_paths = {
         # "cancel_reservation": "/Users/davidboaz/Documents/GitHub/tau_airline/input/CancelReservation.json",
-        "book_reservation": "/Users/davidboaz/Documents/GitHub/tau_airline/input/BookReservation.json"
+        "book_reservation": "/Users/davidboaz/Documents/GitHub/tau_airline/input/book_reservation.json"
     }
     output_dir = "/Users/davidboaz/Documents/GitHub/tau_airline/output"
     now = datetime.now()
