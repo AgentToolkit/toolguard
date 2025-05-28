@@ -7,7 +7,7 @@ from policy_adherence.common.open_api import OpenAPI, RequestBody, JSchema
 from policy_adherence.common.str import to_snake_case
 from policy_adherence.dmn import dmn
 from policy_adherence.dmn.prompt import improve_tool_rules
-from policy_adherence.data_types import SourceFile, ToolPolicy
+from policy_adherence.data_types import FileTwin, ToolPolicy
 
 async def generate_tools_check_rules(app_name:str, tools:List[ToolPolicy], out_folder:str, op_only_oas:OpenAPI):
     app_root = join(out_folder, app_name)
@@ -57,7 +57,7 @@ async def generate_tools_check_rules(app_name:str, tools:List[ToolPolicy], out_f
                 ],
                 variable=dmn.InformationItem(name=f"{tool_item.name}_res", typeRef="boolean")))
     
-            dfs_src = SourceFile(
+            dfs_src = FileTwin(
                 file_name=f"{to_snake_case(tool_item.name)}.dmn",
                 content=str(dfs)
             )
@@ -65,7 +65,7 @@ async def generate_tools_check_rules(app_name:str, tools:List[ToolPolicy], out_f
             
             rules_content = improve_tool_rules(dfs_src, tool_item, [])
             print(rules_content)
-            res = SourceFile(
+            res = FileTwin(
                 file_name=f"{to_snake_case(tool_item.name)}.xml",
                 content=rules_content)
             res.save(app_root)

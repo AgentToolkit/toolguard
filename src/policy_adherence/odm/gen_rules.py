@@ -7,7 +7,7 @@ import uuid
 
 from policy_adherence.common.open_api import OpenAPI, RequestBody, JSchema
 from policy_adherence.odm.prompt import improve_tool_rules
-from policy_adherence.data_types import SourceFile, ToolPolicy
+from policy_adherence.data_types import FileTwin, ToolPolicy
 DOMAIN_PY = "domain.py"
 
 async def generate_tools_check_rules(app_name:str, tools:List[ToolPolicy], out_folder:str, op_only_oas:OpenAPI):
@@ -28,12 +28,12 @@ async def generate_tools_check_rules(app_name:str, tools:List[ToolPolicy], out_f
             req_body = op_only_oas.resolve_ref(op.requestBody, RequestBody)
             assert req_body.content_json
             req_schema = op_only_oas.resolve_ref(req_body.content_json.schema_, JSchema)
-            bom_src = SourceFile(
+            bom_src = FileTwin(
                 file_name=f"DataModel/schemas/my_project/datamodel/CreateReservation.schema.json",
                 content=str(req_schema))
             bom_src.save(app_root)
             
-            ruleset_src = SourceFile(
+            ruleset_src = FileTwin(
                 file_name=f"{tool_item.name}.dmo",
                 content=f"""
 <ruleset xmlns="http://www.ibm.com/spec/ODM/dmn.xsd" conflictResolution="sequence">
@@ -43,7 +43,7 @@ async def generate_tools_check_rules(app_name:str, tools:List[ToolPolicy], out_f
 </ruleset>""")
             ruleset_src.save(app_root)
 
-            rule_src = SourceFile(
+            rule_src = FileTwin(
                 file_name=f"node_1/{tool_item.name}.drl",
                 content=f"""<?xml version="1.0" encoding="UTF-8"?>
 <ilog.rules.studio.model.brl:ActionRule xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:ilog.rules.studio.model.brl="http://ilog.rules.studio/model/brl.ecore">
@@ -58,7 +58,7 @@ async def generate_tools_check_rules(app_name:str, tools:List[ToolPolicy], out_f
             
             rules_content = improve_tool_rules(rule_src, ruleset_src, bom_src , tool_item, [])
             print(rules_content)
-            res = SourceFile(file_name=rule_src.file_name, content=rules_content)
+            res = FileTwin(file_name=rule_src.file_name, content=rules_content)
             res.save(app_root)
             results.append(res)
 

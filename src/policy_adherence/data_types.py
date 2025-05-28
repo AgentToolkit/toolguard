@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 
 from policy_adherence.utils import to_md_bulltets
 
-class SourceFile(BaseModel):
+class FileTwin(BaseModel):
     file_name: str
     content: str
 
@@ -22,10 +22,10 @@ class SourceFile(BaseModel):
             file.write(self.content)
 
     @staticmethod
-    def load_from(folder:str, file_path:str)->'SourceFile':
+    def load_from(folder:str, file_path:str)->'FileTwin':
         with open(os.path.join(folder, file_path), "r") as file:
             data = file.read()
-            return SourceFile(
+            return FileTwin(
                 file_name=file_path, 
                 content=data
             )
@@ -66,9 +66,9 @@ class ToolPolicy(BaseModel):
 
 class ToolChecksCodeResult(BaseModel):
     tool: ToolPolicy
-    tool_check_file: SourceFile
-    item_check_files: List[SourceFile|None]
-    test_files: List[SourceFile|None]
+    tool_check_file: FileTwin
+    item_check_files: List[FileTwin|None]
+    test_files: List[FileTwin|None]
 
 class ToolChecksCodeGenerationResult(BaseModel):
     output_path: str

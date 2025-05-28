@@ -5,7 +5,7 @@ from typing import List
 import astor
 
 from policy_adherence.common.str import to_snake_case
-from policy_adherence.data_types import SourceFile
+from policy_adherence.data_types import FileTwin
 
 def py_extension(filename:str)->str:
     return filename if filename.endswith(".py") else filename+".py" 
@@ -55,11 +55,11 @@ def py_module(file_path:str):
         parts[-1] = un_py_extension(parts[-1])
     return '.'.join([to_snake_case(part) for part in parts])
 
-def save_py_body(body, file_name:str, py_path:str)->SourceFile:
+def save_py_body(body, file_name:str, py_path:str)->FileTwin:
     module = ast.Module(body=body, type_ignores=[])
     ast.fix_missing_locations(module)
     src= astor.to_source(module)
-    res = SourceFile(
+    res = FileTwin(
         file_name=file_name,
         content=src
     )

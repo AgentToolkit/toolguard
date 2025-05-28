@@ -4,7 +4,7 @@ import subprocess
 from pydantic import BaseModel
 from typing import List, Optional
 
-from policy_adherence.data_types import SourceFile
+from policy_adherence.data_types import FileTwin
 
 ERROR = "error"
 WARNING = "warning"
@@ -61,7 +61,7 @@ def run(folder:str, py_file:str, venv_name:str)->DiagnosticsReport:
     # return original.copy_errors_only()
     
 
-def config() ->SourceFile:
+def config() ->FileTwin:
     cfg = {
         "typeCheckingMode": "basic",
         "reportOptionalIterable": WARNING,
@@ -69,7 +69,7 @@ def config() ->SourceFile:
         "reportOptionalMemberAccess": WARNING,
         "reportAttributeAccessIssue": ERROR
     }
-    return SourceFile(file_name="pyrightconfig.json",
+    return FileTwin(file_name="pyrightconfig.json",
                   content=json.dumps(cfg, indent=2))
 
 # if __name__ == '__main__':

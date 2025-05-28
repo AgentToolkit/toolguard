@@ -10,7 +10,7 @@ from policy_adherence.common.py import create_class
 from policy_adherence.common.str import to_camel_case, to_snake_case
 from policy_adherence.tools.datamodel_codegen import run as dm_codegen
 from policy_adherence.common.open_api import OpenAPI, Operation, Parameter, ParameterIn, PathItem, Reference, RequestBody, Response, JSchema, read_openapi
-from policy_adherence.data_types import SourceFile
+from policy_adherence.data_types import FileTwin
 
 def primitive_jschema_types_to_py(type:Optional[str], format:Optional[str])->Optional[str]:
     #https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.0.2.md#data-types
@@ -35,7 +35,7 @@ class OpenAPICodeGenerator():
     def __init__(self, cwd:str) -> None:
         self.cwd = cwd
 
-    def generate_domain(self, oas_file:str, domain_py_file:str)->SourceFile:
+    def generate_domain(self, oas_file:str, domain_py_file:str)->FileTwin:
         #types
         types_src = dm_codegen(oas_file)
 
@@ -43,7 +43,7 @@ class OpenAPICodeGenerator():
         api_src = self.generate_api(oas_file, types_src)
 
         content = f"{types_src}\n\n# Tool interfaces\n{api_src}\n"
-        src = SourceFile(file_name=domain_py_file, content=content)
+        src = FileTwin(file_name=domain_py_file, content=content)
         src.save(self.cwd)
         return src
 
@@ -84,7 +84,7 @@ class OpenAPICodeGenerator():
         if find(params, lambda p: p.in_ == ParameterIn.query):
             query_type = f"{to_camel_case(fn_name)}ParametersQuery"
             args.append(ast.arg(
-                arg="query", 
+                arg="args", 
                 annotation=ast.Name(id=query_type, ctx=ast.Load())
             ))
 
@@ -95,7 +95,7 @@ class OpenAPICodeGenerator():
             if body_type is None:
                 body_type = f"{to_camel_case(fn_name)}Request"
             args.append(ast.arg(
-                arg="request", 
+                arg="args", 
                 annotation=ast.Name(id=body_type, ctx=ast.Load())
             ))
 

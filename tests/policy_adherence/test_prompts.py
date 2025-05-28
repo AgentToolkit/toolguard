@@ -4,12 +4,12 @@ from pathlib import Path
 from dotenv import load_dotenv
 from policy_adherence.llm.litellm_model import LitellmModel
 from policy_adherence.prompts import tool_information_dependencies
-from policy_adherence.data_types import SourceFile
+from policy_adherence.data_types import FileTwin
 
 load_dotenv()
 
 current_dir = str(Path(__file__).parent)
-domain = SourceFile.load_from(current_dir, "_tau_airline_domain.py")
+domain = FileTwin.load_from(current_dir, "_tau_airline_domain.py")
 
 model = "gpt-4o-2024-08-06"
 llm = LitellmModel(model)

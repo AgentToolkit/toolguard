@@ -3,16 +3,16 @@
 from typing import List
 from programmatic_ai import generative
 
-from policy_adherence.data_types import SourceFile, ToolPolicyItem
+from policy_adherence.data_types import FileTwin, ToolPolicyItem
 
 model = "gpt-4o-2024-08-06"
 @generative(model=model, provider="azure", sdk="litellm")
-def improve_tool_rules(prev_impl:SourceFile, policy_item: ToolPolicyItem, review_comments: List[str])-> str:
+def improve_tool_rules(prev_impl:FileTwin, policy_item: ToolPolicyItem, review_comments: List[str])-> str:
     """
     Improve the previous tool-call check rules (in DMN, Decision Model and Notation syntax) to cover all tool policy-items according to the review-comments.
 
     Args:
-        prev_impl (SourceFile): previous implementation of the DMN to check tool-call adherence.
+        prev_impl (FileTwin): previous implementation of the DMN to check tool-call adherence.
         policy_item (ToolPolicyItem): Requirements for this tool.
         review_comments (List[str]): Review comments on the current implementation. For example, pylint errors or Failed unit-tests.
 

@@ -7,7 +7,7 @@ import subprocess
 from typing import Any, List, Dict, Literal, Optional, Set
 from pydantic import BaseModel, Field
 
-from policy_adherence.data_types import SourceFile
+from policy_adherence.data_types import FileTwin
 
 
 class TestOutcome(StrEnum):
@@ -123,7 +123,7 @@ def pytest_runtest_protocol(item, nextitem):
     if docstring:
         item.user_properties.append(("docstring", docstring))
 """
-    SourceFile(file_name="conftest.py", content=hook).save(folder)
+    FileTwin(file_name="conftest.py", content=hook).save(folder)
 
 
 def read_test_report(file_path:str)->TestReport:
