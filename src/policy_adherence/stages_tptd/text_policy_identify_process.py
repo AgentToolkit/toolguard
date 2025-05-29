@@ -48,16 +48,16 @@ class PolicyIdentifier:
 		workflow.add_edge("review_policy", "add_references")
 		workflow.add_edge("add_references", "reference_correctness")
 		
-		workflow.add_edge("reference_correctness", "final")
+		#workflow.add_edge("reference_correctness", "final")
 		
 		
-		# workflow.add_edge("reference_correctness", "example_creator")
-		# workflow.add_edge("example_creator", "add_examples")
-		# workflow.add_conditional_edges("add_examples",lambda state: "merge_examples" if state.get("stop", False) else "add_examples")
-		# # workflow.add_edge("merge_examples", "fix_examples")
-		# # workflow.add_edge("fix_examples","review_examples")
-		# workflow.add_edge("merge_examples", "review_examples")
-		# workflow.add_edge("review_examples", "final")
+		workflow.add_edge("reference_correctness", "example_creator")
+		workflow.add_edge("example_creator", "add_examples")
+		workflow.add_conditional_edges("add_examples",lambda state: "merge_examples" if state.get("stop", False) else "add_examples")
+		# workflow.add_edge("merge_examples", "fix_examples")
+		# workflow.add_edge("fix_examples","review_examples")
+		workflow.add_edge("merge_examples", "review_examples")
+		workflow.add_edge("review_examples", "final")
 		
 		self.executor = workflow.compile()
 		
