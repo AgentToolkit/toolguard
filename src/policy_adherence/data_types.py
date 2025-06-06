@@ -16,10 +16,11 @@ class FileTwin(BaseModel):
         with open(full_path, "w") as file:
             file.write(self.content)
 
-    def save_as(self, folder:str, file_name:str):
+    def save_as(self, folder:str, file_name:str)->'FileTwin':
         file_path = os.path.join(folder, file_name)
         with open(file_path, "w") as file:
             file.write(self.content)
+        return FileTwin(file_name=file_name, content=self.content)
 
     @staticmethod
     def load_from(folder:str, file_path:str)->'FileTwin':

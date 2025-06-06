@@ -78,11 +78,10 @@ Raises:
 async def generate_tools_check_fns(app_name: str, tools: List[ToolPolicy], py_root:str, openapi_path:str)->ToolChecksCodeGenerationResult:
     logger.debug(f"Starting... will save into {py_root}")
 
-    #virtual env
+    #Setup:
     venv.run(join(py_root, PY_ENV), PY_PACKAGES)
-
-    #pyright config
-    pyright.config().save(py_root)
+    pyright.config(py_root)
+    pytest.configure(py_root)
 
     #app folder:
     app_root = join(py_root, app_name)
@@ -91,11 +90,7 @@ async def generate_tools_check_fns(app_name: str, tools: List[ToolPolicy], py_ro
 
     #common
     tmp_common = FileTwin.load_from(str(Path(__file__).parent), "_runtime_common.py")
-    common = FileTwin(
-        content=tmp_common.content, 
-        file_name=join(app_name, RUNTIME_COMMON_PY)
-    )
-    common.save(py_root)
+    tmp_common.save_as(py_root, join(app_name, RUNTIME_COMMON_PY))
 
     # domain
     domain = OpenAPICodeGenerator(app_root)\

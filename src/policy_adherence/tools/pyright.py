@@ -61,7 +61,7 @@ def run(folder:str, py_file:str, venv_name:str)->DiagnosticsReport:
     # return original.copy_errors_only()
     
 
-def config() ->FileTwin:
+def config(folder:str):
     cfg = {
         "typeCheckingMode": "basic",
         "reportOptionalIterable": WARNING,
@@ -69,8 +69,8 @@ def config() ->FileTwin:
         "reportOptionalMemberAccess": WARNING,
         "reportAttributeAccessIssue": ERROR
     }
-    return FileTwin(file_name="pyrightconfig.json",
-                  content=json.dumps(cfg, indent=2))
+    FileTwin(file_name="pyrightconfig.json",
+            content=json.dumps(cfg, indent=2)).save(folder)
 
 # if __name__ == '__main__':
 #     r = run_pyright("/Users/davidboaz/Documents/GitHub/gen_policy_validator/tau_airline/output/2025-03-16 14:44:43", "check_book_reservation.py")

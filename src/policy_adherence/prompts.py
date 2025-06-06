@@ -27,8 +27,9 @@ from domain import *
         - For **each compliance example, ONE test method** is generated. 
             - If an exception occurrs in the function-under-test, let the exception propagate up.
         - For **each violation example, ONE test** is generated.
-            - the function-under-test is EXPECTED to raise an exception.
-            - dont expect a particular error message
+            - The function-under-test is EXPECTED to raise an exception.
+            - If the expected exception was not raised, the test should raise an exception with a message describing test case that did not raise exception.
+            
         - Test class and method names should be meaningful and use up to **six words in snake_case**.
         - For each test, add a comment quoting the policy item case that this function is testing 
         - Failure message should describe the test scenario that failed, the expected and the actual outcomes.
@@ -51,32 +52,28 @@ from domain import *
         def get_hotel(self, hotel_id):
             ...
 
-    # function call arguments
+                # function call arguments
     args = {
         user_id: ...,
         ...
         hotel_id: ....
     }
 
-    # mock the history service:
-    history = MagicMock()
-    history.ask_bool.return_value = True #Mock that True is the answer to the question
+            # mock the history service:
+            history = MagicMock()
+            history.ask_bool.return_value = True #Mock that True is the answer to the question
 
-    # mock other tools function return values 
-    user = User.model_construct(...)
-    hotel = Hotel.model_construct(...)
+            # mock other tools function return values 
+            user = User.model_construct(...)
+            hotel = Hotel.model_construct(...)
 
-    api = MagicMock()
-    api.get_user.return_value = user
-    api.get_hotel.return_value = hotel
-    
-    #invoke function under test.
-    try:
-        check_book_flight(args, history, api)
-    except Exception as ex:
-        # failure message describe the test case
-        pytest.fail("The user cannot book room for a date in the past")
-    ```
+            api = MagicMock()
+            api.get_user.return_value = user
+            api.get_hotel.return_value = hotel
+            
+            #invoke function under test.
+            check_book_flight(args, history, api)
+```
 
     Args:
         fn_under_test_name (str): the name of the function under test
