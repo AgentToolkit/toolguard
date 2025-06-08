@@ -10,7 +10,7 @@ Include:
     * Use GET if it's a read-only function with simple inputs.
     * Use POST if it changes data or uses complex inputs.
     * Name the path based on the function purpose, like /predict, /create-user.
-    * If the function deos not change the data in the dataset, add "x-readOnlyOperation: true", else "x-readOnlyOperation: false"
+    * If the function does not change the data in the dataset, add "x-readOnlyOperation: true", else "x-readOnlyOperation: false"
 * Parameters or Request Body
     * For GET: define each input as a query parameter (with name, type, required, description).
     * For POST: use a requestBody with a JSON schema describing the input object.
@@ -20,8 +20,10 @@ Include:
     * Use proper OpenAPI data types (string, integer, boolean, array, object).
 * Descriptions
     * Add short descriptions for the endpoint, inputs, and output fields.
-* Examples
-    * Use sample input and output records to build realistic examples in the spec.
+* Input Examples
+    * Directly under get/post add "x-input-examples" which is an array of diverse input parameters examples. for example: [CallMyFunc(1,"Canada", 3.5,True),CallMyFunc(-4,"Canada"),CallMyFunc(0,"USA", 55.0,False)]
+* Output Examples
+    * Directly under get/post add "x-output-examples" which is an array of diverse input parameters examples. for example: ["left","right"]
 * operationId
     * Make sure you add operationId with the exact function name that is under function.name in the get_info section
 

@@ -54,6 +54,6 @@ class CreateOAS:
 
 
 code_dir = "/Users/naamazwerdling/workspace/tau-bench/tau_bench/envs/airline/tools"
-outfile = "/Users/naamazwerdling/Documents/OASB/policy_validation/airline/operations2.json"
-oas_outfile = "/Users/naamazwerdling/Documents/OASB/policy_validation/airline/oas2.json"
+outfile = "/Users/naamazwerdling/Documents/OASB/policy_validation/airline/operations3.json"
+oas_outfile = "/Users/naamazwerdling/Documents/OASB/policy_validation/airline/oas3.json"
 CreateOAS(code_dir,outfile,oas_outfile)
