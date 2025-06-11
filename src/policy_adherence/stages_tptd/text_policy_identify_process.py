@@ -374,10 +374,13 @@ def step1_main(policy_text:str, oas:Dict, step1_output_dir:str,model, tools:Opti
 	summarizer = OASSummarizer(oas)
 	summary = summarizer.summarize()
 	fsummary = {k:v["description"] for k,v in summary.items()}
+	for k in fsummary.keys():
+		print(k)
 	
 	for fname, detail in summary.items():
 		if tools is None or fname in tools:
 			print(fname)
+			print(detail)
 			input_state = {
 				"policy_text": policy_text,
 				"tools": fsummary,
@@ -406,7 +409,7 @@ if __name__ == '__main__':
 	parser.add_argument('--policy-path', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki.md')
 	parser.add_argument('--oas', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/airline.json')
 	parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/outdir2/oas2')
-	parser.add_argument('--tools', nargs='+', default=['book_reservation.py'], help='Optional list of tool names. These are a subset of the tools in the openAPI operation ids.')
+	parser.add_argument('--tools', nargs='+', default=None, help='Optional list of tool names. These are a subset of the tools in the openAPI operation ids.')
 
 	args = parser.parse_args()
 	policy_path = args.policy_path
