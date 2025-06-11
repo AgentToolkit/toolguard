@@ -3,7 +3,12 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
 
-from policy_adherence.utils import to_md_bulltets
+
+def to_md_bulltets(items: List[str])->str:
+    s = ""
+    for item in items:
+        s+=f"* {item}\n"
+    return s
 
 class FileTwin(BaseModel):
     file_name: str

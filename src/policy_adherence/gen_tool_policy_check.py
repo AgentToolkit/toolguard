@@ -11,17 +11,17 @@ from policy_adherence.common.str import to_snake_case
 from policy_adherence.gen_domain import OpenAPICodeGenerator
 import policy_adherence.prompts as prompts
 from policy_adherence.data_types import FileTwin, ToolChecksCodeResult, ToolPolicy, ToolPolicyItem, ToolPolicyItem
-import policy_adherence.tools.pyright as pyright
-import policy_adherence.tools.pytest as pytest
-from policy_adherence.utils import extract_code_from_llm_response, post_process_llm_response
+import policy_adherence.utils.pyright as pyright
+import policy_adherence.utils.pytest as pytest
+from policy_adherence.llm_utils import post_process_llm_response
 
 import asyncio
 from pathlib import Path
 from typing import List
 from loguru import logger
 from policy_adherence.data_types import FileTwin, ToolChecksCodeGenerationResult, ToolPolicy
-import policy_adherence.tools.venv as venv
-import policy_adherence.tools.pyright as pyright
+import policy_adherence.utils.venv as venv
+import policy_adherence.utils.pyright as pyright
 
 
 MAX_TOOL_IMPROVEMENTS = 5

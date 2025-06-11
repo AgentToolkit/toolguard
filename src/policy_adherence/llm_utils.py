@@ -15,8 +15,3 @@ def post_process_llm_response(resp:str)->str:
     response = response.replace("\\n", "\n")
     return response
 
-def to_md_bulltets(items: List[str])->str:
-    s = ""
-    for item in items:
-        s+=f"* {item}\n"
-    return s
