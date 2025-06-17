@@ -2,7 +2,6 @@ import ast
 import asyncio
 import copy
 import os
-import time
 from os.path import join
 from typing import Any, List, Tuple
 from loguru import logger
@@ -155,7 +154,6 @@ class ToolCheckPolicyGenerator:
 
     async def generate_tool_item_tests_and_check_fn(self, item: ToolPolicyItem, check_fn: FileTwin)->FileTwin|None:
         try:
-            time.sleep(10)
             tests = await self.generate_tool_item_tests(item, check_fn)
             await self.improve_tool_item_check_fn_loop(item, check_fn, tests)
             return tests
