@@ -219,26 +219,6 @@
                 "Example 10: A silver member books a business class flight and selects 3 free checked bags, adhering completely to the allowance provided by the policy for silver members in business class.",
                 "Example 11: A regular member books a basic economy flight journey and opts not to check any free bags, thus correctly complying with the policy that stipulates no free checked bags in this cabin class."
             ]
-        },
-        {
-            "policy_name": "Payment Restrictions",
-            "description": "Ensure that when using the BookReservation tool, each reservation uses no more than one travel certificate. Any remaining balance on the certificate is non-refundable. Confirm that all payment methods, including travel certificates, are pre-stored in the user's profile to ensure safety.",
-            "references": [
-                "Payment: each reservation can use at most one travel certificate, at most one credit card, and at most three gift cards.",
-                "The remaining amount of a travel certificate is not refundable.",
-                "All payment methods must already be in user profile for safety reasons."
-            ],
-            "iteration_added": 2,
-            "violating_examples": [
-                "Example 1: A user calls the BookReservation tool attempting to use two travel certificates for a single reservation. This is a violation because the policy specifies that no more than one travel certificate should be used per reservation.",
-                "Example 2: When invoking the BookReservation tool, the reservation is booked using a travel certificate that is not pre-stored in the user\u2019s profile. This violates the policy, which mandates that all payment methods must be part of the user\u2019s stored profile.",
-                "Example 3: During a booking request, a user attempts to apply a travel certificate and expects the remaining balance to be refunded. This violates the policy as the remaining balance of a travel certificate is non-refundable."
-            ],
-            "compliance_examples": [
-                "Example 1: A user calls the BookReservation tool and books a round-trip using a single travel certificate that is already saved in their profile, ensuring compliance with the policy.",
-                "Example 2: In compliance with the policy, a user books a flight using one travel certificate and one credit card, both of which are pre-stored in the user\u2019s profile, without expecting a refund on any remaining certificate balance.",
-                "Example 3: A user successfully makes a booking with BookReservation using one travel certificate and two gift cards from their profile, assuring no violation of the policy that limits the number of travel certificates to one."
-            ]
         }
     ],
     "archive": [
