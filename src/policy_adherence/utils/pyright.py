@@ -67,6 +67,7 @@ def config(folder:str):
         "reportOptionalIterable": WARNING,
         "reportArgumentType": WARNING, #"Object of type \"None\" cannot be used as iterable value",
         "reportOptionalMemberAccess": WARNING,
+        "reportOptionalSubscript": WARNING,
         "reportAttributeAccessIssue": ERROR
     }
     FileTwin(file_name="pyrightconfig.json",

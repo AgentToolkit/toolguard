@@ -1,6 +1,7 @@
 {
     "policies": [
         {
+            "skip": true,
             "policy_name": "Policy Adherence Required",
             "description": "When using 'UpdateReservationFlights', ensure all actions strictly adhere to airline policies. Reject any requests violating policy restrictions, such as those pertaining to modifying basic economy flights, maintaining consistent cabin class across all flight segments, or using correct payment methods for upgrades. Prior to invoking the tool, confirm that all parameters, such as reservation ID, cabin class, flight details, and payment ID, comply with policy requirements, including ensuring no modification of the flight status that is not allowed (e.g., 'on time', 'delayed', 'flying').",
             "references": [
@@ -11,6 +12,7 @@
             "compliance_examples": []
         },
         {
+            "skip": true,
             "policy_name": "Explicit User Confirmation for Passenger Update",
             "description": "Ensure the UpdateReservationPassengers tool is used for updating passenger details only after you have communicated the specific changes to the user and received their confirmation to proceed.",
             "references": [
@@ -38,7 +40,7 @@
             ]
         },
         {
-            "policy_name": "Passenger Information Completeness",
+            "policy_name": "Updating Passengers Information",
             "description": "Ensure all passengers including first name, last name, and date of birth. Ensure all passengers are in the same cabin class.",
             "references": [
                 "The agent needs to collect the first name, last name, and date of birth for each passenger.",
@@ -46,17 +48,20 @@
             ],
             "iteration_added": 1,
             "violating_examples": [
-                "An agent calls UpdateReservationPassengers with the passenger details incomplete, missing the date of birth for each passenger, failing to comply with the requirement to collect all passenger details such as first name, last name, and date of birth.",
-                "The agent attempts to update a reservation using UpdateReservationPassengers without verifying that all passengers are flying in the same cabin class, where some passengers are booked in business class and others in economy, violating the policy rule mandating the same cabin for all passengers."
+                "An agent attempts updating passengers while missing the date of birth for each passenger.",
+                "An agent attempts updating passengers information while changing their cabins so that they do not fly in the same cabin.",
+                "An agent attempts updating passengers information while changing their cabins so that all three of them fly in a different cabin.",
+                "An agent attempts updating passengers information while missing a passenger's first name.",
+                "An agent attempts updating passengers information while missing a passenger's last name."
             ],
             "compliance_examples": [
-                "An agent successfully gathers and verifies all required passenger information including first name, last name, and date of birth for each of the five passengers, ensuring compliance with BookReservation policy limits.",
-                "The agent confirms that all passengers are to fly in the same cabin class, economy, and proceeds with booking a reservation using BookReservation, thus adhering to the policy requirements.",
-                "The agent collects complete passenger information for three passengers \u2013 first name, last name, and date of birth \u2013 before initiating BookReservation, complying with the requisite details and ensuring they will all fly the same flights within the same cabin."
+                "A user asks for replacing one passengers with another, providing all required details.",
+                "A gold user flying business asks to replace himself with a different person, providing all his details.",
+                "An agent attempts to modify passengers information so that all passengers fly in the same cabin."
             ]
         },
         {
-            "policy_name": "Passenger Modification Limitation",
+            "policy_name": "Changing the Number of Passengers is not Allowed",
             "description": "Users are restricted to only updating passenger details such as names or dates of birth within existing reservations. They are not allowed to alter the total number of passengers included in a booking. This limitation applies even when handed over to human agents.",
             "references": [
                 "Change passengers: The user can modify passengers but cannot modify the number of passengers.",
@@ -64,17 +69,16 @@
             ],
             "iteration_added": 0,
             "violating_examples": [
-                "A user attempts to update their reservation by adding an additional passenger using the UpdateReservationPassengers tool, stating they mistakenly omitted the passenger during booking. This violates the Passenger Modification Limitation policy, as it changes the total number of passengers in the reservation.",
-                "An agent calls the UpdateReservationPassengers tool, attempting to add details for a sixth passenger to a reservation that initially had five passengers. This violates the policy as the number of passengers is being increased, which is not allowed.",
-                "A user requests the agent to remove an existing passenger from their reservation due to a cancellation and the agent uses UpdateReservationPassengers to delete the passenger's information. This violates the policy which prohibits modifications to the number of passengers."
+                "A user attempts to update their reservation by adding an additional passenger.",
+                "An agent calls the UpdateReservationPassengers tool, attempting to add details for a sixth passenger to a reservation that initially had five passengers.",
+                "A gold user asks to add third passenger to their reservation and change the date of birth of one of the existing two.",
+                "A user requests the agent to remove an existing passenger from their reservation."
             ],
             "compliance_examples": [
-                "A user requests to correct the spelling of a passenger's name on their reservation. The agent successfully uses UpdateReservationPassengers to update the passenger's first name without altering the number of passengers, complying with the policy.",
-                "A reservation initially includes three passengers. The agent modifies the date of birth of one passenger using UpdateReservationPassengers, ensuring that no changes are made to the total number of passengers, thus complying with the Passenger Modification Limitation policy.",
-                "The agent uses UpdateReservationPassengers to correct the last name of a passenger who realized their name was entered incorrectly during booking. The action adheres to policy requirements as only existing passenger details were updated.",
-                "An agent uses the UpdateReservationPassengers tool to update the date of birth of one of the existing passengers in a reservation. The number of passengers remains the same, demonstrating compliance with the policy.",
-                "A user informs the agent that the name of a passenger is incorrect due to a typo during the booking. The agent uses UpdateReservationPassengers to correct the name without affecting the passenger count, thus adhering to the policy.",
-                "The agent receives a request to fix a birth date that was initially entered incorrectly. Using UpdateReservationPassengers, the agent updates this detail while ensuring the total number of passengers in the reservation remains unchanged, illustrating policy compliance."
+                "A user requests to correct the spelling of a passenger's name on their reservation.",
+                "A reservation initially includes three passengers. The agent modifies the date of birth of one passenger.",
+                "The agent uses UpdateReservationPassengers to correct the last name of a passenger who realized their name was entered incorrectly during booking.",
+                "An agent uses the UpdateReservationPassengers tool to update the last name of one of the existing passengers in a reservation."
             ]
         }
     ]

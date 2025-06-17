@@ -1,6 +1,7 @@
 {
     "policies": [
         {
+            "skip": true,
             "policy_name": "Explicit User Confirmation for Actions Updating Database",
             "description": "Before taking any actions that update the booking database (booking, modifying flights, editing baggage, upgrading cabin class, or updating passenger information), the agent must list the action details and obtain explicit user confirmation (yes) to proceed.",
             "references": [
@@ -8,173 +9,66 @@
             ],
             "iteration_added": 2,
             "violating_examples": [
-                "An agent tries to book a flight for a user by calling the BookReservation.invoke method immediately after discussing flight options, without explicitly listing the details or obtaining a 'yes' confirmation from the user.",
-                "The agent updates the baggage information for a reservation by directly using the update_reservation_baggages.py tool without first listing the changes and securing user confirmation.",
-                "An agent modifies a passenger's details in a booking by editing the reservation data without informing the user about the exact modifications and without getting their 'yes' approval to proceed further.",
-                "The agent upgrades a user's cabin class from economy to business by invoking the respective API without explicitly confirming the cost and changes with the user and not receiving their explicit 'yes' response.",
-                "A user wants to change their flight reservation, and the agent proceeds to call update_reservation_flights.py without detailing the new flight itinerary or waiting for a user-confirmed 'yes' before making the database update.",
-                "The agent proceeds to edit the passenger information using the update_reservation_passengers.py tool without presenting a detailed summary of the changes and securing a 'yes' from the user beforehand.",
-                "An agent attempts to perform a cabin upgrade for a user without outlining the cost and benefits, and moves forward without receiving the user's explicit 'yes' agreement.",
-                "The agent modifies the reservation by adding travel insurance but skips listing the coverage and its cost, failing to acquire the user's 'yes' consent, thus breaching the policy."
+                "A user enters the reservation ID 'ZFA04Y' and requests cancellation without reviewing the cancellation process details or providing explicit confirmation. The reservation is canceled immediately without user confirmation, violating the policy requirement.",
+                "An agent uses the cancel_reservation tool with reservation ID '4WQ150' without displaying cancellation details or acquiring explicit 'yes' confirmation from the user.",
+                "An agent assumes implicit confirmation from a vague user response like 'I guess that's fine' and proceeds with using the cancel_reservation tool with reservation ID 'NO6JO3', without a clear 'yes' from the user, breaching the policy.",
+                "Upon receiving reservation ID 'AB1234', the system automatically cancels without showing cancellation details or requiring a clear 'yes' confirmation from the user, violating policy requirements.",
+                "The system processes cancellation for reservation ID 'XY7890' without displaying prior cancellation conditions or soliciting direct confirmation from the user, breaching policy rules.",
+                "The user requests cancellation with ID 'LMNOPQ' without being shown any cancellation details, and the system proceeds without a clear affirmative response, breaching the confirmation requirement.",
+                "Cancellation request for reservation ID 'JKL5678' is processed without displaying refund information or receiving explicit user 'yes' confirmation, contrary to policy guidelines.",
+                "Without confirming cancellation details or obtaining explicit 'yes' response from the user, the cancel_reservation tool is used by an agent for ID 'UVWXYZ', thereby violating the policy."
             ],
             "compliance_examples": [
-                "Before booking a flight, the agent sends a detailed summary of the chosen flights, passengers, and payment details to the user, requesting a 'yes' to confirm everything is correct before calling BookReservation.invoke.",
-                "The agent outlines the adjustments intended for upgrading the cabin class to the user, specifies the additional costs, and waits for the user to respond 'yes' before proceeding with the action.",
-                "For modifying baggage allowance, the agent presents the user with an itemized list of the updated baggage fees and number of bags, seeking an explicit 'yes' confirmation before applying changes via the tool.",
-                "An agent contacts the user with a summarized overview of intended flight changes and only calls the update tool after securing a 'yes' from the user, clearly illustrating each new segment and associated costs beforehand.",
-                "A user requests to add meals to their booking. The agent provides a clear explanation of costs and options, gets a 'yes' from the user, and only then updates the booking database with the new meal preferences.",
-                "An agent needs to update the passenger information for a reservation. They compile a detailed list of the changes, outlining which passenger details (e.g., DOB corrections or name changes) will be updated. The agent waits for the user's explicit 'yes' confirmation before calling the update_reservation_passengers.py tool.",
-                "The agent wants to add extra baggage items for a booking. They provide a summary of how many extra bags are requested, the resultant cost, and the implications on the user's allowance based on their membership status. Only after receiving a 'yes' from the user does the agent execute the changes.",
-                "Prior to cancelling a flight, an agent lists the reasons for cancellation, any applicable refund conditions, and ensures the user understands the consequences. They require a confirmed 'yes' response from the user before proceeding with the cancellation in the system.",
-                "Prior to booking a reservation, the agent provides a detailed itinerary of the planned trip, including all flight segments, passenger information, cabin class, baggage allowance, and total insurance fees. They then ask the user for a 'yes' confirmation to ensure compliance with the policy before proceeding.",
-                "When an agent intends to modify a user's reservation by upgrading their cabin class, they first disclose the cost difference between the current cabin and the proposed new cabin to the user and await a 'yes' confirmation before proceeding.",
-                "In order to add checked bags to a reservation, the agent gives a rundown of baggage fees associated with each passenger according to their membership status, ensuring the user is informed before obtaining a 'yes' confirmation.",
-                "Before altering a reservation to include travel insurance, the agent explains the coverage benefits and the additional cost per passenger, seeking a 'yes' from the user to confirm understanding and acceptance.",
-                "Before upgrading a user's cabin class, the agent details the additional fees and any service changes, requiring a 'yes' confirmation from the user to comply with the policy before proceeding.",
-                "When intending to change flight dates, the agent relays the proposed modifications and any potential price adjustments, obtaining a clear 'yes' confirmation from the user before using the tool.",
-                "The agent drafts a summary of passenger updates needed for a reservation, such as name correction, and gets a 'yes' from the user to confirm understanding and consent to proceed.",
-                "An agent provides the user with a detailed overview of all flight details including flight numbers, departure and arrival times, the class cabin, and associated costs before proceeding with booking. They receive a 'yes' from the user confirming all details are correct before invoking the BookReservation tool.",
-                "Prior to using the BookReservation tool, the agent verifies the list of changes with the user which includes specified payment methods, total and nonfree baggage counts, and insurance options, waiting for a 'yes' confirmation from the user for compliance with the policy.",
-                "The agent intends to book a flight for multiple passengers. They explain to the user the age-related restrictions on flight booking and ensure a 'yes' confirmation before ensuring all passenger data including date of birth are accurately listed in compliance with the policy."
-            ]
-        },
-        {
-            "policy_name": "User ID and User Profile Verification",
-            "description": "Before invoking ToolX (BookReservation), make sure that the user's ID is correctly obtained. After verifying the user ID, gather necessary booking information such as trip type, origin, and destination prior to making the reservation using ToolX.",
-            "references": [
-                "The agent must first obtain the user id, then ask for the trip type, origin, destination."
-            ],
-            "iteration_added": 1,
-            "violating_examples": [
-                "The agent attempts to use BookReservation but enters an incorrect user ID that does not match any system records. As per policy, the user ID must be verified before proceeding, making this a violation.",
-                "After obtaining the user ID, the agent makes a call to BookReservation without confirming the trip type, thereby not gathering necessary booking information. This violates the policy requirement of collecting all necessary details before invoking the tool.",
-                "The agent uses BookReservation without first obtaining the user ID, directly asking for flight details. This is non-compliant as obtaining and verifying the user ID is a prerequisite according to the policy.",
-                "The agent starts the reservation process and gathers flight details, but incorrectly matches the user ID to a different user profile from the system, violating the requirement of verifying the correct ID first.",
-                "Upon receiving an ID query from a user, the agent assumes the ID is correct without verifying it against system records and proceeds to book a reservation, breaching the mandate for ID confirmation.",
-                "An agent proceeds to book a reservation using BookReservation without matching the user ID against the system, and mistakenly associates the ID with the wrong booking profile. This oversight violates the policy requirement of verifying user identity beforehand.",
-                "An agent, having obtained an incorrect user ID mistakenly input by a user, attempts to proceed with the reservation process without confirming the ID's accuracy with system records, resulting in a policy breach.",
-                "Before making a call to BookReservation, the agent receives a user ID, but due to a system update, the ID no longer corresponds with any existing profiles. Ignoring this discrepancy is a violation of the policy that mandates prior verification.",
-                "Despite being provided with an incomplete user ID that omits key details, the agent moves forward with booking a reservation via BookReservation, contravening the policy that requires full and accurate ID verification."
-            ],
-            "compliance_examples": [
-                "Before calling BookReservation, an agent correctly verifies the user ID by matching it against the system records and then proceeds to ask for the trip type, origin, and destination, ensuring compliance.",
-                "An agent receives a user request to book a flight, first verifies the user's ID matches those in the record, and subsequently collects information on trip type, origin, and destination before proceeding with BookReservation.",
-                "Following receipt of the user ID from the system, the agent confirms its accuracy, asks for the necessary booking details like trip type and flight route, and only then makes a call to the BookReservation tool.",
-                "The agent follows the protocol by validating the user ID against the database, successfully ensuring it matches. The agent then gathers complete travel information, including the trip type, and uses the BookReservation tool in a compliant manner.",
-                "After receiving a flight booking request, the agent obtains, confirms, and verifies the user ID prior to gathering trip-specific details such as origin and destination before proceeding to use BookReservation, thus adhering strictly to the policy.",
-                "An agent asks for the user's ID and verifies it with the system records before collecting trip type, origin, and destination details, ensuring compliance with the policy before invoking BookReservation.",
-                "Before any reservation is processed using BookReservation, the agent checks the user ID for match against system data, then gathers all required travel information like trip type and location details, thus complying with the procedure.",
-                "The agent receives a booking request and first verifies the user ID against the system, ensuring accuracy, before proceeding to collect the trip type, origin, and destination. Once all details are confirmed, the agent proceeds with BookReservation, adhering to policy.",
-                "During a conversation with a user, the agent checks the provided user ID with system records, confirms accuracy, and then asks for additional details like trip type and travel route, following which they correctly use BookReservation.",
-                "An agent handles a reservation inquiry by obtaining the user ID, validating it with the system data, and subsequently requesting key booking information including trip type and flight details, ensuring full compliance before using BookReservation.",
-                "In preparing a flight reservation, the agent starts by securing the correct user ID, checks it against the agency's records, and subsequently requests necessary travel information like trip type and destinations, making sure all requirements are satisfied before engaging BookReservation.",
-                "An agent receives a user ID from a customer wanting to book a flight and checks it against the updated system records. Once confirmed, the agent collects additional booking details like trip type and origin, ensuring compliance before using BookReservation.",
-                "To ensure policy adherence, an agent starts a reservation process by securing the current, verified user ID through a system check. Following this, the collection of booking information such as destination proceeds smoothly before using BookReservation.",
-                "During the flight booking setup, the agent first asks for and verifies the user's ID against the latest system entries. They proceed only after confirming its validity, ensuring to gather all needed travel details, demonstrating compliance with the policy.",
-                "In handling a booking request, the agent double-checks the provided user ID against database records and secures its accuracy. With the ID validated, the agent then requests additional required booking details, complying with engagement policies before using BookReservation."
+                "For reservation ID 'ZFA04Y', the system displays cancellation details and asks for explicit confirmation with a question: 'Do you confirm to proceed?' The user responds clearly with 'Yes,' ensuring policy compliance before processing cancellation.",
+                "A user is shown details of reservation ID '4WQ150' along with the cancellation process, and the tool asks, 'Do you want to cancel your reservation?' The user explicitly replies 'Yes,' confirming compliance with policy requirements before updating the reservation.",
+                "The agent presents comprehensive cancellation details for reservation ID 'NO6JO3' and requests user confirmation by saying 'Yes.' The user responds affirmatively with 'Yes,' complying with the policy, and the cancellation is processed accordingly.",
+                "The system details refund summary for reservation ID 'AB1234' and asks the user for explicit 'Yes' confirmation before proceeding. The user replies 'Yes,' leading to a compliant cancellation process.",
+                "Confirmation of cancellation specifics is requested from the user for reservation ID 'XY7890' with the prompt to say 'Yes.' After explicit 'Yes,' the cancellation follows, adhering to policy.",
+                "For reservation ID 'PQRS678', a complete cancellation summary is presented, seeking user confirmation with a 'Yes,' abiding by the action confirmation requirement.",
+                "The process for reservation ID 'TUV880' includes displaying cancellation procedure and confirming refund amount, asking for 'Yes' to proceed. The user confirms with 'Yes,' ensuring policy compliance.",
+                "Cancellation effects are outlined for reservation ID 'GHI123,' and the user is asked to confirm with 'Yes.' Receiving 'Yes,' the cancellation proceeds per policy.",
+                "Summary for reservation ID 'RST345' prompts the user with 'You are about to cancel your reservation. Do you confirm with a 'Yes'?' and proceeds with cancellation upon agreeing, complying with policy.",
+                "Full details for ID 'UVW789' are shown with cancellation consequences, needing 'Yes' for confirmation. The user responds with 'Yes,' ensuring compliant reservation cancellation.",
+                "For ID 'XYZ456,' cancellation information including refund policy is presented with a request for 'Yes' confirmation. The user confirms, adhering to the explicit confirmation policy."
             ]
         },
         {
             "policy_name": "Obtain Cancellation Information",
-            "description": "To proceed with a cancellation, the agent must first collect the following information: the user id, reservation id, and the reason for cancellation. The reasons for cancellation can be: change of plan, airline cancelled flight, or other reasons. This information ensures accurate processing through the CancelReservation tool.",
+            "description": "Before invoking the 'cancel_reservation' tool, ensure you have gathered the user's ID, reservation ID, and cancellation reason (such as change of plans, airline cancellation, or other reasons). This information is essential to comply with refund processing requirements.",
             "references": [
+                "The agent must first obtain the user id, then ask for the trip type, origin, destination.",
                 "The agent must first obtain the user id, the reservation id, and the reason for cancellation (change of plan, airline cancelled flight, or other reasons)"
             ],
-            "iteration_added": 2,
+            "iteration_added": 1,
             "violating_examples": [
-                "An airline agent attempts to call the CancelReservation tool without collecting the user id. The policy requires the user id to be obtained before proceeding, making this action non-compliant.",
-                "The agent tries to cancel a reservation using CancelReservation without specifying any reason for cancellation. The policy mandates the need to capture a reason such as a change of plan or airline cancellation, hence this violates the rule.",
-                "The agent collects the wrong reservation id for the cancellation attempt. Despite having a reason for cancellation, using an incorrect reservation id means the policy\u2019s criteria aren't fully met, violating the requirements.",
-                "An agent makes a call to CancelReservation with only the reservation id, omitting the necessary user id and cancellation reason. Such incomplete information violates the policy.",
-                "The airline agent collects 'personal preference' as a reason for cancellation. Since this reason is not one of the acceptable options (change of plan, airline cancelled flight, or other reasons), the request does not comply with the policy.",
-                "The agent attempts to initiate a cancellation through CancelReservation with only the user id, neglecting to acquire the reservation id and reason for cancellation. This contravenes the mandate to gather complete information.",
-                "An agent proceeds to cancel a reservation by merely stating 'unknown' as the reason for cancellation, which is not among the permissible options. This action breaches the policy requirements.",
-                "Attempting to use CancelReservation, the agent fails to verify the accuracy of the gathered user id and reservation id, leading to a potential mismatch and policy violation.",
-                "The airline agent attempts to cancel a reservation without first verifying the accuracy of the user id and reservation id. This oversight leads to the potential for incorrect cancellation, violating the policy\u2019s requirement to ensure accurate information.",
-                "An agent chooses to proceed with the cancellation using CancelReservation without confirming the proper cancellation reasons from the options specified in the policy. This failure to verify the reasons results in a policy breach."
+                "Attempting to cancel a reservation where the reservation ID '4WQ150' is provided, but the user ID and cancellation reason are missing.",
+                "A request to invoke 'cancel_reservation' with reservation ID 'ZFA04Y' without specifying the user's ID or the reason for cancellation, failing to comply with the criteria necessary for refund processing.",
+                "Canceling reservation NO6JO3 after collecting the reservation ID and user ID 'chen_jackson_3290', but neglecting to gather trip type and destination."
             ],
             "compliance_examples": [
-                "Prior to calling CancelReservation, the airline agent retrieves the required user id, the correct reservation id, and selects 'change of plan' as the reason for cancellation, fully complying with the policy.",
-                "The agent obtains the reservation id and user id from the user\u2019s profile, and confirms 'airline cancelled flight' as the cancellation reason, thereby following the policy exactly as it is outlined.",
-                "Upon receiving a cancellation request, the agent ensures the reservation id is accurate, collects the user id, and the user specifies 'other reasons' for cancelling. The agent then proceeds, adhering to the policy.",
-                "A user requests cancellation due to a change of plan. The agent verifies and records the user id, reservation id, and the given reason before invoking CancelReservation, thus complying with the required policy steps.",
-                "The airline agent retrieves all necessary information: user id, accurate reservation id, and 'airline cancelled flight' as the reason for cancellation before using CancelReservation, demonstrating adherence to the policy.",
-                "Before proceeding with the cancellation, the agent ensures that 'change of plan' is selected as the reason, and records the correct user id and reservation id, exhibiting full compliance with policy guidelines.",
-                "A passenger wants to cancel their flight due to the airline canceling the flight. The agent first verifies the passenger's user id and reservation id from the reservation data, along with confirming the reason 'airline cancelled flight' as provided by the user, before using the CancelReservation tool, ensuring compliance.",
-                "The agent receives a cancellation request where the reason given is 'change of plan'. The agent collects the user id, reservation id accurately and documents 'change of plan' as the reason for cancellation. This adherence to the procedure illustrates compliance with the policy requirements.",
-                "The agent receives a request to cancel a flight due to a change of plan and first confirms the user id and reservation id accurately from the user's provided details. They also document the 'change of plan' as the reason before proceeding with CancelReservation, ensuring all policy requirements are met.",
-                "In response to a cancellation request, the agent collects the user's id, verifies the reservation id, and notes 'airline cancelled flight' as the reason for cancellation. This thorough process follows the policy strictly before using the CancelReservation tool.",
-                "An airline agent thoroughly checks the user id, reservation id, and reason 'other reasons' for cancellation before making a call to CancelReservation. This diligent process ensures full compliance with the policy.",
-                "The agent, upon receiving a cancellation request, retrieves the user id and reservation id, and receives explicit confirmation of 'change of plan' as the reason for cancellation. This action aligns with the policy requirements and maintains compliance.",
-                "Before invoking CancelReservation, the agent acquires the user id, verifies the reservation id, and confirms 'airline cancelled flight' as a valid reason with the user, showcasing compliance with the policy.",
-                "An agent processes a cancellation by first collecting user id and the reservation id, asking the user to specify a reason from the accepted options, such as a 'change of plan', and only then proceeds with CancelReservation, adhering to policy guidelines."
+                "Successfully canceling reservation '4WQ150' with the user's ID 'chen_jackson_3290' and the reason for cancellation as 'change of plans', adhering to the cancellation information policy.",
+                "Correctly invoking 'cancel_reservation' using reservation ID 'ZFA04Y', user ID 'diana_smith_5689', and specifying trip type, origin and destination.",
+                "Gathering all required information: reservation ID 'NO6JO3', user ID 'samuel_wright_2311', and reason 'other' for cancellation before proceeding to cancel the reservation, ensuring policy compliance."
             ]
         },
         {
-            "policy_name": "Travel Insurance Policy",
-            "description": "For using the CancelReservation function, ensure the following conditions are met: (1) Cancelling is within 24 hours of booking; (2) The airline has cancelled the flight. Additionally, basic economy and economy flights require purchased travel insurance, and applicable policy conditions must be met for cancellation. Business class reservations can always be cancelled if they have not yet flown. Always verify the reservation ID and eligibility criteria before invoking CancelReservation.",
-            "references": [
-                "Travel insurance: the agent should ask if the user wants to buy the travel insurance, which is 30 dollars per passenger and enables full refund if the user needs to cancel the flight given health or weather reasons."
-            ],
-            "iteration_added": 2,
-            "violating_examples": [
-                "An agent attempts to call CancelReservation for a reservation booked 48 hours ago and without proof of the flight being cancelled by the airline. Since the policy strictly mandates cancellation only within 24 hours of booking, or if the airline itself has cancelled the flight, this action violates the policy.",
-                "The agent proceeds with CancelReservation for a basic economy reservation without confirming that the user purchased travel insurance. Per the policy, such reservations require insurance for cancellation, making this a violation.",
-                "An agent calls CancelReservation for a business class reservation without verifying if any of its segments have already been flown. The policy clearly states that business class reservations can only be cancelled if none of the segments are already used, hence this violates the policy.",
-                "An agent tries to cancel an economy class reservation 26 hours after booking without any proof of airline cancellation. This breaches the policy as the cancellation window or proof of airline action was not verified.",
-                "The agent initiates CancelReservation for a basic economy class without verifying if the travel insurance criteria for health or weather reasons are satisfied, directly contravening the policy.",
-                "An agent attempts to cancel a basic economy reservation without checking the travel insurance when the cancellation request does not fall within the 24-hour booking window or the flight has not been cancelled by the airline, violating policy requirements.",
-                "The agent tries to cancel a reservation but fails to confirm the reservation ID before proceeding, leading to an attempt to cancel a non-existent reservation, which breaches the policy of verification prior to invocation."
-            ],
-            "compliance_examples": [
-                "A user requests the cancellation of a business class reservation, and the agent confirms that none of its flight segments have been flown yet, successfully invoking CancelReservation and complying with the policy.",
-                "An agent checks and confirms the reservation was made within 24 hours before invoking CancelReservation, ensuring compliance with the 24-hour rule in the policy.",
-                "For a basic economy reservation, the agent verifies that the user has purchased travel insurance and that the conditions for cancelling are met, thus correctly adhering to the policy before calling CancelReservation.",
-                "An agent verifies that the airline has cancelled the flight before proceeding with the CancelReservation call, ensuring compliance with the policy's requirement that cancellations are allowed if the airline cancels the flight.",
-                "A user requests the cancellation of an economy class reservation booked 18 hours ago. The agent confirms it complies with the 24-hour rule and successfully cancels the reservation by invoking CancelReservation.",
-                "A user attempts to cancel a basic economy flight that was insured and the conditions for insurance usage in cancellation are satisfied. The agent confirms all criteria are met, complying with the policy by proceeding with CancelReservation.",
-                "An agent receives a cancellation request for a business class reservation and confirms that all flight segments are unused before proceeding, thus obeying the policy.",
-                "An agent confirms that the user's reservation was cancelled by the airline and appropriately invokes CancelReservation, adhering to the policy's stipulations for cancellations in such scenarios.",
-                "An agent receives a cancellation request from a user who purchased a basic economy ticket with travel insurance. After confirming that a valid reason under the insurance policy is provided, such as severe weather conditions, the agent proceeds with CancelReservation, adhering to the policy requirements.",
-                "A user with a business class reservation requests cancellation. The agent verifies that it is still within 24 hours of booking and none of the segments have been flown. After these checks, the agent invokes CancelReservation, demonstrating compliance with the policy.",
-                "An agent confirms that a basic economy reservation with purchased travel insurance meets the policy criteria before cancelling within 24 hours of booking and successfully invokes CancelReservation.",
-                "The agent receives a cancellation request for an economy class reservation, checks that the purchase of travel insurance covers the current conditions for cancellation and confirms compliance before invoking CancelReservation."
-            ]
-        },
-        {
-            "policy_name": "Conditional Cancellations",
-            "description": "For reservations in economy and basic economy classes, ensure the following conditions are met before using the CancelReservation tool: travel insurance must have been obtained during the initial booking, and the reason for cancellation should be due to health or adverse weather conditions. These conditions are necessary for processing cancellations.",
+            "policy_name": "Cancellation Policy for All Flights",
+            "description": "To use the 'cancel_reservation' tool, confirm the following with the user: 1) The cancellation is within 24 hours of booking, 2) The airline cancelled the flight, 3) For economy class, cancellation is only allowed if travel insurance was purchased and qualifies, 4) Business class flights can be cancelled anytime. These conditions must be validated prior to invoking the tool.",
             "references": [
                 "All reservations can be cancelled within 24 hours of booking, or if the airline cancelled the flight. Otherwise, basic economy or economy flights can be cancelled only if travel insurance is bought and the condition is met, and business flights can always be cancelled. The rules are strict regardless of the membership status.",
                 "The API does not check these for the agent, so the agent must make sure the rules apply before calling the API!"
             ],
             "iteration_added": 2,
             "violating_examples": [
-                "An agent attempts to cancel an economy class reservation for a user citing a change of plan as the reason. The policy demands that the cancellation reason must either be due to health or adverse weather conditions, which is not met in this case.",
-                "A reservation in basic economy is canceled without verifying if travel insurance was purchased at the time of booking. The policy mandates insurance must be obtained to qualify for any cancellations outside the 24-hour window or airline cancellations.",
-                "An agent tries to cancel a basic economy reservation as the user wished to switch to another flight with a cheaper fare. The policy prohibits cancellations if they are not due to health issues or adverse weather, even if the flight class has travel insurance.",
-                "A user requests a cancellation of an economy flight claiming they decided not to travel anymore, and the agent proceeds without checking for a health or weather-related justification. The policy requires these specific conditions for cancelations to be processed when insurance is involved.",
-                "An agent tries to cancel a basic economy reservation because the user found a better deal with another airline. This violates the policy as cancellations are not permitted unless the reason is health or adverse weather and insurance was purchased at booking.",
-                "A user requests to cancel an economy reservation due to missing their flight, and the agent proceeds without verifying if travel insurance and valid reasons per policy (health or weather issues) apply. This is a policy breach."
+                "A user contacts support to cancel a reservation for an economy class ticket without having purchased travel insurance, and the booking was made more than 24 hours ago, yet the agent proceeds with cancellation.",
+                "A basic user requests a reservation cancellation 48 hours after purchase, without the airline canceling any flights, and the agent mistakenly processes the cancellation, violating the 24-hour window requirement for non-business class tickets."
             ],
             "compliance_examples": [
-                "An agent successfully cancels a basic economy reservation after confirming with the user that travel insurance was purchased during initial booking and the cancellation reason is due to adverse weather. This meets the policy's outlined conditions for cancellation.",
-                "A reservation for an economy flight is cancelled after the agent verifies that the user purchased travel insurance and has provided documentation related to a health issue requiring cancellation. The agent adheres to the strict policy rules, justifying the cancellation under the correct conditions.",
-                "A user books an economy flight and later requests to cancel due to severe weather warnings at their destination. The agent checks and confirms that travel insurance was included in the original booking, proceeding with the cancellation in full compliance with the policy requirements.",
-                "An agent cancels an economy reservation made two days previously without travel insurance, but since the request comes within the 24-hour timeframe after booking, the policy is followed as cancellations are permissible within that window regardless of insurance or reason.",
-                "An agent cancels an economy class reservation upon confirming that the user purchased travel insurance and the reason is a government advisory against travel due to severe weather. This action complies with the policy conditions.",
-                "A basic economy reservation is canceled within 24 hours of booking without checking for other conditions, which is permissible per policy, ensuring compliance because cancellations are allowed in this timeframe irrespective of travel insurance.",
-                "An agent cancels a basic economy reservation when the user presents a valid health document verifying an emergency condition. The cancellation is completed because travel insurance was purchased at booking, aligning with policy conditions.",
-                "A user requests to cancel an economy flight due to a severe weather condition warning prior to departure. The agent confirms that travel insurance was included during booking, and validates that the provided documentation supports weather-related cancellation. This is compliant with the policy.",
-                "An agent processes a cancellation for a basic economy reservation upon verifying an urgent health issue of one of the passengers, confirming that travel insurance was initially obtained. This follows all necessary policy guidelines for cancellations.",
-                "After confirming adverse weather alerts and prior travel insurance purchase at booking, an agent cancels an economy class reservation, fully adhering to the policy regarding necessary conditions for cancellation.",
-                "A user books an economy flight and requests to cancel due to a government-issued travel restriction caused by health concerns at the destination. The agent verifies that travel insurance was included during the original booking, allowing the cancellation to proceed in compliance with the policy.",
-                "An agent receives a cancellation request for a basic economy flight from a user who presents documentation of a family health emergency. The agent ensures that travel insurance was purchased at booking, allowing the cancellation to be processed under the policy's conditions.",
-                "A reservation is cancelled for an economy class flight after the agent confirms an official public health advisory against travel to the destination and the presence of travel insurance on the booking, aligning with the policy's provisions for cancellation due to health concerns.",
-                "A user requests cancellation of their economy class flight due to an unexpected severe weather alert for their destination. The agent checks the original booking and confirms the purchase of travel insurance, allowing for a cancellation in compliance with the policy.",
-                "An agent receives a request to cancel an economy class reservation due to a forecast of severe weather, verifies the user had obtained travel insurance at booking, and proceeds to cancel, following policy requirements.",
-                "A basic economy reservation is successfully canceled because the user had travel insurance, and the reason for cancellation is a sudden health emergency, aligning with the strict policy conditions for cancellation.",
-                "For a cancellation of an economy flight citing adverse weather, the agent checks that travel insurance was purchased at booking time and proceeds, adhering to the policy requirements."
+                "An agent checks and confirms the reservation was made within 24 hours before invoking CancelReservation.",
+                "For a basic economy reservation done 36 hours ago, and the user has purchased travel insurance for flight canceling.",
+                "An agent verifies that the airline has cancelled the flight before proceeding with the CancelReservation call.",
+                "A user requests the cancellation of an economy class reservation booked 18 hours ago.",
+                "A user with a business class reservation requests cancellation for a reservation done 40 hours ago."
             ]
         },
         {
@@ -185,9 +79,9 @@
             ],
             "iteration_added": 2,
             "violating_examples": [
-                "An agent tries to call the CancelReservation tool without verifying the status of all flight segments in the reservation. It turns out one of the segments has already been flown, thus violating the policy that prevents cancellation of already flown trips.",
-                "A user requests to cancel their entire trip and the agent immediately processes the cancellation without first checking that no part of the trip has been used. Later, it's discovered that one segment was already flown, which should have triggered a transfer to a human agent according to the policy.",
-                "The agent receives a request to cancel a trip, and while one of the segments shows a 'flying' status, the agent proceeds with CancelReservation. This violates the policy since the segment is considered 'used' and any part flown must be escalated.",
+                "An agent tries to call the CancelReservation tool without verifying the status of all flight segments in the reservation.",
+                "The agent receives a request to cancel a trip, and while one of the segments shows a 'flying' status, the agent proceeds with CancelReservation.",
+
                 "An agent cancels a reservation marking all segments as 'scheduled' without confirming their status. Post-cancellation, it is discovered that one segment was marked 'delayed' but has already departed, violating the policy that mandates confirming every segment before cancellation.",
                 "The agent proceeds to call CancelReservation after only checking a subset of flight segments, assuming the others are unused. However, it is later revealed that this assumption was incorrect, as some segments were in 'departed' status, which violates the policy requiring complete verification.",
                 "An agent falsely assumes that since the trip is set to occur in the future, none of the flights have been flown, and calls the CancelReservation tool. Upon review, one segment is found to have been flown, breaking the policy which requires a check prior to cancellation.",

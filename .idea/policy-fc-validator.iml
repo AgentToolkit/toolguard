@@ -6,6 +6,8 @@
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/policy_adherence" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/programmatic-ai/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/src/policy_adherence/output/claude-3-5-sonnet-latest/Step2/venv" />
+      <excludeFolder url="file://$MODULE_DIR$/src/policy_adherence/output/gpt-4o-2024-08-06-11.05.2025/Step2/venv" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.10 (policies)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />

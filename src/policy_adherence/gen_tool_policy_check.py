@@ -2,6 +2,7 @@ import ast
 import asyncio
 import copy
 import os
+import time
 from os.path import join
 from typing import Any, List, Tuple
 from loguru import logger
@@ -154,6 +155,7 @@ class ToolCheckPolicyGenerator:
 
     async def generate_tool_item_tests_and_check_fn(self, item: ToolPolicyItem, check_fn: FileTwin)->FileTwin|None:
         try:
+            time.sleep(10)
             tests = await self.generate_tool_item_tests(item, check_fn)
             await self.improve_tool_item_check_fn_loop(item, check_fn, tests)
             return tests
@@ -186,6 +188,13 @@ class ToolCheckPolicyGenerator:
             test_file.save_as(self.py_path, join(DEBUG_DIR, f"{trial_no}_{test_fn_module_name(item.name)}.py"))
 
             lint_report = pyright.run(self.py_path, test_file.file_name, PY_ENV)
+            lint_report_filename = join(DEBUG_DIR, f"{trial_no}_{to_snake_case(item.name)}_pyright.json")
+            report = FileTwin(
+                file_name=lint_report_filename,
+                content=lint_report.model_dump_json(indent=2)
+            )
+            report.save(self.py_path)
+
             if lint_report.summary.errorCount>0:
                 logger.warning(f"Generated tests with {lint_report.summary.errorCount} Python errors {test_file.file_name}.")
                 FileTwin(

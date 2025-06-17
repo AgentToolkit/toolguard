@@ -1,3 +1,4 @@
+import itertools
 import os
 import re
 from collections import defaultdict
@@ -10,9 +11,10 @@ import json
 
 class ReferenceEval:
 	
-	def __init__(self,gt_dir: str, generated_dir: str):
+	def __init__(self, gt_dir: str, generated_dir: str):
 		avgs = [0,0,0]
 		p_avgs = [0,0,0]
+		rand_scores = list()
 
 		ntools = 0
 		for tool_file in os.listdir(gt_dir):
@@ -63,13 +65,42 @@ class ReferenceEval:
 				p_avgs[1]+=p_recall
 				p_avgs[2]+=p_f1
 
+				rand_score = self.evaluate_policy_split(gen_span2policy, gt_span2policy)
+				#print(f'tool: {tool_file}, rand score: {rand_score}')
+				rand_scores.append(rand_score if rand_score > -1 else 0)  # -1 means no common refs
+
 				print(f"Tool: {tool_file} Precision: {precision:.2f}, Recall: {recall:.2f}, F1: {f1:.2f} *** "
-					  f"policy-level results: Precision: {p_precision:.2f}, Recall: {p_recall:.2f}, F1: {p_f1:.2f}")
-				
+					  f"policy-level results: Precision: {p_precision:.2f}, Recall: {p_recall:.2f}, F1: {p_f1:.2f} *** "
+					  f"rand score: {rand_score:.2f}")
+
+
 		print(f"Avg Precision: { avgs[0]/ntools:.2f} Avg Recall: { avgs[1]/ntools:.2f} Avg F1: { avgs[2]/ntools:.2f} *** "
 			  f"policy-level stats: Avg Precision: {p_avgs[0]/ntools:.2f} Avg Recall: {p_avgs[1]/ntools:.2f} "
-			  f"Avg F1: {p_avgs[2]/ntools:.2f}")
-	
+			  f"Avg F1: {p_avgs[2]/ntools:.2f} *** "
+			  f"Avg rand score: {sum(rand_scores)/len(rand_scores):.2f}")
+
+	def evaluate_policy_split(self, gen_span2policy, gt_span2policy):
+
+		gt_spans = set(gt_span2policy.keys())
+		gen_spans = set(gen_span2policy.keys())
+		common = gen_spans.intersection(gt_spans)
+		#print(f'len(gen_spans): {len(gen_spans)}, len(gt_spans): {len(gt_spans)}, in common: {len(common)}')
+
+		if len(common) <= 1: return -1
+
+		a = 0; b = 0  # similarly to how rand score is computed
+		for (s1, s2) in list(itertools.product(common, common)):
+			if s1 == s2: continue
+			same_in_gen = len(gen_span2policy[s1].intersection(gen_span2policy[s2])) > 0
+			same_in_gt =  len(gt_span2policy[s1].intersection(gt_span2policy[s2])) > 0
+
+			if same_in_gen and same_in_gt: a += 1
+			if not same_in_gen and not same_in_gt: b += 1
+
+		score = (a + b) / (len(common)*(len(common)-1))
+		return score
+
+
 	def pascal_to_snake(self,name):
 		# Insert underscore before capital letters and convert to lowercase
 		s1 = re.sub(r'(.)([A-Z][a-z]+)', r'\1_\2', name)
@@ -121,26 +152,16 @@ class ReferenceEval:
 
 if __name__ == '__main__':
 	
-	# gtdir = '/Users/naamazwerdling/Documents/OASB/policy_validation/airline/GroundTruth'
-	# #gendir = '/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final'
-	# gendir = '/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final copy 4'
-	# #gendir = '/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final with salesforce'
-	# #gendir = '/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final_non-existing-tools-rev'
-	# #gendir = '/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final copy 5'
-	# #gendir = '/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final oas'
-	# gendir = '/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final my json'
+	gtdir = os.path.join('src', 'eval', 'airline', 'GT', 'airlines')
 
-	gtdir = os.path.join('GT', 'airlines')
-
-	#gendir = os.path.join('output', 'llama-3-3-70b-instruct', 'Step1')
-	gendir = os.path.join('output', 'gpt-4o-2024-08-06', 'Step1')
-	gendir = '/Users/naamazwerdling/Documents/OASB/policy_validation/airline/outdir2/wiki_sf_rev'
-	gendir = '/Users/naamazwerdling/Documents/OASB/policy_validation/airline/outdir2/wiki_full_gpt4'
-	gendir = "/Users/naamazwerdling/Documents/OASB/policy_validation/airline/outdir2/full_wiki_gpt4_second"
-	gendir = "/Users/naamazwerdling/Documents/OASB/policy_validation/airline/outdir2/full_wiki_gpt4_short_oas3"
-	#gendir = os.path.join('output', 'llama-3-3-70b-instruct', 'Step1')
-	#gendir = os.path.join('output', 'gpt-4o-mini-2024-07-18', 'Step1')
 	#gendir = os.path.join('output', 'gpt-4o-2024-08-06', 'Step1')
+	gendir = os.path.join('src', 'policy_adherence', 'output', 'gpt-4o-2024-08-06-11.05.2025', 'Step1')
+	#gendir = os.path.join('output', 'gpt-4o-mini-2024-07-18', 'Step1')
+	#gendir = os.path.join('output', 'claude-3-5-sonnet', 'Step1')
+
+	#gendir = os.path.join('output', 'mixtral-8x22B-instruct-v0.1', 'Step1')
+	#gendir = os.path.join('output', 'llama-3-3-70b-instruct', 'Step1')
+	#gendir = os.path.join('output', 'granite-3.3-8b-instruct', 'Step1')
 
 
 	ReferenceEval(gtdir, gendir)

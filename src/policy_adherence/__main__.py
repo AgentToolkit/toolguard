@@ -57,7 +57,9 @@ async def step2(oas_path:str, step1_path:str, step2_path:str, tools:Optional[Lis
 	for file in files:
 		tool_name = file[:-len(".json")]
 		if (not tools) or (tool_name in tools):
-			tool_policies.append(load_tool_policy(join(step1_path, file), tool_name))
+			policy = load_tool_policy(join(step1_path, file), tool_name)
+
+			tool_policies.append(policy)
 	
 	return await generate_tools_check_fns("my_app", tool_policies, step2_path, oas_path)
 

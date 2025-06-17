@@ -14,6 +14,7 @@ import dotenv
 
 
 model_name_to_endpoint_list=[
+#	{"endpoint":"https://ete-litellm.bx.cloud9.ibm.com", "model_name":"claude-3-7-sonnet"},
 	{"endpoint":"https://inference-3scale-apicast-production.apps.rits.fmaas.res.ibm.com/avengers-jamba-9b","model_name":"ibm-fms/avengers-jamba-9b"},
 	{"endpoint":"https://inference-3scale-apicast-production.apps.rits.fmaas.res.ibm.com/codellama-34b-instruct-hf","model_name":"codellama/CodeLlama-34b-Instruct-hf"},
 	{"endpoint":"https://inference-3scale-apicast-production.apps.rits.fmaas.res.ibm.com/deepseek-coder-33b-instruct","model_name":"deepseek-ai/DeepSeek-V2.5"},
@@ -38,6 +39,7 @@ model_name_to_endpoint_list=[
 	{"endpoint":"https://inference-3scale-apicast-production.apps.rits.fmaas.res.ibm.com/granite-3-1-8b-schema-linking","model_name":"ibm/granite-3-1-8b-schema-linking"},
 	{"endpoint":"https://inference-3scale-apicast-production.apps.rits.fmaas.res.ibm.com/granite-3-1-8b-sql-gen","model_name":"ibm/granite-3-1-8b-sql-gen"},
 	{"endpoint":"https://inference-3scale-apicast-production.apps.rits.fmaas.res.ibm.com/granite-3-2-8b-instruct","model_name":"ibm-granite/granite-3.2-8b-instruct"},
+	{"endpoint":"https://inference-3scale-apicast-production.apps.rits.fmaas.res.ibm.com/granite-3-3-8b-instruct/v1/","model_name":"ibm-granite/granite-3.3-8b-instruct"},
 	{"endpoint":"https://inference-3scale-apicast-production.apps.rits.fmaas.res.ibm.com/granite-34b-code-instruct-8k","model_name":"ibm-granite/granite-34b-code-instruct-8k"},
 	{"endpoint":"https://inference-3scale-apicast-production.apps.rits.fmaas.res.ibm.com/granite-34b-content-linking","model_name":"ibm/granite-34b-content-linking"},
 	{"endpoint":"https://inference-3scale-apicast-production.apps.rits.fmaas.res.ibm.com/granite-34b-question-gen","model_name":"ibm/granite-34b-question-gen"},
@@ -57,7 +59,7 @@ model_name_to_endpoint_list=[
 	{"endpoint":"https://inference-3scale-apicast-production.apps.rits.fmaas.res.ibm.com/llama-3-2-11b-instruct","model_name":"meta-llama/Llama-3.2-11B-Vision-Instruct"},
 	{"endpoint":"https://inference-3scale-apicast-production.apps.rits.fmaas.res.ibm.com/llama-3-2-90b-instruct","model_name":"meta-llama/Llama-3.2-90B-Vision-Instruct"},
 	{"endpoint":"https://inference-3scale-apicast-production.apps.rits.fmaas.res.ibm.com/llama-3-3-70b-instruct/v1","model_name":"meta-llama/llama-3-3-70b-instruct"},
-	{"endpoint":"https://inference-3scale-apicast-production.apps.rits.fmaas.res.ibm.com/microsoft-phi-4","model_name":"microsoft/phi-4"},
+	{"endpoint":"https://inference-3scale-apicast-production.apps.rits.fmaas.res.ibm.com/microsoft-phi-4/v1","model_name":"microsoft/phi-4"},
 	{"endpoint":"https://inference-3scale-apicast-production.apps.rits.fmaas.res.ibm.com/mistralai-pixtral-12b-2409","model_name":"mistralai/pixtral-12b-2409"},
 	{"endpoint":"https://inference-3scale-apicast-production.apps.rits.fmaas.res.ibm.com/mixtral-8x22b-instruct-v01/v1","model_name":"mistralai/mixtral-8x22B-instruct-v0.1"},
 	{"endpoint":"https://inference-3scale-apicast-production.apps.rits.fmaas.res.ibm.com/mixtral-8x7b-instruct-v01/v1","model_name":"mistralai/mixtral-8x7B-instruct-v0.1"},
@@ -72,7 +74,7 @@ model_to_endpoint = {
     for entry in model_name_to_endpoint_list
 }
 
-anthropic_models = ['claude-3-5-sonnet-20240620', 'claude-3-haiku-20240307']
+anthropic_models = ['claude-3-5-sonnet-latest', 'claude-3-5-haiku']
 
 
 class LitellmModel(LLM_model):

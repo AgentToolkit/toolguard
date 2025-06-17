@@ -84,8 +84,12 @@ class PolicyIdentifier:
 		user_content = f"Policy Document:{state['policy_text']}\nTools Descriptions:{json.dumps(state['tools'])}\nTarget Tool:{json.dumps(state['target_tool_description'])}\nTPTD: {json.dumps(TPTD)}"
 		response = self.llm.chat_json(generate_messages(system_prompt, user_content))
 
-		for policy in response["policies"]:
-		#for policy in response["additionalProperties"]["policies"]:  # todo: handle via prompt?
+		policies = response["additionalProperties"]["policies"] \
+			if "additionalProperties" in response and "policies" not in response \
+			else response["policies"]
+
+		for policy in policies:
+		#for policy in response["policies"]:
 			policy["iteration"] = state["iteration"]
 			TPTD["policies"].append(policy)
 			
@@ -152,10 +156,12 @@ class PolicyIdentifier:
 			print(f"{r['is_relevant'] if 'is_relevant' in r else ''}\t{r['is_tool_specific'] if 'is_tool_specific' in r else ''}\t{r['can_be_validated'] if 'can_be_validated' in r else ''}\t{r['is_actionable'] if 'is_actionable' in r else ''}\t{r['is_self_contained'] if 'is_self_contained' in r else ''}\t{r['score'] if 'score' in r else ''}\t")
 
 			counts["is_relevant"] += (r["is_relevant"] if 'is_relevant' in r else 0)
-			counts["is_tool_specific"] += r["is_tool_specific"]
-			counts["can_be_validated"] += r["can_be_validated"]
-			counts["is_actionable"] += r["is_actionable"]
-			if not( r['is_relevant'] and r['is_tool_specific'] and r['can_be_validated'] and r['is_actionable']):
+			counts["is_tool_specific"] += (r["is_tool_specific"] if 'is_tool_specific' in r else 0)
+			counts["can_be_validated"] += (r["can_be_validated"] if "can_be_validated" in r else 0)
+			counts["is_actionable"] += (r["is_actionable"] if "is_actionable" in r else 0)
+
+			if not all(e in r for e in ['is_relevant', 'is_tool_specific', 'can_be_validated', 'is_actionable']) or \
+					not(r['is_relevant'] and r['is_tool_specific'] and r['can_be_validated'] and r['is_actionable']):
 				comments+= r["comments"]+"\n"
 
 		return not(all(float(counts[key]) / num > 0.5 for key in counts)),comments
@@ -354,7 +360,7 @@ class PolicyIdentifier:
 				totals+=1
 				if "value" not in vals:
 					print(reviews)
-				if not vals["value"]:
+				elif not vals["value"]:
 					bads += 1
 		if bads/totals > 0.8:
 			return False

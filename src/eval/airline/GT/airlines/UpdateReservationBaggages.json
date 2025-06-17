@@ -57,7 +57,7 @@
          ]
       },
       {
-         "policy_name": "Only Add Checked Bags",
+         "policy_name": "Only Adding Checked Bags is Allowed",
          "description": "You can update the baggage information of an existing reservation, allowing users to add additional checked bags. Removing checked bags from the reservation is not permitted. Ensure the payment method for any additional non-free baggage is provided at invocation.",
          "references": [
             "Change baggage and insurance: The user can add but not remove checked bags."
