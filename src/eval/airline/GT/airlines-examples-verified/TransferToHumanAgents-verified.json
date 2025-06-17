@@ -1,0 +1,44 @@
+{
+  "policies": [
+    {
+          "skip": true,
+          "policy_name": "Transfer if Issue is Beyond Scope",
+          "description": "If the available tools cannot meet the user's request due to limitations within booking reservations, flight modifications, cancellations, or other updates managed by the automated system, transfer the user to a human agent using 'TransferToHumanAgents.invoke' with a brief summary of the issue.",
+          "references": [
+              "You should transfer the user to a human agent if and only if the request cannot be handled within the scope of your actions.",
+              "The agent can only cancel the whole trip that is not flown. If any of the segments are already used, the agent cannot help and transfer is needed.",
+              "Transfer the user to a human agent, with a summary of the user's issue. Only transfer if the user explicitly asks for a human agent, or if the user's issue cannot be resolved by the agent with the available tools.",
+              "Change passengers: The user can modify passengers but cannot modify the number of passengers. This is something that even a human agent cannot assist with."
+          ],
+          "iteration_added": 0,
+          "violating_examples": [
+              "A user requests to cancel just one leg of a multi-segment flight, but the agent proceeds to initiate a transfer to human agents, even though the policy specifies that it should only be done if none of the segments have flown and the whole trip is to be canceled.",
+              "The agent encounters a request to modify the number of passengers in a reservation, which cannot be done either by a human agent or through available automated tools. Instead of transferring the user to a human agent due to the policy constraints of the handling ability, the agent inaccurately attempts flight modifications using an automated tool.",
+              "The agent receives a request to add travel insurance after the initial booking has been completed. The policy prohibits this action, so the agent should transfer the user to a human agent, but instead tries to force a tool command to perform the update, resulting in a violation.",
+              "The user explicitly asks to talk to a human agent because they are uncomfortable with automated systems. Instead of transferring, the agent tries to resolve the issue using available tools, in violation of the policy.",
+              "The agent receives a user request to merge two separate reservations into one, something not possible with automated tools. Rather than transferring to a human agent, the agent incorrectly attempts to manipulate the reservations through tool calls.",
+              "A user demands a refund outside the conditions set by the policy without initially asking for human assistance. The agent ignores this and tries using tools to process the refund instead of transferring the issue, thus breaching the policy.",
+              "A user asks for advice on travel itineraries which may include subjective inputs and opinions, but the agent proceeds with the request without transferring to a human agent, breaching the policy.",
+              "The agent receives a request to update the flight itinerary with more segments which is impossible to manage through automated tools, yet instead of transferring to a human agent, the agent attempts to manipulate the itinerary with available tools, violating the policy.",
+              "A user demands a flight upgrade after boarding, which is not feasible through automated assistance. Instead of transferring this demand to a human agent, the agent attempts to perform actions through system tools, leading to a policy breach.",
+              "The user attempts to transfer reward points between different user profiles, which is not possible through the automated tools. The agent, instead of transferring the user to a human agent as the policy dictates, tries to handle the exchange manually using available tools, thus violating the policy.",
+              "A user requests to change a flight status directly from 'delayed' to 'on time' in the system, which cannot be resolved by tools. The agent incorrectly tries to manage the status update with tool calls instead of transferring the request to a human agent.",
+              "A user demands details on the maintenance history of the aircraft they are booked on, a request that goes beyond the automated system's capabilities. The agent fails to transfer the user to a human agent and attempts, in violation of the policy, to piece together information using various unrelated tools."
+          ],
+          "compliance_examples": [
+              "A user requests to modify the details of an already flown flight segment, which the automated tools cannot handle. The agent correctly transfers the user to a human agent with the summary: 'Flown segment modification requested, requires human assistance.'",
+              "Upon learning that a user wants to remove a passenger from a reservation, the agent recognizes it as an issue that cannot be resolved by available tools and uses 'TransferToHumanAgents.invoke' with the summary: 'Compliance with user request to reduce passengers requires human intervention.'",
+              "A user asks for advice on which cabin class is best suited for a large family reservation, seeking subjective recommendations. The agent, knowing that subjective advice is outside the policy scope, transfers the user to a human agent with the summary: 'User requests subjective cabin class recommendations.'",
+              "A user is unable to use their travel certificate due to system errors, and the issue cannot be resolved automatically. The agent transfers the request with the summary: 'System error affecting travel certificate usage, requires human review.'",
+              "When a user requests simultaneous flight modifications and cancellation adjustments that the system cannot accommodate, the agent transfers the user to an agent with a summary: 'Complex modification and cancellation request, exceeds automated capabilities.'",
+              "Facing a query about changing the billing address after booking, which needs human verification, the agent appropriately transfers the user with a summary: 'Address change post-booking requires manual verification by human agent.'",
+              "The user requests a detailed explanation on membership program benefits, which the automated tools don't provide. Recognizing that detailed membership inquiries require human intervention, the agent correctly transfers the user with the summary: 'Detailed membership benefits inquiry, requires human agent.'",
+              "A user insists on receiving a discount code for a future booking, which goes beyond the tools' scope. The agent correctly identifies this as a request that needs human verification and transfers the user with the summary: 'Request for discount code, beyond automated scope.'",
+              "The user wishes to add a travel companion after a booking confirmation, which the system cannot automatically accommodate. The agent acknowledges the policy restriction and transfers the user to a human agent with the summary: 'Adding travel companion post-booking, requires human assistance.'",
+              "A user requests cancelation of one leg of a flight, already flown. The agent identifies this issue as unsupported by system tools and correctly transfers to a human agent with the summary: 'Partial cancellation of flown segment requested, requires human assistance.'",
+              "When contacted by a user trying to merge itineraries across different accounts, the agent appropriately acknowledges this as outside the automated system's capabilities and utilizes 'TransferToHumanAgents.invoke' with the summary: 'User requests itinerary merge across accounts, needs manual intervention.'",
+              "Presented with a request from a user attempting to add new payment methods post-booking, the agent rightly transfers the query to a human agent, providing the summary: 'Post-booking payment method addition, necessitates human oversight.'"
+          ]
+    }
+  ]
+}
