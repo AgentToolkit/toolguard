@@ -1,6 +1,7 @@
 {
   "policies": [
     {
+          "skip": true,
           "policy_name": "Transfer if Issue is Beyond Scope",
           "description": "If the available tools cannot meet the user's request due to limitations within booking reservations, flight modifications, cancellations, or other updates managed by the automated system, transfer the user to a human agent using 'TransferToHumanAgents.invoke' with a brief summary of the issue.",
           "references": [

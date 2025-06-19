@@ -81,7 +81,6 @@
             "violating_examples": [
                 "An agent tries to call the CancelReservation tool without verifying the status of all flight segments in the reservation.",
                 "The agent receives a request to cancel a trip, and while one of the segments shows a 'flying' status, the agent proceeds with CancelReservation.",
-
                 "An agent cancels a reservation marking all segments as 'scheduled' without confirming their status. Post-cancellation, it is discovered that one segment was marked 'delayed' but has already departed, violating the policy that mandates confirming every segment before cancellation.",
                 "The agent proceeds to call CancelReservation after only checking a subset of flight segments, assuming the others are unused. However, it is later revealed that this assumption was incorrect, as some segments were in 'departed' status, which violates the policy requiring complete verification.",
                 "An agent falsely assumes that since the trip is set to occur in the future, none of the flights have been flown, and calls the CancelReservation tool. Upon review, one segment is found to have been flown, breaking the policy which requires a check prior to cancellation.",
