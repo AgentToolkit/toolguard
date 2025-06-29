@@ -15,7 +15,7 @@ class TestPaymentMethodLimitationCompliance(unittest.TestCase):
 
         # Mocking the FlightBookingApi
         self.api = MagicMock()
-        self.api.get_flight_on_date_details.return_value = GetFlightOnDateDetailsResponse(
+        self.api.get_flight_instance.return_value = GetFlightInstanceResponse(
             status="available",
             available_seats=AvailableSeats(
                 basic_economy= 9,
@@ -28,6 +28,10 @@ class TestPaymentMethodLimitationCompliance(unittest.TestCase):
                 business= 9
             )
         )
+        self.api.list_all_airports.return_value = ListAllAirportsResponse(root={
+            "SFO": "San Francisco", 
+            "JFK": "New York"
+        })
 
     def test_compliance_one_credit_card(self):
         """The user books a flight using one credit card and two gift cards, all listed in their profile, adhering to the payment method limitation policy."""
@@ -120,6 +124,7 @@ class TestPaymentMethodLimitationCompliance(unittest.TestCase):
     def test_violation_credit_card_not_in_profile(self):
         """A reservation with a credit card not defined in the user profile."""
         user_details = GetUserDetailsResponse(payment_methods={
+            "asasa": PaymentMethods(source='credit_card', brand='Visa', last_four='1234'),
         })
         self.api.get_user_details.return_value = user_details
 
@@ -145,6 +150,7 @@ class TestPaymentMethodLimitationCompliance(unittest.TestCase):
     def test_violation_gift_card_not_in_profile(self):
         """A reservation with a credit card not defined in the user profile."""
         user_details = GetUserDetailsResponse(payment_methods={
+            "asasa": PaymentMethods(source='credit_card', brand='Visa', last_four='1234'),
         })
         self.api.get_user_details.return_value = user_details
 

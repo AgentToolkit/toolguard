@@ -15,7 +15,7 @@ class TestConsistentCabinClassPolicy(unittest.TestCase):
 
         # Mocking the FlightBookingApi
         self.api = MagicMock()
-        self.api.get_flight_on_date_details.return_value = GetFlightOnDateDetailsResponse(
+        self.api.get_flight_instance.return_value = GetFlightInstanceResponse(
             status="available",
             available_seats=AvailableSeats(
                 basic_economy= 9,
@@ -36,6 +36,12 @@ class TestConsistentCabinClassPolicy(unittest.TestCase):
                 'credit_card_123': PaymentMethods(source='credit_card', brand='Visa', last_four='1234'),
             }
         )
+
+        self.api.list_all_airports.return_value = ListAllAirportsResponse(root={
+            "SFO": "San Francisco", 
+            "JFK": "New York",
+            "LAX": "ASASAS"
+        })
 
     def test_1passengers_avail_seats(self):
         """

@@ -4,7 +4,7 @@ from my_app.book_reservation.guard_book_reservation import guard_book_reservatio
 from my_app.common import *
 from my_app.domain import *
 
-flight = GetFlightOnDateDetailsResponse(
+flight = GetFlightInstanceResponse(
     status="available",
     available_seats=AvailableSeats(
         basic_economy= 9,
@@ -38,9 +38,9 @@ class TestPassengerInformationRequirementCompliance(unittest.TestCase):
         self.api.list_all_airports.return_value = ListAllAirportsResponse(root={'JFK': 'JFK AR', 'SFO': 'SFO AR'})
         self.api.search_direct_flight.return_value = []
         self.api.search_onestop_flight.return_value = []
-        self.api.get_flight_details.return_value = ""
+        self.api.get_scheduled_flight.return_value = ""
         self.api.get_reservation_details.return_value = GetReservationDetailsResponse()
-        self.api.get_flight_on_date_details.return_value = flight
+        self.api.get_flight_instance.return_value = flight
 
     # Compliance Tests
     def test_five_passengers_with_complete_information(self):

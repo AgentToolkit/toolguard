@@ -2,12 +2,12 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 # Importing necessary modules
-from my_app.update_reservation_flights.guard_update_reservation_flights import guard_update_reservation_flights
 from my_app.common import *
 from my_app.domain import *
+from my_app.upodate_reservation_flights.guard_update_reservation_flights import guard_update_reservation_flights
 
 FLIGHTS_IDS = ["SFO_JFK", "JFK_BLA", "LAX_JFK", "LAX_BLU", "BLU_BLA", "JFK_BLA"] 
-FLIGHTS = { k: GetFlightDetailsResponse.model_construct(
+FLIGHTS = { k: GetScheduledFlightResponse.model_construct(
         flight_number=k,
         origin=k.split("_")[0],
         destination=k.split("_")[1]
@@ -141,9 +141,9 @@ class TestReservationModificationLimitationCompliance(unittest.TestCase):
 
         def get_flight_side_effect(args, **kwargs):
             return FLIGHTS.get(args.flight_id)
-        api.get_flight_details.side_effect = get_flight_side_effect
+        api.get_scheduled_flight.side_effect = get_flight_side_effect
 
-        api.get_flight_on_date_details.return_value = GetFlightOnDateDetailsResponse(
+        api.get_flight_instance.return_value = GetFlightInstanceResponse(
             status="available",
             available_seats=AvailableSeats(
                 basic_economy= 9,

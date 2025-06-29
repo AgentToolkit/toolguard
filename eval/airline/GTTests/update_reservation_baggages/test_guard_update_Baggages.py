@@ -2,9 +2,9 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 # Importing necessary modules
-from my_app.update_reservation_baggages.guard_update_reservation_baggages import guard_update_reservation_baggages
 from my_app.common import *
 from my_app.domain import *
+from my_app.update_reservation_baggages.guard_udate_reservation_baggages import guard_update_reservation_baggages
 
 
 class TestGuardAddOnlyCheckedBaggages(unittest.TestCase):

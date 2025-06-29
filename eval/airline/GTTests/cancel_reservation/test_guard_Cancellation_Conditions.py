@@ -9,25 +9,25 @@ from my_app.domain import *
 
 FLIGHTS = {
     'LANDED':{
-        "2025-02-28": GetFlightOnDateDetailsResponse(status="landed")
+        "2025-02-28": GetFlightInstanceResponse(status="landed")
     },
     'FLYING':{
-        "2025-02-28": GetFlightOnDateDetailsResponse(status="flying")
+        "2025-02-28": GetFlightInstanceResponse(status="flying")
     },
     'DELAYED':{
-        "2025-02-28": GetFlightOnDateDetailsResponse(status="delayed")
+        "2025-02-28": GetFlightInstanceResponse(status="delayed")
     },
     'ON_TIME':{
-        "2025-02-28": GetFlightOnDateDetailsResponse(status="on_time")
+        "2025-02-28": GetFlightInstanceResponse(status="on_time")
     },
     'AVAIL':{
-        "2025-02-28": GetFlightOnDateDetailsResponse(status="available")
+        "2025-02-28": GetFlightInstanceResponse(status="available")
     },
     'CANCELLED':{
-        "2025-02-28": GetFlightOnDateDetailsResponse(status="cancelled")
+        "2025-02-28": GetFlightInstanceResponse(status="cancelled")
     },
     "ANOTHER ONE":{
-        "2025-02-28": GetFlightOnDateDetailsResponse(status="available")
+        "2025-02-28": GetFlightInstanceResponse(status="available")
     }
 }
 class TestGuardCancellationConditions(unittest.TestCase):
@@ -38,9 +38,9 @@ class TestGuardCancellationConditions(unittest.TestCase):
 
         api = MagicMock()
 
-        def get_flight(q:GetFlightOnDateDetailsParametersQuery):
+        def get_flight(q:GetFlightInstanceParametersQuery):
             return FLIGHTS.get(q.flight_id, {}).get(q.date)
-        api.get_flight_on_date_details.side_effect = get_flight
+        api.get_flight_instance.side_effect = get_flight
 
         reservation = GetReservationDetailsResponse(
             reservation_id="12ds",

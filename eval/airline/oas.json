@@ -431,7 +431,7 @@
             "get": {
                 "summary": "Get Flight Details",
                 "description": "Retrieves the details of a flight using the flight identifier.",
-                "operationId": "get_flight_details",
+                "operationId": "get_scheduled_flight",
                 "parameters": [
                     {
                         "name": "flight_id",
@@ -696,7 +696,7 @@
             "get": {
                 "x-readOnlyOperation": true,
                 "description": "Get the details of a flight occurrence on a specific date including status, available seats, and prices.",
-                "operationId": "get_flight_on_date_details",
+                "operationId": "get_flight_instance",
                 "parameters": [
                     {
                         "name": "flight_id",

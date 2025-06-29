@@ -15,7 +15,7 @@ class TestCheckedBagAllowance(unittest.TestCase):
 
         # Mocking the FlightBookingApi
         self.api = MagicMock()
-        self.api.get_flight_on_date_details.return_value = GetFlightOnDateDetailsResponse(
+        self.api.get_flight_instance.return_value = GetFlightInstanceResponse(
             status="available",
             available_seats=AvailableSeats(
                 basic_economy= 9,
