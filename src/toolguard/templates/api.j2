@@ -7,5 +7,5 @@ class {{ class_name }}(ABC):
     @abstractmethod
     def {{ method.name }}{{ method.signature }}:
         {% if method.doc %}"""{{ method.doc }}"""{% endif %}
-       pass
+        pass
 {% endfor %}

@@ -176,10 +176,16 @@ class OpenAPI(BaseModel):
 			return object_type.model_validate(tmp)
 		return obj
 
+	def save(self, file_name:str):
+		if file_name.endswith(".json"):
+			with open(file_name, 'w', encoding='utf-8') as f:
+				f.write(self.model_dump_json(indent=2, by_alias=True, exclude_none=True))
+			return
+		#TODO yaml
+		raise NotImplementedError()
 
 import json
 import yaml
-
 
 def read_openapi(file_path: str) -> OpenAPI:
 	with open(file_path, "r") as file:

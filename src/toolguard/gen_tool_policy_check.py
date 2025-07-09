@@ -7,10 +7,10 @@ from typing import Any, List, Tuple
 from loguru import logger
 from toolguard.common.array import find
 from toolguard.common import py
-from toolguard.common.str import to_snake_case
+from toolguard.common.str import to_camel_case, to_snake_case
 from toolguard.gen_domain import OpenAPICodeGenerator
 import toolguard.prompts as prompts
-from toolguard.data_types import FileTwin, ToolChecksCodeResult, ToolPolicy, ToolPolicyItem, ToolPolicyItem
+from toolguard.data_types import Domain, FileTwin, ToolChecksCodeResult, ToolPolicy, ToolPolicyItem, ToolPolicyItem
 import toolguard.utils.pyright as pyright
 import toolguard.utils.pytest as pytest
 from toolguard.llm_utils import post_process_llm_response
@@ -103,7 +103,7 @@ async def generate_tools_check_fns(app_name: str, tools: List[ToolPolicy], py_ro
     #tools
     tools_w_poilicies = [tool for tool in tools if len(tool.policy_items) > 0]
     tool_results = await asyncio.gather(*[
-        ToolCheckPolicyGenerator(app_name, tool, py_root).generate()
+        ToolCheckPolicyGenerator(app_name, tool, py_root, domain).generate()
         for tool in tools_w_poilicies
     ])
     
@@ -119,16 +119,16 @@ async def generate_tools_check_fns(app_name: str, tools: List[ToolPolicy], py_ro
 
 class ToolCheckPolicyGenerator:
     app_name: str
-    py_path:str
-    tool:ToolPolicy
-    domain: FileTwin
-    common:FileTwin
+    py_path: str
+    tool: ToolPolicy
+    domain: Domain
+    common: FileTwin
 
-    def __init__(self, app_name:str, tool:ToolPolicy, py_path:str) -> None:
+    def __init__(self, app_name:str, tool:ToolPolicy, py_path:str, domain:Domain) -> None:
         self.py_path = py_path
         self.app_name = app_name
         self.tool = tool
-        self.domain = FileTwin.load_from(py_path, join(app_name, DOMAIN_PY))
+        self.domain = domain
         self.common = FileTwin.load_from(py_path, join(app_name, RUNTIME_COMMON_PY))
         os.makedirs(join(py_path, to_snake_case(app_name), to_snake_case(tool.name)), exist_ok=True)
         os.makedirs(join(py_path, to_snake_case(DEBUG_DIR)), exist_ok=True)
@@ -163,7 +163,7 @@ class ToolCheckPolicyGenerator:
 
     async def generate_tool_item_tests(self, item: ToolPolicyItem, check_fn: FileTwin)-> FileTwin:
         fn_name = check_fn_name(item.name)
-        dep_tools = await prompts.tool_information_dependencies(item.name, item.description, self.domain)
+        dep_tools = await prompts.tool_information_dependencies(item.name, item.description, self.domain.api)
         dep_tools = set(dep_tools) #workaround. generative AI
         logger.debug(f"Dependencies of {item.name}: {dep_tools}")
 
@@ -173,9 +173,9 @@ class ToolCheckPolicyGenerator:
             logger.debug(f"Generating tool {item.name} tests. iteration {trial_no}")
             first_time = trial_no == 0
             if first_time:
-                res_content = await prompts.generate_tool_item_tests(fn_name, check_fn, item, self.common, self.domain, dep_tools)
+                res_content = await prompts.generate_tool_item_tests(fn_name, check_fn, item, self.common, self.domain.api, dep_tools)
             else:
-                res_content = await prompts.improve_tool_tests(test_file, self.domain, item, errors)
+                res_content = await prompts.improve_tool_tests(test_file, self.domain.api, item, errors)
 
             test_content = post_process_llm_response(res_content)
             test_file = FileTwin(
@@ -236,7 +236,7 @@ class ToolCheckPolicyGenerator:
         errors = []
         for trial in range(MAX_TOOL_IMPROVEMENTS):
             logger.debug(f"Improving check function {module_name}... (trial = {trial})")
-            res_content = await prompts.improve_tool_check_fn(prev_version, self.domain, item, review_comments + errors)
+            res_content = await prompts.improve_tool_check_fn(prev_version, self.domain.api, item, review_comments + errors)
 
             body = post_process_llm_response(res_content)
             check_fn = FileTwin(
@@ -264,17 +264,17 @@ class ToolCheckPolicyGenerator:
     def find_api_class(self, nodes: List[Any])->ast.ClassDef:
         for node in nodes:
             if isinstance(node, ast.ClassDef):
-                if find(node.bases, lambda base: isinstance(base, ast.Name) and base.id == "Protocol"):
+                if find(node.bases, lambda base: isinstance(base, ast.Name) and base.id == "ABC"):
                     return node
                 
     def find_tool_method(self, clz:ast.ClassDef, tool_name: str)->ast.FunctionDef:
         for fn in clz.body:
             if isinstance(fn, ast.FunctionDef):
-                if fn.name == to_snake_case(tool_name):
+                if fn.name == to_camel_case(tool_name):
                     return fn
 
     def create_initial_check_fns(self)->Tuple[FileTwin, List[FileTwin]]:
-        tree = ast.parse(self.domain.content)
+        tree = ast.parse(self.domain.api.content)
         api_cls = self.find_api_class(tree.body)
         assert api_cls
         tool_fn = self.find_tool_method(api_cls, self.tool.name)
@@ -299,7 +299,8 @@ class ToolCheckPolicyGenerator:
             for item in self.tool.policy_items]
         
         body = [
-            py.create_import(py.py_module(self.domain.file_name), ["*"]),
+            py.create_import(py.py_module(self.domain.types.file_name), ["*"]),
+            py.create_import(py.py_module(self.domain.api.file_name), ["*"]),
             py.create_import(py.py_module(self.common.file_name), ["*"])
         ]
         for item_module, item in zip(item_files, self.tool.policy_items):
@@ -330,7 +331,8 @@ class ToolCheckPolicyGenerator:
 
     def _create_item_module(self, tool_item: ToolPolicyItem, fn_args:ast.arguments, fn_docstring:str)->FileTwin:
         body = [
-            py.create_import(f"{py.py_module(self.domain.file_name)}", ["*"]),
+            py.create_import(f"{py.py_module(self.domain.types.file_name)}", ["*"]),
+            py.create_import(f"{py.py_module(self.domain.api.file_name)}", ["*"]),
             py.create_import(f"{py.py_module(self.common.file_name)}", ["*"]),
             py.create_fn(
                 name=check_fn_name(tool_item.name), 

@@ -4,8 +4,6 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
 
-from toolguard.data_types import Domain
-
 
 def to_md_bulltets(items: List[str])->str:
     s = ""

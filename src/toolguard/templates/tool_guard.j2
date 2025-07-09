@@ -1,10 +1,10 @@
 from typing import Any, Dict, List
-from .domain_types import *
-from .{{ api_module }} import *
+from ..domain_types import *
+from ..{{ api_module }} import *
 
 class {{ class_name }}({{ api_cls_name }}):
 {% for method in methods %}
     def {{ method.name }}{{ method.signature }}:
         {% if method.doc %}"""{{ method.doc }}"""{% endif %}
-        pass
+       pass
 {% endfor %}
