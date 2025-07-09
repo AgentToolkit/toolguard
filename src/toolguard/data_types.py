@@ -4,6 +4,8 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
 
+from toolguard.data_types import Domain
+
 
 def to_md_bulltets(items: List[str])->str:
     s = ""
@@ -59,6 +61,11 @@ class ToolPolicy(BaseModel):
     name: str
     policy_items: List[ToolPolicyItem]
 
+class Domain(BaseModel):
+    types: FileTwin
+    api: FileTwin
+    api_impl: FileTwin
+
 class ToolChecksCodeResult(BaseModel):
     tool: ToolPolicy
     tool_check_file: FileTwin
@@ -67,7 +74,7 @@ class ToolChecksCodeResult(BaseModel):
 
 class ToolChecksCodeGenerationResult(BaseModel):
     output_path: str
-    domain_file: str
+    domain: Domain
     tools: Dict[str, ToolChecksCodeResult]
 
     def save(self, directory: str, filename: str = "result.json") -> None:

@@ -8,7 +8,7 @@ from toolguard.common.str import to_camel_case
 from toolguard.common.templates import load_template
 from toolguard.utils.datamodel_codegen import run as dm_codegen
 from toolguard.common.open_api import OpenAPI, Operation, Parameter, ParameterIn, PathItem, Reference, RequestBody, Response, JSchema, read_openapi
-from toolguard.data_types import FileTwin
+from toolguard.data_types import Domain, FileTwin
 
 def primitive_jschema_types_to_py(type:Optional[str], format:Optional[str])->Optional[str]:
     #https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.0.2.md#data-types
@@ -33,7 +33,7 @@ class OpenAPICodeGenerator():
     def __init__(self, cwd:str) -> None:
         self.cwd = cwd
 
-    def generate_domain(self, oas_file:str)->Dict[str,FileTwin]:
+    def generate_domain(self, oas_file:str)->Domain:
         oas = read_openapi(oas_file)
         types = FileTwin(
                 file_name="domain_types.py", 
@@ -59,11 +59,11 @@ class OpenAPICodeGenerator():
                 content=cls_str
             ).save(self.cwd)
         
-        return {
-            "types": types,
-            "api": api,
-            "api_impl": api_impl
-        }
+        return Domain(
+            types= types,
+            api= api,
+            api_impl= api_impl
+        )
 
     def get_oas_methods(self, oas:OpenAPI):
         methods = []

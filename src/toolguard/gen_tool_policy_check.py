@@ -98,7 +98,7 @@ async def generate_tools_check_fns(app_name: str, tools: List[ToolPolicy], py_ro
 
     # domain
     domain = OpenAPICodeGenerator(app_root)\
-        .generate_domain(openapi_path, DOMAIN_PY)
+        .generate_domain(openapi_path)
     
     #tools
     tools_w_poilicies = [tool for tool in tools if len(tool.policy_items) > 0]
@@ -113,7 +113,7 @@ async def generate_tools_check_fns(app_name: str, tools: List[ToolPolicy], py_ro
     }        
     return ToolChecksCodeGenerationResult(
         output_path=py_root,
-        domain_file=domain.file_name,
+        domain=domain,
         tools=tools_result
     )
 
