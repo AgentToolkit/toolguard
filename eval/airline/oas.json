@@ -827,21 +827,21 @@
                         "name": "origin",
                         "in": "query",
                         "required": true,
-                        "type": "string",
+                        "schema": {"type": "string"},
                         "description": "The origin city airport in three letters, such as 'JFK'."
                     },
                     {
                         "name": "destination",
                         "in": "query",
                         "required": true,
-                        "type": "string",
+                        "schema": {"type": "string"},
                         "description": "The destination city airport in three letters, such as 'LAX'."
                     },
                     {
                         "name": "date",
                         "in": "query",
                         "required": true,
-                        "type": "string",
+                        "schema": {"type": "string"},
                         "description": "The date of the flight in the format 'YYYY-MM-DD', such as '2024-05-01'."
                     }
                 ],

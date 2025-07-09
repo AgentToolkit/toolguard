@@ -16,7 +16,6 @@ class JSONSchemaTypes(StrEnum):
     object = "object"
     null = "null"
 
-
 class JSchema(DocumentWithRef):
     type: Optional[JSONSchemaTypes] = None
     properties: Optional[Dict[str, Union[Reference, 'JSchema']]] = None

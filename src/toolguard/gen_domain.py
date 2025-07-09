@@ -1,7 +1,6 @@
 
 
 import ast
-import os
 from typing import List, Optional, Union
 
 import astor
@@ -52,11 +51,12 @@ class OpenAPICodeGenerator():
         
         new_body = []
         new_body.append(self.import_typing())
+        new_body.append(self.import_abc())
 
         cls_name = to_camel_case(oas.info.title) or "Tools_API"
         api_cls = create_class(
             name=cls_name,
-            base_class_names=["Protocol"]
+            base_class_names=["ABC"]
         )
         new_body.append(api_cls)
 
@@ -67,6 +67,7 @@ class OpenAPICodeGenerator():
                 params = (path_item.parameters or []) + (op.parameters or [])
                 params = [oas.resolve_ref(p, Parameter) for p in params]
                 mtd = self.make_method(op, params, oas)
+                mtd.decorator_list.insert(0, ast.Name(id='abstractmethod', ctx=ast.Load()))
                 api_cls.body.append(mtd)
         
         module = ast.Module(body=new_body, type_ignores=[])
@@ -91,7 +92,7 @@ class OpenAPICodeGenerator():
         req_body = oas.resolve_ref(op.requestBody, RequestBody)
         if req_body:
             scm_or_ref = req_body.content_json.schema_
-            body_type = self.map_oas_to_py_type(scm_or_ref, oas)
+            body_type = self.oas_to_py_type(scm_or_ref, oas)
             if body_type is None:
                 body_type = f"{to_camel_case(fn_name)}Request"
             args.append(ast.arg(
@@ -105,7 +106,7 @@ class OpenAPICodeGenerator():
         if rsp:
             scm_or_ref = rsp.content_json.schema_
             if scm_or_ref:
-                rsp_type = self.map_oas_to_py_type(scm_or_ref, oas)
+                rsp_type = self.oas_to_py_type(scm_or_ref, oas)
                 if rsp_type is None:
                     rsp_type = f"{to_camel_case(fn_name)}Response"
                 return_type = ast.Name(id=rsp_type, ctx=ast.Load())
@@ -124,24 +125,27 @@ class OpenAPICodeGenerator():
             decorator_list=[],  # No decorators
             returns=return_type  # Return type annotation
         ) # type: ignore
-        
-        doc = ast.Expr(value=ast.Constant(op.description))
-        mtd.body.insert(0, doc)
+
+        if op.description:
+            doc = ast.Expr(value=ast.Constant(op.description))
+            mtd.body.insert(0, doc)
+
         return mtd
     
-    def map_oas_to_py_type(self, scm_or_ref:Union[Reference, JSchema], oas:OpenAPI)->str | None:
+    def oas_to_py_type(self, scm_or_ref:Union[Reference, JSchema], oas:OpenAPI)->str | None:
         if isinstance(scm_or_ref, Reference):
             return scm_or_ref.ref.split("/")[-1]
 
         scm = oas.resolve_ref(scm_or_ref, JSchema)
-        py_type = primitive_jschema_types_to_py(scm.type, scm.format)
-        if py_type:
-            return py_type
-        if scm.type == "array":
-            return f"List[{self.map_oas_to_py_type(scm.items, oas) or 'Any'}]"
+        if scm:
+            py_type = primitive_jschema_types_to_py(scm.type, scm.format)
+            if py_type:
+                return py_type
+            # if scm.type == JSONSchemaTypes.array and scm.items:
+            #     return f"List[{self.oas_to_py_type(scm.items, oas) or 'Any'}]"
     
     def make_arg(self, param: Parameter, oas:OpenAPI):
-        py_type = self.map_oas_to_py_type(param.schema_, oas) or "Any"
+        py_type = self.oas_to_py_type(param.schema_, oas) or "Any"
         return ast.arg(
             arg=param.name, 
             annotation=ast.Name(id=py_type, ctx=ast.Load()))
@@ -153,15 +157,23 @@ class OpenAPICodeGenerator():
                 ast.alias(name="Any", asname=None),
                 ast.alias(name="Dict", asname=None),
                 ast.alias(name="List", asname=None),
-                ast.alias(name="Protocol", asname=None),
+            ], 
+            level=0 
+        )
+    def import_abc(self):
+        return ast.ImportFrom(
+            module="abc",
+            names=[
+                ast.alias(name="ABC", asname=None),
+                ast.alias(name="abstractmethod", asname=None),
             ], 
             level=0 
         )
     
 
 if __name__ == '__main__':
-    gen = OpenAPICodeGenerator("tau_airline/output")
-    oas_path = "tau_airline/input/openapi.yaml"
+    gen = OpenAPICodeGenerator("eval/airline/output")
+    oas_path = "eval/airline/oas.json"
     domain_path = "domain.py"
     domain = gen.generate_domain(oas_path, domain_path)
     print("Done")
