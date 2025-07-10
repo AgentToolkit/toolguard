@@ -1,6 +1,6 @@
-
-
+from pathlib import Path
 from typing import Callable, List, Optional, Tuple, Union
+from os.path import join
 
 from toolguard.common.array import find
 from toolguard.common.py import py_module, unwrap_fn
@@ -10,6 +10,11 @@ from toolguard.py_to_oas import tools_to_openapi
 from toolguard.utils.datamodel_codegen import run as dm_codegen
 from toolguard.common.open_api import OpenAPI, Operation, Parameter, ParameterIn, PathItem, Reference, RequestBody, Response, JSchema, read_openapi
 from toolguard.data_types import Domain, FileTwin
+
+RUNTIME_COMMON_PY = "common.py"
+RUNTIME_TYPES_PY = "domain_types.py"
+RUNTIME_API_PY = "api.py"
+RUNTIME_API_IMPL_PY = "api_impl.py"
 
 def primitive_jschema_types_to_py(type:Optional[str], format:Optional[str])->Optional[str]:
     #https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.0.2.md#data-types
@@ -33,22 +38,26 @@ class OpenAPICodeGenerator():
     cwd: str
     app_name: str
 
-    def __init__(self, app_name:str, cwd:str) -> None:
+    def __init__(self, cwd:str, app_name: str) -> None:
         self.cwd = cwd
         self.app_name = app_name
 
     def generate_domain(self, oas_file:str, funcs: List[Callable]|None = None)->Domain:
+        common = FileTwin.load_from(
+            str(Path(__file__).parent), "data_types.py")\
+            .save_as(self.cwd, join(self.app_name, RUNTIME_COMMON_PY))
+
         oas = read_openapi(oas_file)
         types = FileTwin(
-                file_name=f"{self.app_name}/domain_types.py", 
+                file_name=join(self.app_name, RUNTIME_TYPES_PY),
                 content= dm_codegen(oas_file)
             ).save(self.cwd)
 
         api_cls_name = to_camel_case(oas.info.title) or "Tools_API"
         methods = self.get_oas_methods(oas, funcs)
         api = FileTwin(
-                file_name=f"{self.app_name}/api.py", 
-                content= self.generate_api(methods, api_cls_name)
+                file_name=join(self.app_name, RUNTIME_API_PY), 
+                content= self.generate_api(methods, api_cls_name, py_module(types.file_name))
             ).save(self.cwd)
 
         impl_cls_name = api_cls_name+"_impl"
@@ -60,11 +69,12 @@ class OpenAPICodeGenerator():
             impl_cls_name
         )
         api_impl = FileTwin(
-                file_name=f"{self.app_name}/api_impl.py", 
+                file_name=join(self.app_name, RUNTIME_API_IMPL_PY),
                 content=cls_str
             ).save(self.cwd)
         
         return Domain(
+            common = common,
             types= types,
             api_class_name=api_cls_name,
             api= api,
@@ -105,16 +115,15 @@ class OpenAPICodeGenerator():
                 })
         return methods
 
-    def generate_api(self, methods: List, cls_name: str)->str:
-        template = load_template("api.j2")
-        return template.render(
+    def generate_api(self, methods: List, cls_name: str, types_module:str)->str:
+        return load_template("api.j2").render(
+            types_module=types_module,
             class_name=cls_name,
             methods=methods
         )
     
     def generate_api_impl(self, methods: List, api_module:str, types_module:str, api_cls_name:str, cls_name: str)->str:
-        template = load_template("api_impl.j2")
-        return template.render(
+        return load_template("api_impl.j2").render(
             api_cls_name=api_cls_name,
             types_module=types_module,
             api_module=api_module,

@@ -1,9 +1,9 @@
 import json
 import os
 from pathlib import Path
+from types import ModuleType
 from pydantic import BaseModel, Field
-from typing import Dict, List, Optional
-
+from typing import Dict, List, Optional, Type
 
 def to_md_bulltets(items: List[str])->str:
     s = ""
@@ -60,6 +60,7 @@ class ToolPolicy(BaseModel):
     policy_items: List[ToolPolicyItem]
 
 class Domain(BaseModel):
+    common: FileTwin
     types: FileTwin
 
     api_class_name: str
@@ -97,9 +98,28 @@ class ToolGuardCodeGenerationResult(BaseModel):
         assert tool, f"Unknown tool {tool_name}"
 
         guard_file = os.path.join(self.output_path, tool.guard_file.file_name)
-        guard =load_function_from_file(guard_file, tool.guard_fn_name)
-        print(guard)
+        module = load_module_from_path(guard_file, file_to_module(tool.guard_file.file_name))
+        guard_fn =find_function_in_module(module, tool.guard_fn_name)
+        assert guard_fn "Guard not found"
 
+        sig = inspect.signature(guard_fn)
+        guard_args = {}
+        for p_name, param in sig.parameters.items():
+            if p_name == "args":
+                if issubclass(param.annotation, BaseModel):
+                    guard_args[p_name] = param.annotation.model_construct(**args)
+                else:
+                    guard_args[p_name] = args
+            elif p_name == "history":
+                guard_args[p_name] = ChatHistory(messages, None) #FIXME LLM
+            elif p_name == "api":
+                api_impl_file = os.path.join(self.output_path, self.domain.api_impl.file_name)
+                module = load_module_from_path(api_impl_file, file_to_module(self.domain.api_impl.file_name))
+                cls = find_class_in_module(module, self.domain.api_impl_class_name)
+                assert cls
+                guard_args[p_name] = cls()
+        
+        guard_fn(**guard_args)
     
 class LLM(BaseModel):
     def generate(self, messages: List[Dict])->str:
@@ -210,27 +230,31 @@ class PolicyViolationException(Exception):
     def message(self):
         return self._msg
     
+def file_to_module(file_path:str):
+    return file_path.removesuffix('.py').replace('/', '.')
 
 import importlib.util
 import inspect
 import os
 
-def load_function_from_file(file_path: str, function_name: str):
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"Module file not found: {file_path}")
-
-    module_name = os.path.splitext(os.path.basename(file_path))[0]
-
-    spec = importlib.util.spec_from_file_location(module_name, file_path)
+def load_module_from_path(file_path: str, py_path:str) -> ModuleType:
+    module_name = file_to_module(file_path)
+    spec = importlib.util.spec_from_file_location(module_name, os.path.join(py_path, file_path))
     if spec is None or spec.loader is None:
-        raise ImportError(f"Could not load spec from: {file_path}")
-
+        raise ImportError(f"Could not load module from {file_path}")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)  # type: ignore
+    return module
 
-    # Find the function
+def find_function_in_module(module: ModuleType, function_name:str):
     func = getattr(module, function_name, None)
     if func is None or not inspect.isfunction(func):
-        raise AttributeError(f"Function '{function_name}' not found in module '{module_name}'")
-
+        raise AttributeError(f"Function '{function_name}' not found in module '{module.__name__}'")
     return func
+
+def find_class_in_module(module: ModuleType, class_name:str)-> Optional[Type]:
+    cls = getattr(module, class_name, None)
+    if isinstance(cls, type):
+        return cls
+    return None
+
