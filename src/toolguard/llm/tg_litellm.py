@@ -9,9 +9,9 @@ from litellm.exceptions import RateLimitError
 import json
 from jsonschema import validate, ValidationError
 
-from src.toolguard.llm.llm_model import LLM_model
 import dotenv
 
+from toolguard.llm.tg_llm import TG_LLM
 
 model_name_to_endpoint_list=[
 #	{"endpoint":"https://ete-litellm.bx.cloud9.ibm.com", "model_name":"claude-3-7-sonnet"},
@@ -77,7 +77,7 @@ model_to_endpoint = {
 anthropic_models = ['claude-3-5-sonnet-latest', 'claude-3-5-haiku']
 
 
-class LitellmModel(LLM_model):
+class LitellmModel(TG_LLM):
 	def __init__(self,model_name):
 		super().__init__(model_name)
 		self.rits = False
@@ -88,7 +88,7 @@ class LitellmModel(LLM_model):
 			self.anthropic = True
 		
 
-	def generate(self, messages: List[Dict])->ModelResponse:
+	def generate(self, messages: List[Dict])->str:
 		if self.rits:
 			response = completion(
 				messages=messages,
@@ -209,8 +209,8 @@ class LitellmModel(LLM_model):
 	
 if __name__ == '__main__':
 	dotenv.load_dotenv()
-	#model = "gpt-4o-2024-08-06"
-	model = "claude-3-5-sonnet-20240620"
+	model = "gpt-4o-2024-08-06"
+	#model = "claude-3-5-sonnet-20240620"
 	#model = "meta-llama/llama-3-3-70b-instruct"
 	aw = LitellmModel(model)
 	resp = aw.generate([{"role": "user", "content": "what is the weather?"}])

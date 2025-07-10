@@ -11,6 +11,7 @@ from loguru import logger
 import dotenv
 
 from toolguard.__main__ import read_oas_file
+from toolguard.stages_tptd.create_oas_summary import OASSummarizer
 from toolguard.stages_tptd.text_policy_identify_process import step1_main
 dotenv.load_dotenv() 
 
@@ -69,7 +70,11 @@ async def gen_all():
     with open(policy_path, 'r', encoding='utf-8') as f:
         policy_text = markdown.markdown(f.read())
     oas = read_oas_file(oas_path)
-    step1_main(policy_text, oas, output_dir, 'gpt-4o-2024-08-06')
+    summarizer = OASSummarizer(oas)
+    summary = summarizer.summarize()
+    fsummary = {k: v["description"] for k, v in summary.items()}
+    
+    step1_main(policy_text, fsummary,summary, output_dir, 'gpt-4o-2024-08-06')
     # tool_policy_paths = {
     #     # "cancel_reservation": "src/policy_adherence/eval/airline/input/cancel_reservation.json"
     #     "book_reservation": "eval/airline/GT/airlines-examples-verified/BookReservation-verified.json",

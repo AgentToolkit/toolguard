@@ -100,7 +100,7 @@ class ToolGuardCodeGenerationResult(BaseModel):
         guard_file = os.path.join(self.output_path, tool.guard_file.file_name)
         module = load_module_from_path(guard_file, file_to_module(tool.guard_file.file_name))
         guard_fn =find_function_in_module(module, tool.guard_fn_name)
-        assert guard_fn "Guard not found"
+        assert guard_fn ,"Guard not found"
 
         sig = inspect.signature(guard_fn)
         guard_args = {}
