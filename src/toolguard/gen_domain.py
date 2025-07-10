@@ -1,11 +1,12 @@
 
 
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Callable, List, Optional, Tuple, Union
 
 from toolguard.common.array import find
-from toolguard.common.py import py_module
+from toolguard.common.py import py_module, unwrap_fn
 from toolguard.common.str import to_camel_case
-from toolguard.common.templates import load_template
+from toolguard.templates import load_template
+from toolguard.py_to_oas import tools_to_openapi
 from toolguard.utils.datamodel_codegen import run as dm_codegen
 from toolguard.common.open_api import OpenAPI, Operation, Parameter, ParameterIn, PathItem, Reference, RequestBody, Response, JSchema, read_openapi
 from toolguard.data_types import Domain, FileTwin
@@ -36,7 +37,7 @@ class OpenAPICodeGenerator():
         self.cwd = cwd
         self.app_name = app_name
 
-    def generate_domain(self, oas_file:str)->Domain:
+    def generate_domain(self, oas_file:str, funcs: List[Callable]|None = None)->Domain:
         oas = read_openapi(oas_file)
         types = FileTwin(
                 file_name=f"{self.app_name}/domain_types.py", 
@@ -44,7 +45,7 @@ class OpenAPICodeGenerator():
             ).save(self.cwd)
 
         api_cls_name = to_camel_case(oas.info.title) or "Tools_API"
-        methods = self.get_oas_methods(oas)
+        methods = self.get_oas_methods(oas, funcs)
         api = FileTwin(
                 file_name=f"{self.app_name}/api.py", 
                 content= self.generate_api(methods, api_cls_name)
@@ -54,6 +55,7 @@ class OpenAPICodeGenerator():
         cls_str = self.generate_api_impl(
             methods, 
             py_module(api.file_name),
+            py_module(types.file_name),
             api_cls_name,
             impl_cls_name
         )
@@ -70,7 +72,9 @@ class OpenAPICodeGenerator():
             api_impl= api_impl
         )
 
-    def get_oas_methods(self, oas:OpenAPI):
+    def get_oas_methods(self, oas:OpenAPI, funcs: List[Callable]|None = None):
+        orign_funcs = [unwrap_fn(fn) for fn in funcs or []]
+
         methods = []
         for path, path_item in oas.paths.items():
             path_item = oas.resolve_ref(path_item, PathItem)
@@ -81,12 +85,23 @@ class OpenAPICodeGenerator():
                 params = (path_item.parameters or []) + (op.parameters or [])
                 params = [oas.resolve_ref(p, Parameter) for p in params]
                 args, ret = self.make_signature(op, params, oas)
-                args_str = ','.join(["self"]+[f"{arg}:{type}" for arg,type in args])
+                args_str = ', '.join(["self"]+[f"{arg}:{type}" for arg,type in args])
                 sig = f"({args_str})->{ret}"
+
+                body = "pass"
+                if orign_funcs:
+                    func = find(orign_funcs or [], lambda fn: fn.__name__ == op.operationId)
+                    if func:
+                        args_str = ', '.join(["self"]+[f"{arg}" for arg,type in args])
+                        body = f"""
+        from {func.__module__} import {func.__name__}
+        return {func.__name__}({args_str})
+"""
                 methods.append({
                     "name": to_camel_case(op.operationId), 
                     "signature": sig,
-                    "doc": op.description
+                    "doc": op.description,
+                    "body": body
                 })
         return methods
 
@@ -97,10 +112,11 @@ class OpenAPICodeGenerator():
             methods=methods
         )
     
-    def generate_api_impl(self, methods: List, api_module:str, api_cls_name:str, cls_name: str)->str:
+    def generate_api_impl(self, methods: List, api_module:str, types_module:str, api_cls_name:str, cls_name: str)->str:
         template = load_template("api_impl.j2")
         return template.render(
             api_cls_name=api_cls_name,
+            types_module=types_module,
             api_module=api_module,
             class_name=cls_name,
             methods=methods
@@ -150,8 +166,29 @@ class OpenAPICodeGenerator():
             #     return f"List[{self.oas_to_py_type(scm.items, oas) or 'Any'}]"
     
 if __name__ == '__main__':
-    gen = OpenAPICodeGenerator("eval/airline/output")
-    oas_path = "eval/airline/oas.json"
+    from pydantic import BaseModel
+    class R(BaseModel):
+        a:int
+        b:str
+        c:'R'
+
+    from langchain.tools import tool
+    @tool
+    def greet(name: str, title: str = "Mr.") -> R:
+        """
+        Greet someone with a title.
+
+        Args:
+            name: The person's name.
+            title: The person's title (default is "Mr.").
+        """
+        pass
+
+    oas_path = "eval/airline/oas_1.json"
+    oas = tools_to_openapi("Bla", [greet])
+    oas.save(oas_path)
+
+    gen = OpenAPICodeGenerator("my_app", "eval/airline/output")
     # domain_path = "domain.py"
-    domain = gen.generate_domain(oas_path)
+    domain = gen.generate_domain(oas_path, [greet])
     print("Done")

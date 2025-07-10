@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from toolguard.common.http import MEDIA_TYPE_APP_JSON
 from toolguard.common.jschema import JSONSchemaTypes, JSchema
 from toolguard.common.open_api import Info, MediaType, OpenAPI, Operation, Parameter, ParameterIn, PathItem, Response, Server
+from toolguard.common.py import unwrap_fn
 
 PRIMITIVE_PY_TYPES_TO_JSCHMA_TYPES = {
     str: JSONSchemaTypes.string,
@@ -78,7 +79,7 @@ def py_type_to_json_schema(py_type:Any) -> JSchema:
     return JSchema(type = JSONSchemaTypes.string)
 
 def func_to_oas_operation(func:Callable)->Operation:
-    original_fn = func.func if func.func else func #remove the @tool wrapper
+    original_fn = unwrap_fn(func)
 
     sig = inspect.signature(original_fn)
     fn_doc = inspect.getdoc(original_fn) or ""
@@ -115,10 +116,10 @@ def func_to_oas_operation(func:Callable)->Operation:
 
 def tools_to_openapi(title:str, tools: List[Callable]) ->OpenAPI:
     def tool_path(tool:Callable):
-        original_fn = tool.func if tool.func else tool
-        return original_fn.__name__
+        return unwrap_fn(tool).__name__
     
     def tool_method(tool:Callable)->Literal["get", "post"]:
+        #FIXME?
         return "post"
     
     return OpenAPI(

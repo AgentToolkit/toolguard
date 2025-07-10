@@ -1,7 +1,7 @@
 
 import ast
 import os
-from typing import List
+from typing import Callable, List
 import astor
 
 from toolguard.common.str import to_snake_case
@@ -69,3 +69,6 @@ def save_py_body(body, file_name:str, py_path:str)->FileTwin:
 def create_init_py(folder):
     with open(os.path.join(folder, "__init__.py"), "w") as file:
         pass
+
+def unwrap_fn(fn: Callable)->Callable: 
+    return fn.func if hasattr(fn, "func") else fn
