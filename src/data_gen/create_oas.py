@@ -1,7 +1,7 @@
 import json
 import os
 
-from toolguard.llm.litellm_model import LitellmModel
+from toolguard.llm.tg_litellm import LitellmModel
 from toolguard.stages_tptd.utils import read_prompt_file, generate_messages
 import dotenv
 dotenv.load_dotenv()

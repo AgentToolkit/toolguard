@@ -1,26 +1,26 @@
 import argparse
 import json
 import os
-from typing import List, Dict, Optional
+from typing import List, Optional
 
 import markdown
 
 from langgraph.graph import StateGraph
 
-from toolguard.common.open_api import OpenAPI
-from toolguard.llm.litellm_model import LitellmModel
-from toolguard.llm.llm_model import LLM_model
+
+from toolguard.llm.tg_litellm import LitellmModel
+from toolguard.llm.tg_llm import TG_LLM
 from toolguard.stages_tptd.create_oas_summary import OASSummarizer
 from toolguard.stages_tptd.utils import read_prompt_file, generate_messages, save_output, TPTDState, \
 	find_mismatched_references
-from tests.op_only_oas import op_only_oas
+
 import dotenv
 dotenv.load_dotenv()
 
 
 class PolicyIdentifier:
-	def __init__(self,model:str='gpt-4o-2024-08-06'):
-		self.llm = LitellmModel(model)
+	def __init__(self,llm:TG_LLM):
+		self.llm = llm
 		workflow = StateGraph(TPTDState)
 		workflow.add_node("policy_creator", self.policy_creator_node)
 		workflow.add_node("add_policies", self.add_policies)
@@ -369,7 +369,7 @@ class PolicyIdentifier:
 		
 	
 
-def step1_main(policy_text:str, oas:Dict, step1_output_dir:str,model, tools:Optional[List[str]]=None):
+def step1_main(policy_text:str, tools_descriptions:dict[str,str],tools_details:dict[str,dict], step1_output_dir:str,llm:TG_LLM, tools:Optional[List[str]]=None):
 	if not os.path.isdir(step1_output_dir):
 		os.makedirs(step1_output_dir)
 		
@@ -377,24 +377,18 @@ def step1_main(policy_text:str, oas:Dict, step1_output_dir:str,model, tools:Opti
 	if not os.path.isdir(process_dir):
 		os.makedirs(process_dir)
 	
-	summarizer = OASSummarizer(oas)
-	summary = summarizer.summarize()
-	fsummary = {k:v["description"] for k,v in summary.items()}
-	for k in fsummary.keys():
-		print(k)
-	
-	for fname, detail in summary.items():
+	for fname, detail in tools_details.items():
 		if tools is None or fname in tools:
 			print(fname)
 			print(detail)
 			input_state = {
 				"policy_text": policy_text,
-				"tools": fsummary,
+				"tools": tools_descriptions,
 				"target_tool": fname,
 				"target_tool_description": detail,
 				"outdir": process_dir
 			}
-			p2 = PolicyIdentifier(model)
+			p2 = PolicyIdentifier(llm)
 			final_output = p2.executor.invoke(input_state)
 			print(json.dumps(final_output))
 			#tmpoutdir = os.path.join(outdir, "final")
@@ -413,22 +407,44 @@ if __name__ == '__main__':
 	#parser.add_argument('--policy-path', type=str, default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-policies-for-non-existing-tools-rev.md')
 	#parser.add_argument('--policy-path',type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-policies-for-non-existing-tools.md')
 	parser.add_argument('--policy-path', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki.md')
-	parser.add_argument('--oas', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/airline.json')
-	parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/outdir2/step1_out')
+	#parser.add_argument('--oas', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/airline.json')
+	parser.add_argument('--tools-info-path', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/clinic/tool_info.json')
+	parser.add_argument('--out-dir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/outdir2/step1_out')
 	parser.add_argument('--tools', nargs='+', default=None, help='Optional list of tool names. These are a subset of the tools in the openAPI operation ids.')
 
 	args = parser.parse_args()
 	policy_path = args.policy_path
-	oas_file = args.oas
-	outdir = args.outdir
+	
+	out_dir = args.out_dir
 	
 	policy_text = open(policy_path, 'r',encoding='utf-8').read()
 	policy_text = markdown.markdown(policy_text)
-
-	with open(oas_file,'r',encoding='utf-8') as file:
-		oas = json.load(file)
-
+	
+	tools_info_path = args.tools_info_path
+	with open(tools_info_path, 'r', encoding='utf-8') as file:
+		tools_info = json.load(file)
+	
+	tools_summary = {}
+	tools_details = {}
+	for t in tools_info:
+		func = t["function"]
+		name = func["name"]
+		description = func["description"]
+		tools_summary[name] = description
+		tools_details[name] = func
+	
+	
 		
-	step1_main(policy_text,oas,outdir,args.model_name,args.tools)
+	# oas_file = args.oas
+	# with open(oas_file,'r',encoding='utf-8') as file:
+	# 	oas = json.load(file)
+	# summarizer = OASSummarizer(oas)
+	# summary = summarizer.summarize()
+	# fsummary = {k: v["description"] for k, v in summary.items()}
+	# for k in fsummary.keys():
+	# 	print(k)
+	llm = LitellmModel(args.model_name)
+	
+	step1_main(policy_text, tools_summary, tools_details, args.out_dir, llm,args.tools)
 	
 

@@ -14,37 +14,47 @@ from loguru import logger
 #important to load the env variables BEFORE policy_adherence library (so programmatic_ai configuration will take place)
 import dotenv
 
+from toolguard.llm.tg_litellm import LitellmModel
+from toolguard.llm.tg_llm import TG_LLM
+from toolguard.stages_tptd.create_oas_summary import OASSummarizer
+
 dotenv.load_dotenv()
 
-from toolguard.common.open_api import OpenAPI
+
 from toolguard.data_types import ToolPolicy, ToolPolicyItem, ToolGuardCodeGenerationResult
 from toolguard.gen_tool_policy_check import generate_tools_check_fns
 from toolguard.stages_tptd.text_policy_identify_process import step1_main
-from tests.op_only_oas import op_only_oas
 
 
-def validate_files_exist(oas, step1_path):
+
+def validate_files_exist(tools_descriptions:dict, step1_path:str):
 	if not os.path.isdir(step1_path):
 		return False
-	if 'paths' in oas:
-		for path, methods in oas["paths"].items():
-			for method, details in methods.items():
-				if isinstance(details, dict) and "operationId" in details:
-					operation_id = details["operationId"]
-					if operation_id.startswith("internal_"):
-						continue
-					fname = os.path.join(step1_path,operation_id +'.json')
-					if not os.path.isfile(fname):
-						return False
+	for tool_name in tools_descriptions.keys():
+		fname = os.path.join(step1_path, tool_name + '.json')
+		if not os.path.isfile(fname):
+			return False
 	return True
+	
+	# if 'paths' in oas:
+	# 	for path, methods in oas["paths"].items():
+	# 		for method, details in methods.items():
+	# 			if isinstance(details, dict) and "operationId" in details:
+	# 				operation_id = details["operationId"]
+	# 				if operation_id.startswith("internal_"):
+	# 					continue
+	# 				fname = os.path.join(step1_path,operation_id +'.json')
+	# 				if not os.path.isfile(fname):
+	# 					return False
+	
 
 
-def run_or_validate_step1(policy_text:str, oas_file:str, step1_out_dir:str, force_step1:bool,model_name:str, tools:Optional[List[str]]=None):
-	oas = read_oas_file(oas_file)
-	if not(force_step1) and validate_files_exist(oas, step1_out_dir):
+def run_or_validate_step1(policy_text:str, tools_descriptions:dict[str,str],tools_details:dict[str,dict], step1_out_dir:str, force_step1:bool,llm:TG_LLM, tools:Optional[List[str]]=None):
+	
+	if not(force_step1) and validate_files_exist(tools_descriptions, step1_out_dir):
 		return
 	
-	step1_main(policy_text, oas, step1_out_dir,model_name, tools)
+	step1_main(policy_text, tools_descriptions,tools_details, step1_out_dir,llm, tools)
 
 
 
@@ -63,8 +73,14 @@ async def step2(oas_path:str, step1_path:str, step2_path:str, tools:Optional[Lis
 	
 	return await generate_tools_check_fns("my_app", tool_policies, step2_path, oas_path)
 
-def main(policy_text:str, oas_file:str, step1_out_dir:str, step2_out_dir:str, force_step1:bool, run_step2:bool,step1_model_name:str='gpt-4o-2024-08-06',step2_model_name:str='gpt-4o-2024-08-06', tools:List[str]=None):
-	run_or_validate_step1(policy_text, oas_file, step1_out_dir, force_step1,step1_model_name, tools)
+def main(policy_text:str, oas_file:str, step1_out_dir:str, step2_out_dir:str, force_step1:bool, run_step2:bool,step1_llm:TG_LLM, tools:List[str]=None):
+	with open(oas_file,'r',encoding='utf-8') as file:
+		oas = json.load(file)
+	summarizer = OASSummarizer(oas)
+	summary = summarizer.summarize()
+	fsummary = {k: v["description"] for k, v in summary.items()}
+
+	run_or_validate_step1(policy_text, fsummary,summary, step1_out_dir, force_step1,step1_llm, tools)
 	if run_step2:
 		result = asyncio.run(step2(oas_file, step1_out_dir, step2_out_dir, tools))
 		print(f"Domain: {result.domain_file}")
@@ -129,7 +145,7 @@ if __name__ == '__main__':
 	oas_file = args.oas
 	policy_text = open(policy_path, 'r', encoding='utf-8').read()
 	policy_text = markdown.markdown(policy_text)
-
+	llm = LitellmModel(args.step1_model_name)
 	main(
 		policy_text = policy_text, 
 		oas_file = oas_file, 
@@ -137,8 +153,7 @@ if __name__ == '__main__':
 		step2_out_dir = os.path.join(args.out_dir, args.step2_dir_name), 
 		force_step1 = args.force_step1,
 		run_step2 = args.run_step2,
-		step1_model_name = args.step1_model_name,
-		step2_model_name=args.step2_model_name,
+		step1_llm = llm,
 		tools = args.tools
 	)
 	

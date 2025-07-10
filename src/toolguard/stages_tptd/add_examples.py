@@ -6,8 +6,10 @@ import markdown
 from langgraph.graph import StateGraph
 from toolguard.stages_tptd.create_oas_summary import OASSummarizer
 import dotenv
-from stages_tptd.text_policy_identify_process import PolicyIdentifier
-from stages_tptd.utils import TPTDState
+
+from toolguard.stages_tptd.text_policy_identify_process import PolicyIdentifier
+from toolguard.stages_tptd.utils import TPTDState
+
 dotenv.load_dotenv()
 
 
