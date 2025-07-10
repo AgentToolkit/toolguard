@@ -9,12 +9,13 @@ from loguru import logger
 
 #important to load the env variables BEFORE policy_adherence library (so programmatic_ai configuration will take place)
 import dotenv
-
-from toolguard.__main__ import read_oas_file
-from toolguard.stages_tptd.text_policy_identify_process import step1_main
 dotenv.load_dotenv() 
 
-from toolguard.data_types import ToolChecksCodeGenerationResult, ToolPolicy, ToolPolicyItem
+from toolguard.__main__ import read_oas_file
+from toolguard.py_to_oas import tools_to_openapi
+from toolguard.stages_tptd.text_policy_identify_process import step1_main
+
+from toolguard.data_types import ToolGuardCodeGenerationResult, ToolPolicy, ToolPolicyItem
 from toolguard.common.open_api import OpenAPI
 
 model = "gpt-4o-2024-08-06"
@@ -63,43 +64,41 @@ async def gen_all():
     # }
     # output_dir = "eval/airline/output"
 
-    oas_path = "../ToolGuardAgent/eval/clinic/oas.json"
+    oas_path = "../ToolGuardAgent/eval/clinic/oas_1.json"
     policy_path = "../ToolGuardAgent/eval/clinic/clinic_policy_doc.md"
     output_dir = "../ToolGuardAgent/eval/clinic/output"
     with open(policy_path, 'r', encoding='utf-8') as f:
         policy_text = markdown.markdown(f.read())
-    oas = read_oas_file(oas_path)
-    step1_main(policy_text, oas, output_dir, 'gpt-4o-2024-08-06')
-    # tool_policy_paths = {
-    #     # "cancel_reservation": "src/policy_adherence/eval/airline/input/cancel_reservation.json"
-    #     "book_reservation": "eval/airline/GT/airlines-examples-verified/BookReservation-verified.json",
-    #     # "update_reservation_passengers": "src/eval/airline/GT/airlines-examples-verified/UpdateReservationPassengers-verified.json",
-    #     # "update_reservation_flights": "src/eval/airline/GT/airlines-examples-verified/UpdateReservationFlights-verified.json",
-    #     # "update_reservation_baggages": "src/eval/airline/GT/airlines-examples-verified/UpdateReservationBaggages-verified.json"
-    # }
-    
 
-    # now = datetime.now()
-    # out_folder = os.path.join(output_dir, now.strftime("%Y-%m-%d_%H_%M_%S"))
-    # os.makedirs(out_folder, exist_ok=True)
+    from appointment_app.lg_tools import add_user
+    oas = tools_to_openapi("Clinic", [add_user])
+    oas.save(oas_path)
+    # step1_main(policy_text, read_oas_file(oas_path), output_dir, 'gpt-4o-2024-08-06', tools=["add_user"])
+    tool_policy_paths = {
+        "add_user": "../ToolGuardAgent/eval/clinic/output/add_user.json"
+    }
 
-    # tool_policies = [load_tool_policy(tool_policy_path, tool_name) 
-    #     for tool_name, tool_policy_path 
-    #     in tool_policy_paths.items()]
+    now = datetime.now()
+    out_folder = os.path.join(output_dir, now.strftime("%Y-%m-%d_%H_%M_%S"))
+    os.makedirs(out_folder, exist_ok=True)
+
+    tool_policies = [load_tool_policy(tool_policy_path, tool_name) 
+        for tool_name, tool_policy_path 
+        in tool_policy_paths.items()]
     
-    # result = await generate_tools_check_fns("my_app", tool_policies, out_folder, oas_path)
-    # result.save(out_folder)
+    result = await generate_tools_check_fns("guard_clinic", tool_policies, out_folder, oas_path)
+    result.save(out_folder)
 
     # out_folder = "eval/airline/output/2025-07-08_14_47_29"
-    result = ToolChecksCodeGenerationResult.load(output_dir)
-    print(result)
+    result = ToolGuardCodeGenerationResult.load(out_folder)
+    print(result.model_dump_json(indent=2, exclude_none=True, by_alias=True))
 
-    ok = result.check_tool_call("add-user", {
-            "first_name": "A", 
-            "last_name": "B:",
-            "address": "aasa",
-        },
-        [])
+    # ok = result.check_tool_call("add_user", {
+    #         "first_name": "A", 
+    #         "last_name": "B:",
+    #         "address": "aasa",
+    #     },
+    #     [])
 
     # print(f"Domain: {result.domain_file}")
     # for tool_name, tool in result.tools.items():
