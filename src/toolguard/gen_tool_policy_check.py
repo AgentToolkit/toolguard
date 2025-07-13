@@ -10,7 +10,7 @@ from toolguard.common.str import to_camel_case, to_snake_case
 from toolguard.gen_domain import PACKAGE_NAME, OpenAPICodeGenerator
 import toolguard.prompts as prompts
 from toolguard.data_types import Domain, FileTwin, ToolPolicy, ToolPolicyItem, ToolPolicyItem
-from toolguard.runtime import ToolGuardCodeGenerationResult, ToolGuardCodeResult, find_class_in_module, load_module_from_path
+from toolguard.runtime import ToolGuardsCodeGenerationResult, ToolGuardCodeResult, find_class_in_module, load_module_from_path
 from toolguard.templates import load_template
 import toolguard.utils.pyright as pyright
 import toolguard.utils.pytest as pytest
@@ -47,7 +47,7 @@ def test_fn_name(name:str)->str:
 def test_fn_module_name(name:str)->str:
     return to_snake_case(test_fn_name(name))
 
-async def generate_tools_check_fns(app_name: str, tools: List[ToolPolicy], py_root:str, openapi_path:str)->ToolGuardCodeGenerationResult:
+async def generate_tools_check_fns(app_name: str, tools: List[ToolPolicy], py_root:str, openapi_path:str)->ToolGuardsCodeGenerationResult:
     logger.debug(f"Starting... will save into {py_root}")
 
     #Runtime
@@ -81,7 +81,7 @@ async def generate_tools_check_fns(app_name: str, tools: List[ToolPolicy], py_ro
         for tool, res 
         in zip(tools_w_poilicies, tool_results)
     }        
-    return ToolGuardCodeGenerationResult(
+    return ToolGuardsCodeGenerationResult(
         domain=domain,
         tools=tools_result
     )

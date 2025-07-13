@@ -1,21 +1,27 @@
 
+from abc import ABC, abstractmethod
 import inspect
 import json
 import os
 from types import ModuleType
 from typing import Dict, List, Optional, Type
-from pydantic import BaseModel
+from pydantic import BaseModel, PrivateAttr
 import importlib.util
 import inspect
 import os
 
 from toolguard.data_types import ChatHistory, Domain, FileTwin, ToolPolicy
 
-def load(directory: str, filename: str = "result.json") -> "ToolGuardCodeGenerationResult":
+class LLM(ABC):
+    @abstractmethod
+    def generate(self, messages: List[Dict])->str:
+        ...
+
+def load(directory: str, filename: str = "result.json") -> "ToolGuardsCodeGenerationResult":
     full_path = os.path.join(directory, filename)
     with open(full_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
-    return ToolGuardCodeGenerationResult(**data)
+    return ToolGuardsCodeGenerationResult(**data)
 
 class ToolGuardCodeResult(BaseModel):
     tool: ToolPolicy
@@ -24,9 +30,10 @@ class ToolGuardCodeResult(BaseModel):
     item_guard_files: List[FileTwin|None]
     test_files: List[FileTwin|None]
 
-class ToolGuardCodeGenerationResult(BaseModel):
+class ToolGuardsCodeGenerationResult(BaseModel):
     domain: Domain
     tools: Dict[str, ToolGuardCodeResult]
+    _llm: LLM = PrivateAttr()
 
     @property
     def root_dir(self):
@@ -37,6 +44,10 @@ class ToolGuardCodeGenerationResult(BaseModel):
         full_path = os.path.join(directory, filename)
         with open(full_path, 'w', encoding='utf-8') as f:
             json.dump(self.model_dump(), f, indent=2)
+
+    def use_llm(self, llm: LLM):
+        self._llm = llm
+        return self
     
     def check_tool_call(self, tool_name:str, args: dict, messages: List):
         tool = self.tools.get(tool_name)
@@ -56,7 +67,7 @@ class ToolGuardCodeGenerationResult(BaseModel):
                 else:
                     guard_args[p_name] = args
             elif p_name == "history":
-                guard_args[p_name] = ChatHistoryImpl(messages, None) #FIXME LLM
+                guard_args[p_name] = ChatHistoryImpl(messages, self._llm)
             elif p_name == "api":
                 api_impl_file = os.path.join(self.root_dir, self.domain.api_impl.file_name)
                 module = load_module_from_path(api_impl_file, file_to_module(self.domain.api_impl.file_name))
@@ -108,11 +119,6 @@ def find_class_in_module(module: ModuleType, class_name:str)-> Optional[Type]:
     if isinstance(cls, type):
         return cls
     return None
-
-
-class LLM(BaseModel):
-    def generate(self, messages: List[Dict])->str:
-        ...
 
 class ChatHistoryImpl(ChatHistory):
     messages: List[Dict]

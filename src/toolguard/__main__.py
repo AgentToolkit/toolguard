@@ -16,7 +16,7 @@ import dotenv
 
 from toolguard.llm.tg_litellm import LitellmModel
 from toolguard.llm.tg_llm import TG_LLM
-from toolguard.runtime import ToolGuardCodeGenerationResult
+from toolguard.runtime import ToolGuardsCodeGenerationResult
 from toolguard.stages_tptd.create_oas_summary import OASSummarizer
 
 dotenv.load_dotenv()
@@ -59,7 +59,7 @@ def run_or_validate_step1(policy_text:str, tools_descriptions:dict[str,str],tool
 
 
 
-async def step2(oas_path:str, step1_path:str, step2_path:str, tools:Optional[List[str]]=None)->ToolGuardCodeGenerationResult:
+async def step2(oas_path:str, step1_path:str, step2_path:str, tools:Optional[List[str]]=None)->ToolGuardsCodeGenerationResult:
 	os.makedirs(step2_path, exist_ok=True)
 	files = [f for f in os.listdir(step1_path) 
 		  if os.path.isfile(join(step1_path, f)) and f.endswith(".json")]
