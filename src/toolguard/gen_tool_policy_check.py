@@ -66,6 +66,7 @@ async def generate_tools_check_fns(app_name: str, tool_policies: List[ToolPolicy
     
     #tools
     tools_w_poilicies = [tool_policy for tool_policy in tool_policies if len(tool_policy.policy_items) > 0]
+    #tools_w_poilicies = [tool_policy for tool_policy in tool_policies ]
     tool_results = await asyncio.gather(*[
         ToolCheckPolicyGenerator(app_name, tool, py_root, domain).generate()
         for tool in tools_w_poilicies

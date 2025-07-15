@@ -7,6 +7,7 @@ import markdown
 
 from toolguard.llm.tg_litellm import LitellmModel
 from toolguard.llm.tg_llm import TG_LLM
+from toolguard.stages_tptd.create_oas_summary import OASSummarizer
 from toolguard.stages_tptd.utils import read_prompt_file, generate_messages, save_output, find_mismatched_references
 
 import dotenv
@@ -309,7 +310,7 @@ class TextToolPolicyGenerator:
 		
 	
 
-def step1_main(policy_text:str, tools_descriptions:dict[str,str],tools_details:dict[str,dict], step1_output_dir:str,llm:TG_LLM, tools:Optional[List[str]]=None,short1=False):
+def step1_main(policy_text:str, tools_descriptions:dict[str,str],tools_details:dict[str,dict], step1_output_dir:str,llm:TG_LLM, tools2run:Optional[List[str]]=None,short1=False):
 	if not os.path.isdir(step1_output_dir):
 		os.makedirs(step1_output_dir)
 		
@@ -320,7 +321,7 @@ def step1_main(policy_text:str, tools_descriptions:dict[str,str],tools_details:d
 	tpg = TextToolPolicyGenerator(llm, policy_text, tools_descriptions, tools_details, process_dir)
 	
 	for fname, detail in tools_details.items():
-		if tools is None or fname in tools:
+		if tools2run is None or fname in tools2run:
 			if short1:
 				final_output = tpg.generate_minimal_policy(fname)
 			else:
@@ -329,52 +330,88 @@ def step1_main(policy_text:str, tools_descriptions:dict[str,str],tools_details:d
 				outfile1.write(json.dumps(final_output))
 
 
-
-if __name__ == '__main__':
-	parser = argparse.ArgumentParser(description='parser')
-	parser.add_argument('--model-name', type=str,default='gpt-4o-2024-08-06')
-	#parser.add_argument("--model-name",type=str,default='meta-llama/llama-3-3-70b-instruct')
-	#parser.add_argument('--policy-path', type=str, default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-policies-for-non-existing-tools-rev.md')
-	#parser.add_argument('--policy-path',type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-policies-for-non-existing-tools.md')
-	parser.add_argument('--policy-path', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki.md')
-	#parser.add_argument('--oas', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/airline.json')
-	parser.add_argument('--tools-info-path', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/clinic/tool_info.json')
-	parser.add_argument('--out-dir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/outdir2/step1_out')
-	parser.add_argument('--tools', nargs='+', default=None, help='Optional list of tool names. These are a subset of the tools in the openAPI operation ids.')
-	parser.add_argument('--short-step1', action='store_true', default=False, help='run short version of step 1')
-	args = parser.parse_args()
-	policy_path = args.policy_path
-	
-	out_dir = args.out_dir
-	
-	policy_text = open(policy_path, 'r',encoding='utf-8').read()
-	policy_text = markdown.markdown(policy_text)
-	
-	tools_info_path = args.tools_info_path
-	with open(tools_info_path, 'r', encoding='utf-8') as file:
-		tools_info = json.load(file)
-	
-	tools_summary = {}
+def step1_main_with_tools(policy_text:str, tools, step1_output_dir:str,llm:TG_LLM, tools2run:Optional[List[str]]=None,short1=False):
+	tools_descriptions = {}
 	tools_details = {}
+	tools_info = [
+		{
+			"type": "function",
+			"function": {
+				"name": tool.name,
+				"description": tool.__doc__.strip() if tool.__doc__ else "",
+				"parameters": tool.args_schema.model_json_schema()
+			}
+		}
+		for tool in tools
+	]
 	for t in tools_info:
 		func = t["function"]
 		name = func["name"]
 		description = func["description"]
-		tools_summary[name] = description
+		tools_descriptions[name] = description
 		tools_details[name] = func
+	step1_main(policy_text, tools_descriptions, tools_details,step1_output_dir, llm, tools2run, short1)
 	
+if __name__ == '__main__':
+	parser = argparse.ArgumentParser(description='parser')
+	parser.add_argument('--model-name', type=str,default='gpt-4o-2024-08-06')
+	parser.add_argument('--policy-path', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki.md')
+	parser.add_argument('--oas', type=str, help='Path to OAS file')
+	parser.add_argument('--tools-info-path', type=str, help='Path to tools info JSON file')
+	parser.add_argument('--tools-py-file', type=str, help='Path to tools python file')
+	parser.add_argument('--out-dir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/outdir2/step1_out')
+	parser.add_argument('--tools2run', nargs='+', default=None, help='Optional list of tool names. These are a subset of the tools in the openAPI operation ids.')
+	parser.add_argument('--short-step1', action='store_true', default=False, help='run short version of step 1')
+	args = parser.parse_args()
+	if not args.oas and not args.tools_info_path:
+		parser.error("You must provide at least one of --oas or --tools-info-path")
 	
-		
-	# oas_file = args.oas
-	# with open(oas_file,'r',encoding='utf-8') as file:
-	# 	oas = json.load(file)
-	# summarizer = OASSummarizer(oas)
-	# summary = summarizer.summarize()
-	# fsummary = {k: v["description"] for k, v in summary.items()}
-	# for k in fsummary.keys():
-	# 	print(k)
+	policy_path = args.policy_path
+	out_dir = args.out_dir
+	policy_text = open(policy_path, 'r',encoding='utf-8').read()
+	policy_text = markdown.markdown(policy_text)
 	llm = LitellmModel(args.model_name)
 	
-	step1_main(policy_text, tools_summary, tools_details, args.out_dir, llm,args.tools, args.short_step1)
+	tools_descriptions = {}
+	tools_details = {}
+	if args.oas:
+		with open(args.oas, 'r', encoding='utf-8') as file:
+			oas = json.load(file)
+		summarizer = OASSummarizer(oas)
+		tools_details = summarizer.summarize()
+		tools_descriptions = {k: v["description"] for k, v in tools_details.items()}
+		step1_main(policy_text, tools_descriptions, tools_details, args.out_dir, llm, args.tools2run, args.short_step1)
+	elif args.tools_info_path:
+		tools_info_path = args.tools_info_path
+		with open(tools_info_path, 'r', encoding='utf-8') as file:
+			tools_info = json.load(file)
+		for t in tools_info:
+			func = t["function"]
+			name = func["name"]
+			description = func["description"]
+			tools_descriptions[name] = description
+			tools_details[name] = func
+		step1_main(policy_text, tools_descriptions, tools_details, args.out_dir, llm, args.tools2run, args.short_step1)
+	elif args.tools_py_file:
+		file_path = args.tools_py_file
+		module_name = os.path.splitext(os.path.basename(file_path))[0]
+		spec = importlib.util.spec_from_file_location(module_name, file_path)
+		if not spec or not spec.loader:
+			raise ImportError(f"Could not load module from {file_path}")
+		module = importlib.util.module_from_spec(spec)
+		spec.loader.exec_module(module)
+		tools = []
+		for name, obj in inspect.getmembers(module):
+			if callable(obj) and hasattr(obj, 'name') and hasattr(obj, 'args_schema'):
+				tools.append(obj)
+		step1_main_with_tools(policy_text, tools, args.out_dir, llm, args.tools2run, args.short_step1)
+	else:
+		print("You must provide at least one of --oas or --tools-info-path")
+		exit(1)
+		
+	
+	
+	
+	
 	
 

@@ -24,42 +24,14 @@ dotenv.load_dotenv()
 
 from toolguard.data_types import ToolPolicy, ToolPolicyItem
 from toolguard.gen_tool_policy_check import generate_tools_check_fns
-from toolguard.stages_tptd.text_tool_policy_generator import step1_main
+from toolguard.stages_tptd.text_tool_policy_generator import step1_main, step1_main_with_tools
 
 
 
-def validate_files_exist(tools_descriptions:dict, step1_path:str):
-	if not os.path.isdir(step1_path):
-		return False
-	for tool_name in tools_descriptions.keys():
-		fname = os.path.join(step1_path, tool_name + '.json')
-		if not os.path.isfile(fname):
-			return False
-	return True
-	
-	# if 'paths' in oas:
-	# 	for path, methods in oas["paths"].items():
-	# 		for method, details in methods.items():
-	# 			if isinstance(details, dict) and "operationId" in details:
-	# 				operation_id = details["operationId"]
-	# 				if operation_id.startswith("internal_"):
-	# 					continue
-	# 				fname = os.path.join(step1_path,operation_id +'.json')
-	# 				if not os.path.isfile(fname):
-	# 					return False
-	
-
-
-def run_or_validate_step1(policy_text:str, tools_descriptions:dict[str,str],tools_details:dict[str,dict], step1_out_dir:str, force_step1:bool,llm:TG_LLM, tools:Optional[List[str]]=None,short1=False):
-	
-	if not(force_step1) and validate_files_exist(tools_descriptions, step1_out_dir):
-		return
-	
-	step1_main(policy_text, tools_descriptions,tools_details, step1_out_dir,llm, tools,short1)
 
 
 
-async def step2(oas_path:str, step1_path:str, step2_path:str, tools:Optional[List[str]]=None)->ToolGuardsCodeGenerationResult:
+async def step2(funcs:list[callable], step1_path:str, step2_path:str, tools:Optional[List[str]]=None)->ToolGuardsCodeGenerationResult:
 	os.makedirs(step2_path, exist_ok=True)
 	files = [f for f in os.listdir(step1_path) 
 		  if os.path.isfile(join(step1_path, f)) and f.endswith(".json")]
@@ -72,42 +44,15 @@ async def step2(oas_path:str, step1_path:str, step2_path:str, tools:Optional[Lis
 
 			tool_policies.append(policy)
 	
-	return await generate_tools_check_fns("my_app", tool_policies, step2_path, oas_path)
+	return await generate_tools_check_fns("my_app", tool_policies, step2_path, funcs=funcs)
 
-def main(policy_text:str, oas_file:str, step1_out_dir:str, step2_out_dir:str, force_step1:bool, run_step2:bool,step1_llm:TG_LLM, tools:List[str]=None,short1=False):
-	with open(oas_file,'r',encoding='utf-8') as file:
-		oas = json.load(file)
-	summarizer = OASSummarizer(oas)
-	summary = summarizer.summarize()
-	fsummary = {k: v["description"] for k, v in summary.items()}
-
-	run_or_validate_step1(policy_text, fsummary,summary, step1_out_dir, force_step1,step1_llm, tools,short1)
-	if run_step2:
-		result = asyncio.run(step2(oas_file, step1_out_dir, step2_out_dir, tools))
-		# print(f"Domain: {result.domain_file}")
-		# for tool_name, tool in result.tools.items():
-		# 	print(f"\t{tool_name}\t{tool.guard_file.file_name}")
-		# 	for test in tool.test_files:
-		# 		if test:
-		# 			print(f"\t\t{test.file_name}")
-
-		return result
+def main(policy_text:str,tools, step1_out_dir:str, step2_out_dir:str, step1_llm:TG_LLM, tools2run:List[str]=None,short1=False):
+	step1_main_with_tools(policy_text, tools, step1_out_dir,step1_llm, tools2run, short1)
+	result = asyncio.run(step2(tools, step1_out_dir, step2_out_dir, tools2run))
+	return result
 
 	
-def read_oas_file(filepath:str)->Dict:
-	path = Path(filepath)
-	if not path.exists():
-		raise FileNotFoundError(f"File not found: {filepath}")
-	try:
-		with open(path, 'r', encoding='utf-8') as file:
-			if path.suffix.lower() == '.json':
-				return json.load(file)
-			elif path.suffix.lower() in ['.yaml', '.yml']:
-				return yaml.safe_load(file)
-			else:
-				raise ValueError("Unsupported file extension. Use .json, .yaml, or .yml")
-	except Exception as e:
-		raise ValueError(f"Failed to parse file: {e}")
+
 
 def load_tool_policy(file_path:str, tool_name:str)->ToolPolicy:
     with open(file_path, "r") as file:
@@ -131,34 +76,51 @@ if __name__ == '__main__':
 	
 	parser = argparse.ArgumentParser(description='parser')
 	parser.add_argument('--policy-path', type=str, help='Path to the policy file. Currently, in `markdown` syntax. eg: `/Users/me/airline/wiki.md`')
-	parser.add_argument('--oas', type=str, help='Path to an OpenAPI specification file describing the available tools. *.json or *.yaml formats. the `operation_id`s should match the tool name. eg: `/Users/me/airline/openapi.json`')
+	parser.add_argument('--tools-py-file', type=str, default="/Users/naamazwerdling/workspace/ToolGuardAgent/src/appointment_app/lg_tools.py")
 	parser.add_argument('--out-dir', type=str, help='Path to an output folder where the generated artifacts will be written. eg: `/Users/me/airline/outdir2')
-	parser.add_argument('--force-step1', action='store_true', default=False, help='Force execution of step 1, even if the artifacts already exist in the output folder. (default: False)')
-	parser.add_argument('--run-step2', dest='run_step2', action='store_true',help='Execute step 2')
-	parser.add_argument('--skip-step2', dest='run_step2', action='store_false',help='Skip step 2')
-	parser.set_defaults(run_step2=True)
 	parser.add_argument('--step1-dir-name', type=str, default='Step1', help='Step1 folder name under the output folder')
 	parser.add_argument('--step2-dir-name', type=str, default='Step2', help='Step2 folder name under the output folder')
 	parser.add_argument('--step1-model-name', type=str, default='gpt-4o-2024-08-06', help='Model to use for generating in step 1')
-	parser.add_argument('--step2-model-name', type=str, default='gpt-4o-2024-08-06', help='Model to use for generating in step 2')
-	parser.add_argument('--tools', nargs='+', default=None, help='Optional list of tool names. These are a subset of the tools in the openAPI operation ids.')
+	parser.add_argument('--tools2run', nargs='+', default=None, help='Optional list of tool names. These are a subset of the tools in the openAPI operation ids.')
 	parser.add_argument('--short-step1', action='store_true', default=False, help='run short version of step 1')
 	
 	args = parser.parse_args()
 	policy_path = args.policy_path
-	oas_file = args.oas
+	
 	policy_text = open(policy_path, 'r', encoding='utf-8').read()
 	policy_text = markdown.markdown(policy_text)
 	llm = LitellmModel(args.step1_model_name)
+	
+	tools_py_file = args.tools_py_file
+	file_path = args.tools_py_file
+	import importlib.util
+	import inspect
+	module_name = os.path.splitext(os.path.basename(file_path))[0]
+	
+	# Add project root to sys.path
+	project_root = os.path.abspath(os.path.join(file_path, "..", ".."))  # Adjust as needed
+	if project_root not in sys.path:
+		sys.path.insert(0, project_root)
+	
+	spec = importlib.util.spec_from_file_location(module_name, file_path)
+	if not spec or not spec.loader:
+		raise ImportError(f"Could not load module from {file_path}")
+	
+	module = importlib.util.module_from_spec(spec)
+	spec.loader.exec_module(module)
+	tools = []
+	for name, obj in inspect.getmembers(module):
+		if callable(obj) and hasattr(obj, 'name') and hasattr(obj, 'args_schema'):
+			tools.append(obj)
+
+	
 	main(
 		policy_text = policy_text, 
-		oas_file = oas_file, 
+		tools = tools,
 		step1_out_dir = os.path.join(args.out_dir, args.step1_dir_name), 
-		step2_out_dir = os.path.join(args.out_dir, args.step2_dir_name), 
-		force_step1 = args.force_step1,
-		run_step2 = args.run_step2,
+		step2_out_dir = os.path.join(args.out_dir, args.step2_dir_name),
 		step1_llm = llm,
-		tools = args.tools,
+		tools2run = args.tools2run,
 		short1 = args.short_step1
 	)
 	

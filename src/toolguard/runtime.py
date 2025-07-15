@@ -52,7 +52,9 @@ class ToolGuardsCodeGenerationResult(BaseModel):
     
     def check_tool_call(self, tool_name:str, args: dict, messages: List):
         tool = self.tools.get(tool_name)
-        assert tool, f"Unknown tool {tool_name}"
+        if tool is None:
+            return
+        #assert tool, f"Unknown tool {tool_name}"
 
         guard_file = os.path.join(self.root_dir, tool.guard_file.file_name)
         module = load_module_from_path(guard_file, file_to_module(tool.guard_file.file_name))
