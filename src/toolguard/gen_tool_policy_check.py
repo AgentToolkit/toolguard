@@ -37,15 +37,15 @@ HISTORY_PARAM_TYPE = "ChatHistory"
 API_PARAM = "api"
 
 
-async def generate_tools_check_fns(app_name: str, tool_policies: List[ToolPolicy], py_root:str, openapi_path:Optional[str]=None, funcs: Optional[List[Callable]] = None)->ToolGuardsCodeGenerationResult:
-    assert openapi_path or funcs, "one of [openapi_path, funcs] parameters must be passed"
+async def generate_tools_check_fns(app_name: str, tool_policies: List[ToolPolicy], py_root:str, funcs: List[Callable])->ToolGuardsCodeGenerationResult:
     logger.debug(f"Starting... will save into {py_root}")
 
-    if not openapi_path and funcs:
-        oas = tools_to_openapi(app_name, funcs)
-        openapi_path = join(py_root, f"{app_name}_oas.json")
-        oas.save(openapi_path)
+    #Open API Spec is the common way to specify API
+    oas = tools_to_openapi(app_name, funcs)
+    openapi_path = join(py_root, f"{app_name}_oas.json")
+    oas.save(openapi_path)
 
+    #Domain from Open API Spec
     domain = OpenAPICodeGenerator(py_root, app_name).generate_domain(openapi_path, funcs)
     
     #Setup env (slow, hence last):
@@ -88,6 +88,7 @@ class ToolCheckPolicyGenerator:
         os.makedirs(self.app_path, exist_ok=True)
         os.makedirs(join(self.app_path, to_snake_case(tool.name)), exist_ok=True)
         os.makedirs(join(py_path, to_snake_case(DEBUG_DIR)), exist_ok=True)
+        os.makedirs(join(py_path, to_snake_case(DEBUG_DIR), to_snake_case(self.tool.name)), exist_ok=True)
         os.makedirs(join(py_path, to_snake_case(TESTS_DIR)), exist_ok=True)
 
     async def generate(self)->ToolGuardCodeResult:

@@ -12,9 +12,9 @@ import dotenv
 
 dotenv.load_dotenv() 
 
-from toolguard.__main__ import read_oas_file
-from toolguard.py_to_oas import tools_to_openapi
-from toolguard.stages_tptd.text_policy_identify_process import step1_main
+# from toolguard.__main__ import read_oas_file
+# from toolguard.py_to_oas import tools_to_openapi
+# from toolguard.stages_tptd.text_policy_identify_process import step1_main
 
 from toolguard.data_types import ToolPolicy, ToolPolicyItem
 from toolguard.runtime import load
@@ -72,8 +72,8 @@ async def gen_all():
     with open(policy_path, 'r', encoding='utf-8') as f:
         policy_text = markdown.markdown(f.read())
 
-    from appointment_app.lg_tools import add_user
-    funcs = [add_user]
+    from appointment_app.lg_tools import add_user, add_payment_method
+    funcs = [add_user, add_payment_method]
     # oas = tools_to_openapi("Clinic", [add_user])
     # oas.save(oas_path)
     # step1_main(policy_text, read_oas_file(oas_path), output_dir, 'gpt-4o-2024-08-06', tools=["add_user"])
@@ -89,7 +89,7 @@ async def gen_all():
         for tool_name, tool_policy_path 
         in tool_policy_paths.items()]
     
-    result = await generate_tools_check_fns("guard_clinic", tool_policies, out_folder, funcs=funcs)
+    result = await generate_tools_check_fns("guard_clinic", tool_policies, out_folder, funcs)
     result.save(out_folder)
 
     # out_folder = "eval/airline/output/2025-07-08_14_47_29"
