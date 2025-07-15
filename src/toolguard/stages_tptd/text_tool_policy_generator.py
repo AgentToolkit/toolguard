@@ -330,6 +330,7 @@ def step1_main(policy_text:str, tools_descriptions:dict[str,str],tools_details:d
 				outfile1.write(json.dumps(final_output))
 
 
+
 def step1_main_with_tools(policy_text:str, tools, step1_output_dir:str,llm:TG_LLM, tools2run:Optional[List[str]]=None,short1=False):
 	tools_descriptions = {}
 	tools_details = {}
@@ -409,9 +410,5 @@ if __name__ == '__main__':
 		print("You must provide at least one of --oas or --tools-info-path")
 		exit(1)
 		
-	
-	
-	
-	
-	
+
 
