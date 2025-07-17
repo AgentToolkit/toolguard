@@ -46,7 +46,7 @@ def load_tool_policy(file_path:str, tool_name:str)->ToolPolicy:
             )
             for item in d.get("policies", [])
             if not item.get("skip")]
-    return ToolPolicy(name=tool_name, policy_items=items)
+    return ToolPolicy(tool_name=tool_name, policy_items=items)
     
 def symlink_force(target, link_name):
     try:
@@ -56,30 +56,32 @@ def symlink_force(target, link_name):
         os.symlink(target, link_name)
 
 async def gen_all():
-    # oas_path = "eval/airline/oas.json"
-    # tool_policy_paths = {
-    #     # "cancel_reservation": "src/policy_adherence/eval/airline/input/cancel_reservation.json"
-    #     "book_reservation": "eval/airline/GT/airlines-examples-verified/BookReservation-verified.json",
-    #     # "update_reservation_passengers": "src/eval/airline/GT/airlines-examples-verified/UpdateReservationPassengers-verified.json",
-    #     # "update_reservation_flights": "src/eval/airline/GT/airlines-examples-verified/UpdateReservationFlights-verified.json",
-    #     # "update_reservation_baggages": "src/eval/airline/GT/airlines-examples-verified/UpdateReservationBaggages-verified.json"
-    # }
-    # output_dir = "eval/airline/output"
-
-    oas_path = "../ToolGuardAgent/eval/clinic/oas_1.json"
-    policy_path = "../ToolGuardAgent/eval/clinic/clinic_policy_doc.md"
-    output_dir = "../ToolGuardAgent/eval/clinic/output"
-    with open(policy_path, 'r', encoding='utf-8') as f:
-        policy_text = markdown.markdown(f.read())
-
-    from appointment_app.lg_tools import add_user, add_payment_method
-    funcs = [add_user, add_payment_method]
-    # oas = tools_to_openapi("Clinic", [add_user])
-    # oas.save(oas_path)
-    # step1_main(policy_text, read_oas_file(oas_path), output_dir, 'gpt-4o-2024-08-06', tools=["add_user"])
+    oas_path = "eval/airline/oas.json"
     tool_policy_paths = {
-        "add_user": "../ToolGuardAgent/eval/clinic/output/add_user.json"
+        # "cancel_reservation": "src/policy_adherence/eval/airline/input/cancel_reservation.json"
+        "book_reservation": "eval/airline/GT/airlines-examples-verified/BookReservation-verified.json",
+        # "update_reservation_passengers": "src/eval/airline/GT/airlines-examples-verified/UpdateReservationPassengers-verified.json",
+        # "update_reservation_flights": "src/eval/airline/GT/airlines-examples-verified/UpdateReservationFlights-verified.json",
+        # "update_reservation_baggages": "src/eval/airline/GT/airlines-examples-verified/UpdateReservationBaggages-verified.json"
     }
+    output_dir = "eval/airline/output"
+    from tau2.domains.airline.tools import AirlineTools
+    funcs = [AirlineTools.book_reservation]
+
+    # oas_path = "../ToolGuardAgent/eval/clinic/oas_1.json"
+    # policy_path = "../ToolGuardAgent/eval/clinic/clinic_policy_doc.md"
+    # output_dir = "../ToolGuardAgent/eval/clinic/output"
+    # with open(policy_path, 'r', encoding='utf-8') as f:
+    #     policy_text = markdown.markdown(f.read())
+
+    # from appointment_app.lg_tools import add_user, add_payment_method
+    # funcs = [add_user, add_payment_method]
+    # # oas = tools_to_openapi("Clinic", [add_user])
+    # # oas.save(oas_path)
+    # # step1_main(policy_text, read_oas_file(oas_path), output_dir, 'gpt-4o-2024-08-06', tools=["add_user"])
+    # tool_policy_paths = {
+    #     "add_user": "../ToolGuardAgent/eval/clinic/output/add_user.json"
+    # }
 
     now = datetime.now()
     out_folder = os.path.join(output_dir, now.strftime("%Y-%m-%d_%H_%M_%S"))
@@ -89,7 +91,7 @@ async def gen_all():
         for tool_name, tool_policy_path 
         in tool_policy_paths.items()]
     
-    result = await generate_tools_check_fns("guard_clinic", tool_policies, out_folder, funcs)
+    result = await generate_tools_check_fns("airline", tool_policies, out_folder, funcs)
     result.save(out_folder)
 
     # out_folder = "eval/airline/output/2025-07-08_14_47_29"

@@ -32,11 +32,11 @@ class FileTwin(BaseModel):
             )
 
 class ToolPolicyItem(BaseModel):
-    name: str
+    name: str = Field(..., description="Policy item name")
     description: str = Field(..., description="Policy item description")
-    references: List[str] = Field(..., description="original text")
-    compliance_examples: Optional[List[str]] = Field(..., description="Case example that complies with the policy")
-    violation_examples: Optional[List[str]] = Field(..., description="Case example that violates the policy")
+    references: List[str] = Field(..., description="original texts")
+    compliance_examples: Optional[List[str]] = Field(..., description="Example of cases that comply with the policy")
+    violation_examples: Optional[List[str]] = Field(..., description="Example of cases that violate the policy")
 
     def to_md_bulltets(self, items: List[str])->str:
         s = ""
@@ -54,18 +54,18 @@ class ToolPolicyItem(BaseModel):
         return s
 
 class ToolPolicy(BaseModel):
-    name: str
-    policy_items: List[ToolPolicyItem]
+    tool_name: str = Field(..., description="Name of the tool")
+    policy_items: List[ToolPolicyItem] = Field(..., description="Policy items. All (And logic) policy items must hold whehn invoking the tool.")
 
 class Domain(BaseModel):
-    common: FileTwin
-    types: FileTwin
+    toolguard_common: FileTwin = Field(..., description="Pydantic data types used by toolguard framework.")
+    app_types: FileTwin = Field(..., description="Data types defined used in the application API as payloads.")
+    app_api_class_name: str = Field(..., description="Name of the API class name.")
+    app_api: FileTwin = Field(..., description="Python class (abstract) containing all the API signatures.")
 
-    api_class_name: str
-    api: FileTwin
-
-    api_impl_class_name: str
-    api_impl: FileTwin
+class RuntimeDomain(Domain):
+    app_api_impl_class_name: str = Field(..., description="Python class (implementaton) class name.")
+    app_api_impl: FileTwin = Field(..., description="Python class containing all the API method implementations.")
 
 class ChatHistory(ABC):
     """Represents a history of chat messages and provides methods check if specific events already happened."""

@@ -1,6 +1,6 @@
 
 from typing import List, Set
-from toolguard.data_types import FileTwin, ToolPolicyItem
+from toolguard.data_types import Domain, FileTwin, ToolPolicyItem
 from programmatic_ai import generative
 
 @generative
@@ -8,8 +8,7 @@ async def generate_tool_item_tests(
     fn_under_test_name: str, 
     fn_src: FileTwin, 
     tool_item: ToolPolicyItem, 
-    common: FileTwin, 
-    domain: FileTwin, 
+    domain: Domain, 
     dependent_tool_names: Set[str])-> str:
     """
     Generate Python unit tests for a function to verify tool-call compliance with policy constraints.
@@ -89,8 +88,7 @@ def test_book_in_the_past():
         fn_under_test_name (str): the name of the function under test
         fn_src (FileTwin): Source code containing the function-under-test signature.
         tool_item (ToolPolicyItem): Specification of the function-under-test, including positive and negative examples.
-        common (FileTwin): utility functions the test may use
-        domain (FileTwin): available data types and interfaces needed by the tests.
+        domain (Domain): available data types and interfaces the test can use.
         dependent_tool_names(Set[str]): other tool names that this tool depends on
 
     Returns:
@@ -100,13 +98,20 @@ def test_book_in_the_past():
 
 
 @generative
-async def improve_tool_tests(prev_impl:FileTwin, domain: FileTwin, common: FileTwin, tool: ToolPolicyItem, review_comments: List[str])-> str:
+async def improve_tool_tests(
+    prev_impl: FileTwin, 
+    domain: Domain, 
+    policy_item: ToolPolicyItem, 
+    review_comments: List[str])-> str:
     """
     Improve the previous test functions (in Python) to check the given tool policy-items according to the review-comments.
+    **Implementation Rules:**"
+    - Do not change the function signature.
+    - You can add import statements, but ont remove them.
 
     Args:
         prev_impl (FileTwin): previous implementation of a Python function.
-        domain (FileTwin): Python code defining available data types and other tool interfaces.
+        domain (Domain): Python source code defining available data types and APIs that the test can use.
         tool (ToolPolicyItem): Requirements for this tool.
         review_comments (List[str]): Review comments on the current implementation. For example, pylint errors or Failed unit-tests.
 
@@ -189,13 +194,13 @@ async def tool_information_dependencies(tool_name:str, policy: str, domain:FileT
 
 
 @generative
-async def improve_tool_check_fn(prev_impl:FileTwin, common: FileTwin, domain: FileTwin, policy_item: ToolPolicyItem, review_comments: List[str])-> str:
+async def improve_tool_check_fn(prev_impl:FileTwin, domain: Domain, policy_item: ToolPolicyItem, review_comments: List[str])-> str:
     """
     Improve the previous tool-call check implementation (in Python) to cover all tool policy-items according to the review-comments.
 
     Args:
         prev_impl (FileTwin): previous implementation of the tool-call check.
-        domain (FileTwin): Python code defining available data types and other tool interfaces.
+        domain (Domain): Python code defining available data types and other tool interfaces.
         policy_item (ToolPolicyItem): Requirements for this tool.
         review_comments (List[str]): Review comments on the current implementation. For example, pylint errors or Failed unit-tests.
 

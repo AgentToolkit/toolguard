@@ -87,6 +87,8 @@ def func_to_oas_operation(func:Callable)->Operation:
     
     op_params = []
     for fn_param_name, fn_param in sig.parameters.items():
+        if fn_param_name == "self":
+            continue
         op_param = Parameter(
             name = fn_param_name,
             description = param_docs.get(fn_param_name),

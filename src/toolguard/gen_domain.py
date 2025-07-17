@@ -10,7 +10,7 @@ from toolguard.templates import load_template
 from toolguard.py_to_oas import tools_to_openapi
 from toolguard.utils.datamodel_codegen import run as dm_codegen
 from toolguard.common.open_api import OpenAPI, Operation, Parameter, ParameterIn, PathItem, Reference, RequestBody, Response, JSchema, read_openapi
-from toolguard.data_types import Domain, FileTwin
+from toolguard.data_types import FileTwin, RuntimeDomain
 
 PACKAGE_NAME="toolguard"
 RUNTIME_INIT_PY = "__init__.py"
@@ -27,7 +27,7 @@ class OpenAPICodeGenerator():
         self.cwd = cwd
         self.app_name = app_name
 
-    def generate_domain(self, oas_file:str, funcs: Optional[List[Callable]] = None)->Domain:
+    def generate_domain(self, oas_file:str, funcs: Optional[List[Callable]] = None)->RuntimeDomain:
         #ToolGuard Runtime
         os.makedirs(join(self.cwd, PACKAGE_NAME), exist_ok=True)
         FileTwin.load_from(
@@ -68,13 +68,13 @@ class OpenAPICodeGenerator():
                 content=cls_str
             ).save(self.cwd)
         
-        return Domain(
-            common = common,
-            types= types,
-            api_class_name=api_cls_name,
-            api= api,
-            api_impl_class_name=impl_cls_name,
-            api_impl= api_impl
+        return RuntimeDomain(
+            toolguard_common = common,
+            app_types= types,
+            app_api_class_name=api_cls_name,
+            app_api= api,
+            app_api_impl_class_name=impl_cls_name,
+            app_api_impl= api_impl
         )
 
     def get_oas_methods(self, oas:OpenAPI, funcs: List[Callable]|None = None):
@@ -97,11 +97,7 @@ class OpenAPICodeGenerator():
                 if orign_funcs:
                     func = find(orign_funcs or [], lambda fn: fn.__name__ == op.operationId)
                     if func:
-                        args_str = ', '.join(["self"]+[f"{arg}" for arg,type in args])
-                        body = f"""
-        from {func.__module__} import {func.__name__}
-        return {func.__name__}({args_str})
-"""
+                        body = self.call_fn_body(func, args)
                 methods.append({
                     "name": to_camel_case(op.operationId), 
                     "signature": sig,
@@ -110,6 +106,14 @@ class OpenAPICodeGenerator():
                 })
         return methods
 
+    def call_fn_body(self, func:Callable, args:str):
+        #FIXME to implement class methods and instace methods
+        args_str = ', '.join(["self"]+[f"{arg}" for arg,type in args])
+        return f"""
+            from {func.__module__} import {func.__name__}
+            return {func.__name__}({args_str})
+"""
+    
     def generate_api(self, methods: List, cls_name: str, types_module:str)->str:
         return load_template("api.j2").render(
             types_module=types_module,
@@ -207,11 +211,15 @@ if __name__ == '__main__':
         """
         pass
 
+    class Bla:
+        def foo(self, x:int):
+            pass
+
     oas_path = "eval/airline/oas_1.json"
-    oas = tools_to_openapi("Bla", [greet])
+    oas = tools_to_openapi("Bla", [greet, Bla.foo])
     oas.save(oas_path)
 
     # domain_path = "domain.py"
     domain = OpenAPICodeGenerator("eval/airline/output", "my_app")\
-        .generate_domain(oas_path, [greet])
+        .generate_domain(oas_path, [greet, Bla.foo])
     print("Done")

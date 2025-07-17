@@ -67,7 +67,7 @@ def load_tool_policy(file_path:str, tool_name:str)->ToolPolicy:
             )
             for item in d.get("policies", [])
             if not item.get("skip")]
-    return ToolPolicy(name=tool_name, policy_items=items)
+    return ToolPolicy(tool_name=tool_name, policy_items=items)
 
 
 if __name__ == '__main__':

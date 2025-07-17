@@ -10,7 +10,7 @@ import importlib.util
 import inspect
 import os
 
-from toolguard.data_types import ChatHistory, Domain, FileTwin, ToolPolicy
+from toolguard.data_types import ChatHistory, FileTwin, RuntimeDomain, ToolPolicy
 
 class LLM(ABC):
     @abstractmethod
@@ -31,7 +31,7 @@ class ToolGuardCodeResult(BaseModel):
     test_files: List[FileTwin|None]
 
 class ToolGuardsCodeGenerationResult(BaseModel):
-    domain: Domain
+    domain: RuntimeDomain
     tools: Dict[str, ToolGuardCodeResult]
     _llm: LLM = PrivateAttr()
 
@@ -72,9 +72,9 @@ class ToolGuardsCodeGenerationResult(BaseModel):
             elif p_name == "history":
                 guard_args[p_name] = ChatHistoryImpl(messages, self._llm)
             elif p_name == "api":
-                api_impl_file = os.path.join(self.root_dir, self.domain.api_impl.file_name)
-                module = load_module_from_path(api_impl_file, file_to_module(self.domain.api_impl.file_name))
-                cls = find_class_in_module(module, self.domain.api_impl_class_name)
+                api_impl_file = os.path.join(self.root_dir, self.domain.app_api_impl.file_name)
+                module = load_module_from_path(api_impl_file, file_to_module(self.domain.app_api_impl.file_name))
+                cls = find_class_in_module(module, self.domain.app_api_impl_class_name)
                 assert cls
                 guard_args[p_name] = cls()
         
