@@ -1,10 +1,11 @@
 import dotenv
-
+import json
 
 class TG_LLMEval:
 	
 	def __init__(self, model_name, temprature: float = 0.7):
-		from llmevalkit.llm import get_llm, OutputValidationError
+		from middleware_core.llm import get_llm, GenerationMode
+		from pydantic import BaseModel
 		self.model_name = model_name
 		self.temprature = temprature
 		OPENAILiteLLMClientOutputVal = get_llm("litellm.output_val")
@@ -29,6 +30,9 @@ class TG_LLMEval:
 		)
 	
 	def generate(self, messages: list[dict]) -> str:
+		# from pydantic import BaseModel
+		# class MyStr(BaseModel):
+		# 	tmp_str: str
 		return self.client.generate(
 			prompt=messages,
 			schema=str,
