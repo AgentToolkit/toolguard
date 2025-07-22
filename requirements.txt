@@ -8,7 +8,6 @@ pyright
 datamodel-code-generator
 flask
 flask-cors
-langgraph
 markdown
 anyio
 docstring-parser
