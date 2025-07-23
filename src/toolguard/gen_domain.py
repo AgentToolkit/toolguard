@@ -13,10 +13,11 @@ from toolguard.utils.datamodel_codegen import run as dm_codegen
 from toolguard.common.open_api import OpenAPI, Operation, Parameter, ParameterIn, PathItem, Reference, RequestBody, Response, JSchema, read_openapi
 from toolguard.data_types import FileTwin, RuntimeDomain
 
-PACKAGE_NAME="toolguard"
+RUNTIME_PACKAGE_NAME="rt_toolguard"
 RUNTIME_INIT_PY = "__init__.py"
 RUNTIME_TYPES_PY = "data_types.py"
 RUNTIME_APP_TYPES_PY = "domain_types.py"
+
 RUNTIME_APP_API_PY = "api.py"
 RUNTIME_APP_API_IMPL_PY = "api_impl.py"
 
@@ -30,13 +31,13 @@ class OpenAPICodeGenerator():
 
     def generate_domain(self, oas_file:str, funcs: Optional[List[Callable]] = None)->RuntimeDomain:
         #ToolGuard Runtime
-        os.makedirs(join(self.cwd, PACKAGE_NAME), exist_ok=True)
+        os.makedirs(join(self.cwd, RUNTIME_PACKAGE_NAME), exist_ok=True)
         FileTwin.load_from(
             str(Path(__file__).parent), "runtime.py")\
-            .save_as(self.cwd, join(PACKAGE_NAME, RUNTIME_INIT_PY))
+            .save_as(self.cwd, join(RUNTIME_PACKAGE_NAME, RUNTIME_INIT_PY))
         common = FileTwin.load_from(
             str(Path(__file__).parent), "data_types.py")\
-            .save_as(self.cwd, join(PACKAGE_NAME, RUNTIME_TYPES_PY))
+            .save_as(self.cwd, join(RUNTIME_PACKAGE_NAME, RUNTIME_TYPES_PY))
 
         #APP init and Types
         oas = read_openapi(oas_file)
