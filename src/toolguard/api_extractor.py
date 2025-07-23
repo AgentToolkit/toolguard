@@ -1,71 +1,78 @@
 import inspect
 import os
+import textwrap
 from types import FunctionType
+import types
 from typing import Callable, DefaultDict, Dict, List, Literal, Optional, Set, Tuple, get_type_hints, get_origin, get_args
 from typing import Annotated, Union
-from pathlib import Path
 from collections import defaultdict, deque
 import typing
-from os.path import join
-
-from toolguard.common.py import py_extension, unwrap_fn
+from docstring_parser import parse
+from toolguard.common.py import module_to_path, unwrap_fn
+from toolguard.data_types import FileTwin
 
 Dependencies = DefaultDict[type, Set[type]]
 
-class TypeExtractor:
-    def __init__(self, include_module_roots:List[str] = []):
+class APIExtractor:
+    def __init__(self, py_path:str, include_module_roots:List[str] = []):
+        self.py_path = py_path
         self.include_module_roots = include_module_roots
 
-    def setup(self, output_path:str):
-        os.makedirs(output_path, exist_ok=True)
+    def extract_from_functions(self, funcs: List[Callable], interface_name: str, interface_module_name:str, types_module_name:str, impl_module_name:str)->Tuple[FileTwin, FileTwin, FileTwin]:
+        funcs = [unwrap_fn(func) for func in funcs]
+        assert all([_is_global_or_class_function(func) for func in funcs])
 
-    def extract_from_functions(self, funcs: List[Callable], interface_name: str, interface_module_name:str, types_module_name:str, output_dir: str = "output")->Tuple[str, str]:
-        self.setup(output_dir)
-        interface_content = self._generate_interface_from_functions(funcs, interface_name, types_module_name)
-
-        # Extract all required types
+        os.makedirs(self.py_path, exist_ok=True)
+        
+        # used types
         collected, dependencies = self._collect_all_types_from_functions(funcs)
-        types_content = self._generate_types_file(collected, dependencies)
-        
-        # Save files
-        interface_file = join(output_dir, py_extension(interface_module_name))
-        types_file = join(output_dir, py_extension(types_module_name))
-        
-        with open(interface_file, 'w') as f:
-            f.write(interface_content)
-            
-        with open(types_file, 'w') as f:
-            f.write(types_content)
-        
-        return str(interface_file), str(types_file)
+        types = FileTwin(
+            file_name= module_to_path(types_module_name),
+            content= self._generate_types_file(collected, dependencies)
+        ).save(self.py_path)
+
+        # API interface
+        interface = FileTwin(
+            file_name=module_to_path(interface_module_name),
+            content=self._generate_interface_from_functions(funcs, interface_name, types_module_name)
+        ).save(self.py_path)
+
+        # API impl interface
+        impl_class_name = f"{interface_name}_impl"
+        impl = FileTwin(
+            file_name=module_to_path(impl_module_name),
+            content=self._generate_impl_from_functions(funcs, impl_class_name, interface_module_name, interface_name, types_module_name)
+        ).save(self.py_path)
+
+        return interface, types, impl
     
-    def extract_from_class(self, typ:type, *, interface_name: Optional[str]= None, interface_module_name: Optional[str] = None, types_module_name: Optional[str] = None, output_dir: str = "output")->Tuple[str, str]:
+    def extract_from_class(self, typ:type, *, interface_name: Optional[str]= None, interface_module_name: Optional[str] = None, types_module_name: Optional[str] = None)->Tuple[FileTwin, FileTwin]:
         """Extract interface and types from a class and save to files."""
         class_name = _get_type_name(typ)
         interface_name = interface_name or "I_"+class_name
         interface_module_name = interface_module_name or f"I_{class_name}".lower()
         types_module_name = types_module_name or f"{class_name}_types".lower()
         
-        self.setup(output_dir)
+        os.makedirs(self.py_path, exist_ok=True)
         
-        # Extract interface
-        interface_content = self._generate_interface_from_class(typ, interface_name, types_module_name)
-        
-        # Extract all required types
+        # Types
         collected, dependencies = self._collect_all_types_from_class(typ)
         types_content = self._generate_types_file(collected, dependencies)
-        
-        # Save files
-        interface_file = join(output_dir, py_extension(interface_module_name))
-        types_file = join(output_dir, py_extension(types_module_name))
-        
-        with open(interface_file, 'w') as f:
-            f.write(interface_content)
-            
-        with open(types_file, 'w') as f:
-            f.write(types_content)
-        
-        return str(interface_file), str(types_file)
+        types_file = module_to_path(types_module_name)
+        types = FileTwin(
+            file_name=types_file,
+            content=types_content
+        ).save(self.py_path)
+
+        # API interface
+        if_content = self._generate_interface_from_class(typ, interface_name, types_module_name)    
+        if_file = module_to_path(interface_module_name)
+        interface = FileTwin(
+            file_name=if_file,
+            content=if_content
+        ).save(self.py_path)
+     
+        return interface, types
     
     def _generate_interface_from_class(self, typ:type, interface_name: str, types_module:str)->str:
         # Start building the interface
@@ -101,9 +108,10 @@ class TypeExtractor:
                 # Add method docstring and signature
                 method_lines = self._get_function_with_docstring(method, method_name)
                 lines.extend([line if line else "" for line in method_lines])
+                lines.append("        ...")
                 lines.append("")
         
-        return "\n".join(lines)
+        return textwrap.dedent("\n".join(lines))
     
     def _generate_interface_from_functions(self, funcs: List[Callable], interface_name: str, types_module:str)->str:
         lines = [
@@ -120,13 +128,60 @@ class TypeExtractor:
             lines.append("    pass")
         else:
             for func in funcs:
-                fn = unwrap_fn(func)
                 # Add method docstring and signature
-                method_lines = self._get_function_with_docstring(fn, _get_type_name(fn))
+                method_lines = self._get_function_with_docstring(func, _get_type_name(func))
                 lines.extend([line if line else "" for line in method_lines])
+                lines.append("        ...")
                 lines.append("")
         
         return "\n".join(lines)
+    
+    def _generate_impl_from_functions(self, funcs: List[Callable], class_name:str, interface_module_name:str, interface_name: str, types_module:str)->str:
+        lines = [
+            "# Auto-generated class",
+            "from typing import *",
+            "from abc import ABC, abstractmethod",
+            f"from {interface_module_name} import {interface_name}",
+            f"from {types_module} import *",
+            "",
+            """def unwrap_fn(fn: Callable)->Callable: 
+    return fn.func if hasattr(fn, "func") else fn""",
+            "",
+        ]
+        
+        lines.append(f"class {class_name}({interface_name}):") #class
+        lines.append("")
+
+        if not funcs:
+            lines.append("    pass")
+        else:
+            for func in funcs:
+                # Add method docstring and signature
+                method_lines = self._get_function_with_docstring(func, _get_type_name(func))
+                lines.extend([line if line else "" for line in method_lines])
+                lines.append(self._generate_delegate_code(func))
+                lines.append("")
+        
+        return "\n".join(lines)
+    
+    def _generate_delegate_code(self, func:Callable)->str:
+        # Get function details
+        func_name = _get_type_name(func)
+        module_name = func.__module__
+        sig = inspect.signature(func)
+        
+        # Extract arguments
+        params = list(sig.parameters.values())
+        call_args_str = ", ".join(
+            p.name if p.kind in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY) else f"*{p.name}" if p.kind == inspect.Parameter.VAR_POSITIONAL else f"**{p.name}"
+            for p in params
+        )
+
+        # Generate code string
+        return f"""
+        from {module_name} import {func_name}
+        return unwrap_fn({func_name})({call_args_str})
+        """
     
     def _get_function_with_docstring(self, func:FunctionType, func_name:str)->List[str]:
         """Extract method signature with type hints and docstring."""
@@ -144,8 +199,6 @@ class TypeExtractor:
                 for line in docstring.split('\n'):
                     lines.append(f'        {line.strip()}')
                 lines.append('        """')
-        
-        lines.append("        ...")
         
         return lines
     
@@ -351,8 +404,7 @@ class TypeExtractor:
         literals = defaultdict(tuple)
         
         for func in funcs:
-            fn = unwrap_fn(func)
-            for param, hint in get_type_hints(fn).items():
+            for param, hint in get_type_hints(func).items():
                 self._collect_types_recursive(hint, processed_types, collected, dependencies)
 
         return collected, dependencies
@@ -362,7 +414,6 @@ class TypeExtractor:
         visited = set()
         collected = set()
         dependencies = defaultdict(set)
-        literals = defaultdict(tuple)
         
         # Field types
         try:
@@ -553,21 +604,46 @@ def _get_type_name(typ)->str:
 def _get_type_bases(typ: type)->List[type]:
     if hasattr(typ, '__bases__'):
         return typ.__bases__ # type: ignore
-    return []    
+    return []
+
+def _is_global_or_class_function(func):
+    if not callable(func):
+        return False
+    
+    # Reject lambdas
+    if _get_type_name(func) == "<lambda>":
+        return False
+
+    # Static methods and global functions are of type FunctionType
+    if isinstance(func, types.FunctionType):
+        return True
+
+    # Class methods are MethodType but have __self__ as the class, not instance
+    if isinstance(func, types.MethodType):
+        if inspect.isclass(func.__self__):
+            return True  # classmethod
+        else:
+            return False  # instance method
+
+    return False
+
 
 # Example class for testing
 if __name__ == "__main__":
     # from tau2.domains.airline.tools import AirlineTools
-    # extractor = TypeExtractor(include_module_roots = ["tau2"])
-    # interface_file, types_file = extractor.extract_from_class(AirlineTools, output_dir="output")
+    # extractor = APIExtractor("output", include_module_roots = ["tau2"])
+    # # interface_file, types_file = extractor.extract_from_class(AirlineTools, output_dir="output")
+    # t = AirlineTools({})
+    # interface_file, types_file = extractor.extract_from_functions([AirlineTools.book_reservation], "I_Tau", "my_app.i_tau", "my_app.tau_types")
 
     from appointment_app import lg_tools
     funcs = [lg_tools.add_user, lg_tools.add_payment_method, 
              lg_tools.get_user_payment_methods, lg_tools.get_available_dr_specialties,
              lg_tools.search_doctors, lg_tools.search_available_appointments]
-    extractor = TypeExtractor(include_module_roots = ["appointment_app"])
-    interface_file, types_file = extractor.extract_from_functions(funcs, "I_Clinic", "i_clinic", "clinc_types", "clinic_output")
+    extractor = APIExtractor("output", include_module_roots = ["appointment_app"])
+    interface, types_, impl = extractor.extract_from_functions(funcs, "I_Clinic", "clinic.i_clinic", "clinic.clinc_types", "clinic.clinic_impl")
 
-    print(f"Interface saved to: {interface_file}")
-    print(f"Types saved to: {types_file}")
+    print(f"Interface saved to: {interface.file_name}")
+    print(f"Types saved to: {types_.file_name}")
+    print(f"Impl saved to: {impl.file_name}")
     print("Done")

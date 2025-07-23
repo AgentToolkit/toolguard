@@ -1,6 +1,6 @@
 
 import os
-from typing import Callable, List
+from typing import Callable, List, Tuple
 
 from toolguard.common.str import to_snake_case
 
@@ -10,12 +10,16 @@ def py_extension(filename:str)->str:
 def un_py_extension(filename:str)->str:
     return filename[:-3] if filename.endswith(".py") else filename
     
-def py_module(file_path:str):
+def path_to_module(file_path:str)->str:
     assert file_path
     parts = file_path.split('/')
     if parts[-1].endswith(".py"):
         parts[-1] = un_py_extension(parts[-1])
     return '.'.join([to_snake_case(part) for part in parts])
+
+def module_to_path(module:str)->str:
+    parts = module.split(".")
+    return os.path.join(*parts[:-1], py_extension(parts[-1]))
 
 def unwrap_fn(fn: Callable)->Callable: 
     return fn.func if hasattr(fn, "func") else fn
