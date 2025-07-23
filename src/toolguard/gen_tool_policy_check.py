@@ -221,6 +221,8 @@ class ToolCheckPolicyGenerator:
 
     def create_initial_check_fns(self)->Tuple[FileTwin, List[FileTwin]]:
         with py.temp_python_path(self.py_path):
+            print(self.domain.api.file_name)
+            print( self.py_path)
             module = load_module_from_path(self.domain.api.file_name, self.py_path)
         assert module, f"File not found {self.domain.api.file_name}"
         cls = find_class_in_module(module, self.domain.api_class_name)
