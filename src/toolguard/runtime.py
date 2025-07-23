@@ -164,7 +164,17 @@ class Litellm(LLM):
             model=self.model_name,
             custom_llm_provider= self.custom_provider)
         return resp.choices[0].message.content
+
+
+class MTKLLM(LLM):
+    from middleware_core.llm import LLMClient
+    def __init__(self, client: LLMClient):
+        self.client = client
     
+    def generate(self, messages: List[Dict]) -> str:
+        return self.client.generate(messages)
+
+
 def ask_llm(question:str, conversation: List[Dict], llm: LLM)->str:
     prompt = f"""You are given a question and an historical conversation between a user and an ai-agent.
 Your task is to answer the question according to the conversation.
