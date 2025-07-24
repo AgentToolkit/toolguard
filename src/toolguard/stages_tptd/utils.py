@@ -25,7 +25,7 @@ class TPTDState(Dict[str, Any]):
 
 
 def read_prompt_file(filename: str) -> str:
-	with open(os.path.join(os.path.dirname(__file__), "prompts", filename), "r") as f:
+	with open(os.path.join(os.path.dirname(__file__), "prompts", filename + ".txt"), "r") as f:
 		return f.read()
 
 
