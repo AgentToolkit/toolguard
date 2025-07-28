@@ -10,7 +10,6 @@ import importlib.util
 import inspect
 import os
 
-from toolguard.common.py import path_to_module
 from toolguard.data_types import ChatHistory, FileTwin, RuntimeDomain, ToolPolicy
 
 class LLM(ABC):
@@ -84,7 +83,6 @@ class ToolGuardsCodeGenerationResult(BaseModel):
 def file_to_module(file_path:str):
     return file_path.removesuffix('.py').replace('/', '.')
 
-
 def load_module_from_path(file_path: str, py_root:str) -> ModuleType:
     """
     Dynamically loads a Python module from a given file path, optionally relative to a base path.
@@ -97,7 +95,7 @@ def load_module_from_path(file_path: str, py_root:str) -> ModuleType:
     if not os.path.exists(full_path):
         raise ImportError(f"Module file does not exist: {full_path}")
 
-    module_name = path_to_module(file_path)
+    module_name = file_to_module(file_path)
 
     spec = importlib.util.spec_from_file_location(module_name, full_path)
     if spec is None or spec.loader is None:
