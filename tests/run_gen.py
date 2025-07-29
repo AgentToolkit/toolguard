@@ -17,7 +17,7 @@ dotenv.load_dotenv()
 # from toolguard.py_to_oas import tools_to_openapi
 # from toolguard.stages_tptd.text_policy_identify_process import step1_main
 
-from tau_wrapper import ALL_TOOLS
+from tau_bench.envs.airline.airline_wrapper import ALL_TOOLS
 from toolguard.data_types import ToolPolicy, ToolPolicyItem
 from toolguard.runtime import load
 from toolguard.common.open_api import OpenAPI
@@ -98,11 +98,11 @@ async def gen_all():
     result = await generate_tool_guards("airline", tool_policies, out_folder, funcs, ["tau_bench"])
     result.save(out_folder)
 
-    # out_folder = "eval/airline/output/2025-07-08_14_47_29"
+    out_folder = "eval/airline/output/last"
     result = load(out_folder)
     # print(result.model_dump_json(indent=2, exclude_none=True, by_alias=True))
 
-    # ok = result.check_tool_call("add_user", {
+    # result.check_tool_call("add_user", {
     #         "first_name": "A", 
     #         "last_name": "B:",
     #         "address": "aasa",

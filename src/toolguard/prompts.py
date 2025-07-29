@@ -18,6 +18,10 @@ class PythonCodeModel(BaseModel):
             return match.group(1)\
                 .replace("\\n", "\n")
         return self.python_code
+    
+    @classmethod
+    def create(cls, python_code: str) -> "PythonCodeModel":
+        return cls(python_code = f"```python\n{python_code}\n```")
 
 @generative
 async def generate_tool_item_tests(

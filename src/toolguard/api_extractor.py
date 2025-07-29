@@ -142,17 +142,19 @@ class APIExtractor:
         lines = [
             "# Auto-generated class",
             "from typing import *",
-            "from abc import ABC, abstractmethod",
             f"from {interface_module_name} import {interface_name}",
             f"from {types_module} import *",
             "",
-            """def unwrap_fn(fn: Callable)->Callable: 
-    return fn.func if hasattr(fn, "func") else fn""",
-            "",
+    #         """def unwrap_fn(fn: Callable)->Callable: 
+    # return fn.func if hasattr(fn, "func") else fn""",
+    #         "",
         ]
         
         lines.append(f"class {class_name}({interface_name}):") #class
         lines.append("")
+        lines.append(f"""    def __init__(self, delegate: {interface_name}):
+        self._delegate = delegate
+    """)
 
         if not funcs:
             lines.append("    pass")
@@ -169,21 +171,21 @@ class APIExtractor:
     def _generate_delegate_code(self, func:Callable)->str:
         # Get function details
         func_name = _get_type_name(func)
-        module_name = func.__module__
         sig = inspect.signature(func)
         
         # Extract arguments
-        params = list(sig.parameters.values())
-        call_args_str = ", ".join(
-            p.name if p.kind in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY) else f"*{p.name}" if p.kind == inspect.Parameter.VAR_POSITIONAL else f"**{p.name}"
-            for p in params
-        )
+        param_names =[p for p in list(sig.parameters.keys()) if p != "self"]
+        call_args_str = ", ".join(param_names)
 
         # Generate code string
+        # module_name = func.__module__
+        # return f"""
+        # from {module_name} import {func_name}
+        # return unwrap_fn({func_name})({call_args_str})
+        # """
         return f"""
-        from {module_name} import {func_name}
-        return unwrap_fn({func_name})({call_args_str})
-        """
+        return self._delegate.{func_name}({call_args_str})
+"""
     
     def _get_function_with_docstring(self, func:FunctionType, func_name:str)->List[str]:
         """Extract method signature with type hints and docstring."""

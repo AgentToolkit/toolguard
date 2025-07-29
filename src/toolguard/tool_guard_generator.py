@@ -164,7 +164,7 @@ class ToolGuardGenerator:
         for trial in range(MAX_TOOL_IMPROVEMENTS):
             logger.debug(f"Improving guard function {module_name}... (trial = {round}.{trial})")
             domain = Domain.model_construct(**self.domain.model_dump()) #omit runtime fields
-            prev_python = prompts.PythonCodeModel(python_code=prev_version.content)
+            prev_python = prompts.PythonCodeModel.create(python_code=prev_version.content)
             res = await prompts.improve_tool_guard_fn(prev_python, domain, item, review_comments + errors)
 
             guard_fn = FileTwin(

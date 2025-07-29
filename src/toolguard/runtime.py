@@ -4,7 +4,7 @@ import inspect
 import json
 import os
 from types import ModuleType
-from typing import Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Type
 from pydantic import BaseModel, PrivateAttr
 import importlib.util
 import inspect
@@ -53,7 +53,7 @@ class ToolGuardsCodeGenerationResult(BaseModel):
         self._llm = llm
         return self
     
-    def check_tool_call(self, tool_name:str, args: dict, messages: List):
+    def check_tool_call(self, tool_name:str, args: dict, messages: List, delegate:Any):
         tool = self.tools.get(tool_name)
         if tool is None:
             return
@@ -73,7 +73,7 @@ class ToolGuardsCodeGenerationResult(BaseModel):
                 module = load_module_from_path(self.domain.app_api_impl.file_name, self.root_dir)
                 cls = find_class_in_module(module, self.domain.app_api_impl_class_name)
                 assert cls, f"class {self.domain.app_api_impl_class_name} not found in {self.domain.app_api_impl.file_name}"
-                guard_args[p_name] = cls()
+                guard_args[p_name] = cls(delegate)
             else:
                 arg = args.get(p_name)
                 if inspect.isclass(param.annotation) and issubclass(param.annotation, BaseModel):
