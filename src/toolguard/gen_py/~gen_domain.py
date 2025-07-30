@@ -8,7 +8,7 @@ from toolguard.common.array import find
 from toolguard.common.py import path_to_module, unwrap_fn
 from toolguard.common.str import to_camel_case, to_snake_case
 from toolguard.templates import load_template
-from toolguard.py_to_oas import tools_to_openapi
+from toolguard.gen_py.py_to_oas import tools_to_openapi
 from toolguard.utils.datamodel_codegen import run as dm_codegen
 from toolguard.common.open_api import OpenAPI, Operation, Parameter, ParameterIn, PathItem, Reference, RequestBody, Response, JSchema, read_openapi
 from toolguard.data_types import FileTwin, RuntimeDomain

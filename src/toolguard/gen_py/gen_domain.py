@@ -1,17 +1,10 @@
-import inspect
 import os
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Callable, List
 from os.path import join
 
-from toolguard.api_extractor import APIExtractor
-from toolguard.common.array import find
-from toolguard.common.py import path_to_module, unwrap_fn
+from toolguard.gen_py.api_extractor import APIExtractor
 from toolguard.common.str import to_camel_case, to_snake_case
-from toolguard.templates import load_template
-from toolguard.py_to_oas import tools_to_openapi
-from toolguard.utils.datamodel_codegen import run as dm_codegen
-from toolguard.common.open_api import OpenAPI, Operation, Parameter, ParameterIn, PathItem, Reference, RequestBody, Response, JSchema, read_openapi
 from toolguard.data_types import FileTwin, RuntimeDomain
 
 RUNTIME_PACKAGE_NAME="rt_toolguard"
@@ -36,11 +29,10 @@ class APIGenerator:
         #ToolGuard Runtime
         os.makedirs(join(self.py_path, RUNTIME_PACKAGE_NAME), exist_ok=True)
         
-        common = FileTwin.load_from(
-            str(Path(__file__).parent), "data_types.py")\
+        root = str(Path(__file__).parent.parent)
+        common = FileTwin.load_from(root, "data_types.py")\
             .save_as(self.py_path, join(RUNTIME_PACKAGE_NAME, RUNTIME_TYPES_PY))
-        runtime = FileTwin.load_from(
-            str(Path(__file__).parent), "runtime.py")
+        runtime = FileTwin.load_from(root, "runtime.py")
         runtime.content = runtime.content.replace("toolguard.", f"{RUNTIME_PACKAGE_NAME}.")
         runtime.save_as(self.py_path, join(RUNTIME_PACKAGE_NAME, RUNTIME_INIT_PY))
 

@@ -1,26 +1,22 @@
-import asyncio
 import inspect
 import os
-from os.path import join
-from typing import Callable, List, Tuple
-from loguru import logger
-from toolguard.common import py
-from toolguard.common.str import to_snake_case
-from toolguard.gen_domain import APIGenerator
-import toolguard.prompts as prompts
-from toolguard.data_types import Domain, FileTwin, RuntimeDomain, ToolPolicy, ToolPolicyItem, ToolPolicyItem
-from toolguard.runtime import ToolGuardsCodeGenerationResult, ToolGuardCodeResult, find_class_in_module, load_module_from_path
-from toolguard.templates import load_template
-import toolguard.utils.pyright as pyright
-import toolguard.utils.pytest as pytest
-
 import asyncio
 from pathlib import Path
-from typing import List
 from loguru import logger
-from toolguard.data_types import FileTwin, ToolPolicy
-import toolguard.utils.venv as venv
+from os.path import join
+from typing import Callable, List, Tuple
+
+from toolguard.common import py
+from toolguard.common.str import to_snake_case
+from toolguard.data_types import Domain, FileTwin, RuntimeDomain, ToolPolicy, ToolPolicyItem, ToolPolicyItem
+from toolguard.runtime import ToolGuardCodeResult, find_class_in_module, load_module_from_path
+import toolguard.utils.pytest as pytest
 import toolguard.utils.pyright as pyright
+from toolguard.gen_py.prompts.gen_tests import generate_tool_item_tests, improve_tool_tests
+from toolguard.gen_py.prompts.improve_guard import improve_tool_guard_fn
+from toolguard.gen_py.prompts.python_code import PythonCodeModel
+from toolguard.gen_py.prompts.tool_dependencies import tool_information_dependencies
+from toolguard.gen_py.templates import load_template
 
 
 MAX_TOOL_IMPROVEMENTS = 5
@@ -89,7 +85,7 @@ class ToolGuardGenerator:
 
     async def generate_tool_item_tests(self, item: ToolPolicyItem, guard_fn: FileTwin)-> FileTwin:
         fn_name = self.guard_item_fn_name(item)
-        dep_tools = await prompts.tool_information_dependencies(item.name, item.description, self.domain.app_api)
+        dep_tools = await tool_information_dependencies(item.name, item.description, self.domain.app_api)
         dep_tools = set(dep_tools) #workaround. generative AI
         logger.debug(f"Dependencies of {item.name}: {dep_tools}")
 
@@ -100,9 +96,9 @@ class ToolGuardGenerator:
             first_time = trial_no == 0
             domain = Domain.model_construct(**self.domain.model_dump()) #remove runtime fields
             if first_time:
-                res = await prompts.generate_tool_item_tests(fn_name, guard_fn, item, domain, dep_tools)
+                res = await generate_tool_item_tests(fn_name, guard_fn, item, domain, dep_tools)
             else:
-                res = await prompts.improve_tool_tests(test_file, domain, item, errors)
+                res = await improve_tool_tests(test_file, domain, item, errors)
 
             test_content = res.get_code_content()
             test_file = FileTwin(
@@ -164,8 +160,8 @@ class ToolGuardGenerator:
         for trial in range(MAX_TOOL_IMPROVEMENTS):
             logger.debug(f"Improving guard function {module_name}... (trial = {round}.{trial})")
             domain = Domain.model_construct(**self.domain.model_dump()) #omit runtime fields
-            prev_python = prompts.PythonCodeModel.create(python_code=prev_version.content)
-            res = await prompts.improve_tool_guard_fn(prev_python, domain, item, review_comments + errors)
+            prev_python = PythonCodeModel.create(python_code=prev_version.content)
+            res = await improve_tool_guard_fn(prev_python, domain, item, review_comments + errors)
 
             guard_fn = FileTwin(
                 file_name=prev_version.file_name,

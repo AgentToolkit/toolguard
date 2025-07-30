@@ -28,7 +28,7 @@ model = "gpt-4o-2024-08-06"
 # settings.provider = "azure"
 # settings.model = model
 # settings.sdk = "litellm"
-from toolguard.gen_tool_policy_check import generate_tool_guards
+from toolguard.gen_py.gen_tool_policy_check import generate_tool_guards
     
 def read_oas(file_path:str)->OpenAPI:
     with open(file_path, "r") as file:

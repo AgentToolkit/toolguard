@@ -7,26 +7,25 @@ from typing import Callable, Dict, List, Optional
 
 import markdown
 import json
-import yaml
-from pathlib import Path
 from loguru import logger
 
 #important to load the env variables BEFORE policy_adherence library (so programmatic_ai configuration will take place)
 import dotenv
+dotenv.load_dotenv()
 
 from toolguard.llm.tg_litellm import LitellmModel
 from toolguard.llm.tg_llm import TG_LLM
 from toolguard.runtime import ToolGuardsCodeGenerationResult
 from toolguard.stages_tptd.create_oas_summary import OASSummarizer
-
-dotenv.load_dotenv()
-
-
 from toolguard.data_types import ToolPolicy, ToolPolicyItem
-from toolguard.gen_tool_policy_check import generate_tool_guards
+from toolguard.gen_py.gen_tool_policy_check import generate_tool_guards
 from toolguard.stages_tptd.text_tool_policy_generator import step1_main, step1_main_with_tools
 
 
+def main(policy_text:str,tools, step1_out_dir:str, step2_out_dir:str, step1_llm:TG_LLM, tools2run:List[str]=None,short1=False):
+	step1_main_with_tools(policy_text, tools, step1_out_dir,step1_llm, tools2run, short1)
+	result = asyncio.run(step2(tools, step1_out_dir, step2_out_dir, tools2run))
+	return result
 
 async def step2(funcs:list[Callable], step1_path:str, step2_path:str, tools:Optional[List[str]]=None)->ToolGuardsCodeGenerationResult:
 	os.makedirs(step2_path, exist_ok=True)
@@ -42,15 +41,7 @@ async def step2(funcs:list[Callable], step1_path:str, step2_path:str, tools:Opti
 			tool_policies.append(policy)
 	
 	return await generate_tool_guards("my_app", tool_policies, step2_path, funcs=funcs)
-
-def main(policy_text:str,tools, step1_out_dir:str, step2_out_dir:str, step1_llm:TG_LLM, tools2run:List[str]=None,short1=False):
-	step1_main_with_tools(policy_text, tools, step1_out_dir,step1_llm, tools2run, short1)
-	result = asyncio.run(step2(tools, step1_out_dir, step2_out_dir, tools2run))
-	return result
-
 	
-
-
 def load_tool_policy(file_path:str, tool_name:str)->ToolPolicy:
     with open(file_path, "r") as file:
         d = json.load(file)
