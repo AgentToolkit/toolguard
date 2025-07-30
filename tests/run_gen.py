@@ -19,7 +19,6 @@ dotenv.load_dotenv()
 
 from tau_bench.envs.airline.airline_wrapper import ALL_TOOLS
 from toolguard.data_types import ToolPolicy, ToolPolicyItem
-from toolguard.runtime import load
 from toolguard.common.open_api import OpenAPI
 
 # model = "gpt-4o-2024-08-06"
@@ -69,8 +68,12 @@ async def gen_all():
     # from tau2.domains.airline.tools import AirlineTools
     # funcs = [member for name, member in inspect.getmembers(AirlineTools, predicate=inspect.isfunction)
     #     if getattr(member, "__tool__", None)]  # only @is_tool]
-    from tau_bench.envs.airline.tools import ALL_TOOLS
-    funcs = ALL_TOOLS
+
+    from tau_bench.envs.airline.airline_wrapper import AirlineAPI
+    funcs = [member for name, member in inspect.getmembers(AirlineAPI, predicate=inspect.isfunction)]
+
+    # from tau_bench.envs.airline.tools import ALL_TOOLS
+    # funcs = ALL_TOOLS
 
     oas_path = "eval/airline/oas.json"
     oas = read_oas(oas_path)
@@ -91,16 +94,21 @@ async def gen_all():
     now = datetime.now()
     out_folder = os.path.join(output_dir, now.strftime("%Y-%m-%d_%H_%M_%S"))
     os.makedirs(out_folder, exist_ok=True)
+    logger.add(
+        os.path.join(out_folder, "run.log"),     # Log file path
+        format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}",
+        encoding="utf-8"
+    )
+    logger.info("ASasas")
 
     tool_policies = [load_tool_policy(tool_policy_path, tool_name) 
         for tool_name, tool_policy_path 
         in tool_policy_paths.items()]
     
-    result = await generate_toolguards_from_functions("airline", tool_policies, out_folder, funcs, ["tau_bench"])
-    result.save(out_folder)
+    return await generate_toolguards_from_functions("airline", tool_policies, out_folder, funcs, ["tau_bench"])
 
-    out_folder = "eval/airline/output/last"
-    result = load(out_folder)
+    # out_folder = "eval/airline/output/last"
+    # result = load(out_folder)
     # print(result.model_dump_json(indent=2, exclude_none=True, by_alias=True))
 
     # result.check_tool_call("add_user", {
@@ -109,18 +117,15 @@ async def gen_all():
     #         "address": "aasa",
     #     },
     #     [])
-
-    # print(f"Domain: {result.domain_file}")
-    # for tool_name, tool in result.tools.items():
-    #     print(f"\t{tool_name}\t{tool.tool_check_file.file_name}")
-    #     for test in tool.test_files:
-    #         if test:
-    #             print(f"\t{test.file_name}")
-    #         else:
-    #             print(f"\tFAILED")
     
 if __name__ == '__main__':
     logger.remove()
-    logger.add(sys.stdout, colorize=True, format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> <level>{message}</level>")
+    #  Console logging
+    logger.add(
+        sys.stdout, 
+        colorize=True, 
+        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> <level>{message}</level>"
+    )
 
     asyncio.run(gen_all())
+    print("Done")

@@ -12,7 +12,7 @@ from toolguard.utils.datamodel_codegen import run as dm_codegen
 from toolguard.common.open_api import OpenAPI, Operation, Parameter, ParameterIn, PathItem, Reference, RequestBody, Response, JSchema, read_openapi
 from toolguard.data_types import FileTwin, RuntimeDomain
 
-def generate_domain_from_openapi(py_path:str, app_name: str, oas_file:str)->RuntimeDomain:
+def generate_domain_from_openapi(py_path:str, app_name: str, openapi_file:str)->RuntimeDomain:
     #ToolGuard Runtime
     os.makedirs(join(py_path, RUNTIME_PACKAGE_NAME), exist_ok=True)
     FileTwin.load_from(
@@ -23,14 +23,14 @@ def generate_domain_from_openapi(py_path:str, app_name: str, oas_file:str)->Runt
         .save_as(py_path, join(RUNTIME_PACKAGE_NAME, RUNTIME_TYPES_PY))
 
     #APP init and Types
-    oas = read_openapi(oas_file)
+    oas = read_openapi(openapi_file)
     os.makedirs(join(py_path, to_snake_case(app_name)), exist_ok=True)
     FileTwin(file_name=join(to_snake_case(app_name), "__init__.py"), content="")\
         .save(py_path)
     types_module_name = f"{app_name}.{app_name}_types"
     types = FileTwin(
             file_name=module_to_path(types_module_name),
-            content= dm_codegen(oas_file))\
+            content= dm_codegen(openapi_file))\
         .save(py_path)
 
     #APP API

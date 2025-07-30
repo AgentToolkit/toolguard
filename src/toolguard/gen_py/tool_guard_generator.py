@@ -50,33 +50,47 @@ class ToolGuardGenerator:
     async def generate(self)->ToolGuardCodeResult:
         self.start()
         tool_guard_fn, item_guard_fns = self.create_initial_guard_fns()
-        for item_guard_fn, policy_item in zip(item_guard_fns, self.tool_policy.policy_items):
-            item_guard_fn.save_as(self.py_path, self.debug_dir(policy_item, f"-1_{Path(item_guard_fn.file_name).parts[-1]}"))
         
         logger.debug(f"Tool {self.tool_policy.tool_name} function draft created")
     
-        items_tests = await asyncio.gather(* [
+        tests_and_guards = await asyncio.gather(* [
             self.generate_tool_item_tests_and_guard_fn(item, item_guard_fn)
                 for item, item_guard_fn in zip(self.tool_policy.policy_items, item_guard_fns)
         ])
+        item_tests, item_guards = zip(*tests_and_guards)
         return ToolGuardCodeResult(
             tool= self.tool_policy,
             guard_fn_name= guard_fn_name(self.tool_policy),
             guard_file= tool_guard_fn,
-            item_guard_files = item_guard_fns,
-            test_files= items_tests
+            item_guard_files = item_guards,
+            test_files= item_tests
         )
 
-    async def generate_tool_item_tests_and_guard_fn(self, item: ToolPolicyItem, guard_fn: FileTwin)->FileTwin|None:
+    async def generate_tool_item_tests_and_guard_fn(self, item: ToolPolicyItem, init_guard_fn: FileTwin)->Tuple[FileTwin|None, FileTwin|None]:
+        #1) Generate tests
         try:
-            test_file = await self.generate_tool_item_tests(item, guard_fn)
-            await self.improve_tool_item_guard_fn_loop(item, guard_fn, test_file)
-            return test_file
+            test_file = await self.generate_tool_item_tests(item, init_guard_fn)
         except Exception as ex:
-            logger.error(ex)
-            # try to generate the code without tests...
-            await self.improve_tool_item_guard_fn(guard_fn, [], item, 0)
-            return None
+            #Tests generation failed.
+            logger.exception(ex)
+            try:
+                # try to generate the code without tests...
+                guard_fn = await self.improve_tool_item_guard_fn(init_guard_fn, [], item, 0)
+                return None, guard_fn
+            except Exception as ex:
+                logger.exception(ex)
+                # guard generation failed. return initial guard
+                return None, init_guard_fn
+        
+        #2) Tests generated, now generate guards
+        try:
+            guard_fn = await self.improve_tool_item_guard_fn_loop(item, init_guard_fn, test_file)
+            # Happy path
+            return test_file, guard_fn
+        except Exception as ex:
+            # guard generation failed. return initial guard
+            logger.exception(ex)
+            return None, init_guard_fn
 
     async def generate_tool_item_tests(self, item: ToolPolicyItem, guard_fn: FileTwin)-> FileTwin:
         fn_name = guard_item_fn_name(item)
@@ -147,7 +161,7 @@ class ToolGuardGenerator:
             logger.debug(f"Tool {item.name} guard function unit-tests failed. Retrying...")
             guard_fn = await self.improve_tool_item_guard_fn(guard_fn, errors, item, trial_no)
         
-        raise Exception(f"Could not generate guard function for tool {self.tool_policy.tool_name}.{item.name}")
+        raise Exception(f"Could not generate guard function for tool {to_snake_case(self.tool_policy.tool_name)}.{to_snake_case(item.name)}")
 
     async def improve_tool_item_guard_fn(self, prev_version: FileTwin, review_comments: List[str], item: ToolPolicyItem, round: int)->FileTwin:
         module_name = guard_item_fn_module_name(item)
@@ -198,6 +212,10 @@ class ToolGuardGenerator:
             for item in self.tool_policy.policy_items]
         #tool guard file
         tool_file = self._create_tool_module(tool_fn, item_files)
+
+        #Save to debug folder
+        for item_guard_fn, policy_item in zip(item_files, self.tool_policy.policy_items):
+            item_guard_fn.save_as(self.py_path, self.debug_dir(policy_item, f"-1_{Path(item_guard_fn.file_name).parts[-1]}"))
 
         return (tool_file, item_files)
      

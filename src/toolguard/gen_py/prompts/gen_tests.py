@@ -25,7 +25,7 @@ async def generate_tool_item_tests(
             - If an exception occurrs in the function-under-test, let the exception propagate up.
         - For **each violation example, ONE test** is generated.
             - The function-under-test is EXPECTED to raise a `PolicyViolationException`.
-            - If the expected exception was not raised, the test should raise an exception with a message describing test case that did not raise exception.
+            - use `with pytest.raises(PolicyViolationException): function_under_test()` to expect for exceptions.
             
         - Test class and method names should be meaningful and use up to **six words in snake_case**.
         - For each test, add a comment quoting the policy item case that this function is testing 
@@ -64,6 +64,7 @@ def guard_create_reservation(args:Reservation, history: ChatHistory, api: SomeAP
     Should return this snippet:
 ```python
 from unittest.mock import MagicMock, patch
+import pytest
 from toolguard.data_types import PolicyViolationException
 from my_app.guard_create_reservation import guard_create_reservation
 from my_app.api import *
@@ -85,7 +86,8 @@ def test_book_in_the_past():
     api.get_hotel.side_effect = lambda hotel_id: hotel if hotel_id == "789" else None
     
     #invoke function under test.
-    check_create_reservation(args, history, api)
+    with pytest.raises(PolicyViolationException):
+        check_create_reservation(args, history, api)
 ```
 
     Args:

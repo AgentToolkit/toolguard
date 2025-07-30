@@ -1,14 +1,9 @@
 from pydantic import BaseModel, Field
 import re
 
-PYTHON_PATTERN = r'^```python\s*\n([\s\S]+?)\n```$'
+PYTHON_PATTERN = r'^```python\s*\n(def[\s\S]{10, 300})\n```'
 class PythonCodeModel(BaseModel):
-    python_code: str = Field(
-        ...,
-        pattern=PYTHON_PATTERN,
-        min_length= 10,
-        max_length= 300,
-    )
+    python_code: str = Field(..., )
     def get_code_content(self) -> str:
         match = re.match(PYTHON_PATTERN, self.python_code)
         if match:
