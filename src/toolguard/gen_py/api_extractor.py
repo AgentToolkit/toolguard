@@ -1,7 +1,7 @@
 import inspect
 import os
 import textwrap
-from types import FunctionType
+from types import FunctionType, UnionType
 import types
 from typing import Callable, DefaultDict, Dict, List, Literal, Optional, Set, Tuple, get_type_hints, get_origin, get_args
 from typing import Annotated, Union
@@ -77,7 +77,7 @@ class APIExtractor:
         # Start building the interface
         lines = [
             "# Auto-generated class interface",
-            "from typing import *",
+            "from typing import *  # type: ignore",
             "from abc import ABC, abstractmethod",
             f"from {types_module} import *",
             ""]
@@ -116,7 +116,7 @@ class APIExtractor:
     def _generate_interface_from_functions(self, funcs: List[Callable], interface_name: str, types_module:str)->str:
         lines = [
             "# Auto-generated class interface",
-            "from typing import *",
+            "from typing import * # type: ignore",
             "from abc import ABC, abstractmethod",
             f"from {types_module} import *",
             ""]
@@ -587,6 +587,10 @@ class APIExtractor:
             else:
                 inner = ", ".join(self._format_type(a) for a in args)
                 return f"Union[{inner}]"
+            
+        if origin is UnionType:
+            args = get_args(typ)
+            return "| ".join(self._format_type(a) for a in args)
 
         # Generic containers
         if origin:
