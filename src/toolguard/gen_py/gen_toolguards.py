@@ -1,18 +1,16 @@
 import asyncio
-from typing import List
 import logging
+import json
 from os.path import join
 from typing import Callable, List, Optional
 
 from toolguard.gen_py.consts import *
 from toolguard.gen_py.domain_from_funcs import generate_domain_from_functions
-from toolguard.data_types import RuntimeDomain, ToolPolicy
+from toolguard.data_types import RuntimeDomain, ToolPolicy, FileTwin
 from toolguard.gen_py.domain_from_openapi import generate_domain_from_openapi
 from toolguard.runtime import ToolGuardsCodeGenerationResult
 from toolguard.gen_py.tool_guard_generator import ToolGuardGenerator
-import toolguard.utils.pyright as pyright
 import toolguard.utils.pytest as pytest
-from toolguard.data_types import ToolPolicy
 import toolguard.utils.venv as venv
 import toolguard.utils.pyright as pyright
 
@@ -29,9 +27,7 @@ async def generate_toolguards_from_functions(app_name: str, tool_policies: List[
 
     #Domain from functions
     domain = generate_domain_from_functions(py_root, app_name, funcs, module_roots)
-    result = await generate_toolguards_from_domain(app_name, tool_policies, py_root, domain)
-
-    return result.save(py_root)
+    return await generate_toolguards_from_domain(app_name, tool_policies, py_root, domain)
 
 async def generate_toolguards_from_openapi(app_name: str, tool_policies: List[ToolPolicy], py_root:str, openapi_file:str)->ToolGuardsCodeGenerationResult:
     logger.debug(f"Starting... will save into {py_root}")
@@ -41,6 +37,12 @@ async def generate_toolguards_from_openapi(app_name: str, tool_policies: List[To
     return await generate_toolguards_from_domain(app_name, tool_policies, py_root, domain)
 
 async def generate_toolguards_from_domain(app_name: str, tool_policies: List[ToolPolicy], py_root:str, domain: RuntimeDomain)->ToolGuardsCodeGenerationResult:
+    #Save policies in folder
+    FileTwin(
+        file_name="policies.json", 
+        content=json.dumps([tool_policy.model_dump() for tool_policy in tool_policies], indent=2))\
+            .save(py_root)
+
     #Setup env
     venv.run(join(py_root, PY_ENV), PY_PACKAGES)
     pyright.config(py_root)

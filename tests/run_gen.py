@@ -68,18 +68,18 @@ async def gen_all():
     }
     output_dir = "eval/airline/output"
 
-    ##Tau1 with wrapper
-    from tau_bench.envs.airline.airline_wrapper import AirlineAPI
-    funcs = [member for name, member in inspect.getmembers(AirlineAPI, predicate=inspect.isfunction)]
+    # ##Tau1 with wrapper
+    # from tau_bench.envs.airline.airline_wrapper import AirlineAPI
+    # funcs = [member for name, member in inspect.getmembers(AirlineAPI, predicate=inspect.isfunction)]
 
-    ##Tau1 with openAPI
-    oas_path = "eval/airline/oas.json"
-    # oas = read_oas(oas_path)
+    # ##Tau1 with openAPI
+    # oas_path = "eval/airline/oas.json"
+    # # oas = read_oas(oas_path)
 
-    ## Tau2
-    # from tau2.domains.airline.tools import AirlineTools
-    # funcs = [member for name, member in inspect.getmembers(AirlineTools, predicate=inspect.isfunction)
-    #     if getattr(member, "__tool__", None)]  # only @is_tool]
+    # Tau2
+    from tau2.domains.airline.tools import AirlineTools
+    funcs = [member for name, member in inspect.getmembers(AirlineTools, predicate=inspect.isfunction)
+        if getattr(member, "__tool__", None)]  # only @is_tool]
 
     ##Clinic
     # policy_path = "../ToolGuardAgent/eval/clinic/clinic_policy_doc.md"
@@ -104,8 +104,8 @@ async def gen_all():
         for tool_name, tool_policy_path 
         in tool_policy_paths.items()]
     
-    return await generate_toolguards_from_openapi("airline", tool_policies, out_folder, oas_path)
-    # return await generate_toolguards_from_functions("airline", tool_policies, out_folder, funcs, ["tau_bench"])
+    # return await generate_toolguards_from_openapi("airline", tool_policies, out_folder, oas_path)
+    return await generate_toolguards_from_functions("airline", tool_policies, out_folder, funcs, ["tau2"])
 
     # out_folder = "eval/airline/output/last"
     # result = load(out_folder)

@@ -2,8 +2,8 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from toolguard.llm.litellm_model import LitellmModel
-from toolguard.prompts import tool_information_dependencies
+from toolguard.llm.tg_llm import TG_LLM
+from toolguard.gen_py.prompts.tool_dependencies import tool_information_dependencies
 from toolguard.data_types import FileTwin
 
 load_dotenv()
@@ -12,7 +12,7 @@ current_dir = str(Path(__file__).parent)
 domain = FileTwin.load_from(current_dir, "_tau_airline_domain.py")
 
 model = "gpt-4o-2024-08-06"
-llm = LitellmModel(model)
+llm = TG_LLM(model, temprature=0)
 
 def test_dependencies_passangers():
     policy = """

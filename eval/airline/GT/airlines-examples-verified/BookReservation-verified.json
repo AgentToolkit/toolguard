@@ -57,9 +57,9 @@
         },
         {
             "policy_name": "Flight Status Restrictions",
-            "description": "Flights chosen for booking using ToolX must have the status 'available' to ensure that they have not taken off and have seats and prices listed for booking. Flights with status 'delayed', 'on time', or 'flying' cannot be booked.",
+            "description": "Flights chosen for booking using ToolX must have the status 'available' to ensure that they have not taken off. Flights with status 'delayed', 'on time', or 'flying' cannot be booked.",
             "references": [
-                "If the status is \"available\", the flight has not taken off, available seats and prices are listed.",
+                "If the status is \"available\", the flight has not taken off",
                 "If the status is \"delayed\" or \"on time\", the flight has not taken off, cannot be booked.",
                 "If the status is \"flying\", the flight has taken off but not landed, cannot be booked."
             ],
@@ -70,13 +70,29 @@
                 "A reservation request is made for a flight with the status 'on time'.",
                 "An agent attempts to book a round-trip from LAX to DFW for a user, but the departure flight's status is 'on time' which is not permissible as per the policy that only allows booking flights with 'available' status.",
                 "A reservation is attempted for a flight where the status is 'cancelled'. Despite knowing that only flights with 'available' status can be booked, the agent proceeds, resulting in a policy breach.",
-                "A user attempts to make a reservation for three passengers for an 'available' flight in economy class, but only one seat is listed for listed for booking in this class.",
                 "A user attempts to make a reservation with two flights. The first one's status is 'delayed', and the second one is 'available'.",
                 "A user attempts to make a reservation with two flights. The first one's status is 'available', and the second one is 'delayed'."
             ],
             "compliance_examples": [
                 "A user requests to book a flight from SFO to LAX on June 20th. The agent checks the flight information and confirms that the flight status is 'available' before proceeding with the booking using the BookReservation tool.",
                 "Before booking a round-trip flight for two passengers in economy class, the agent verifies all flights' statuses are 'available' and there are two seats available for this class."
+            ]
+        },
+        {
+            "policy_name": "Seats Are Available",
+            "description": "Flights chosen for booking must have enough available seats for all passengers, and prices listed for booking.",
+            "references": [
+                "If the status is \"available\", the flight has not taken off, available seats and prices are listed."
+            ],
+            "iteration_added": "Manual",
+            "violating_examples": [
+                "A user attempts to book a flight to New York on May 16th for 5 passengers in business class, however only 4 seats are available on this flight",
+                "An agent attempts to book a round-trip from LAX to DFW for a user in economy cabin, the outgoing flight status is availbale, but the there are no available seat in this cabin",
+                "An agent attempts to book a round-trip from LAX to DFW for a user in economy cabin, there are enough seats in the outgoing flight and the flight status is availabile. The return flight status is availbale, but the there are no available seat in this cabin"
+            ],
+            "compliance_examples": [
+                "A user requests to book a flight from SFO to LAX on June 20th in economy class. The flight status is 'available' and there are 21 available seats",
+                "A user is booking a round-trip flight from SFO to LAX, for two passengers in economy class. There are enough availble seats in the two flights"
             ]
         },
         {

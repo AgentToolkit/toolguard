@@ -15,7 +15,8 @@ def guard_book_reservation(req: BookReservationRequest, history: ChatHistory, ap
     check_passengers(req, user, history, api)
     check_payment_methods(req, user, history, api)
     check_baggages(req, user, history, api)
-    check_flights_availability(req, user, history, api)
+    check_flights_status(req, user, history, api)
+    check_available_seats(req, user, history, api)
     check_iata_airports(req, api)
     # check_explicit_user_confirmation(req, user, history, api)
 
@@ -91,7 +92,7 @@ def check_payment_methods(req:BookReservationRequest, user: GetUserDetailsRespon
     if gift_card_count > 3:
         raise PolicyViolationException("Invalid payment methods: at most three gift cards are allowed.")
 
-def check_flights_availability(req: BookReservationRequest, user: GetUserDetailsResponse, history: ChatHistory, api: FlightBookingApi):
+def check_flights_status(req: BookReservationRequest, user: GetUserDetailsResponse, history: ChatHistory, api: FlightBookingApi):
     # Validate flight availability
     for flight in req.flights:
         flight_instance = api.get_flight_instance(
@@ -103,6 +104,11 @@ def check_flights_availability(req: BookReservationRequest, user: GetUserDetails
         if flight_instance.status != "available":
             raise PolicyViolationException(f"Flight {flight.flight_number} is unavailable.")
         
+def check_available_seats(req: BookReservationRequest, user: GetUserDetailsResponse, history: ChatHistory, api: FlightBookingApi):
+    for flight in req.flights:
+        flight_instance = api.get_flight_instance(
+            GetFlightInstanceParametersQuery(flight_id=flight.flight_number, date=flight.date)
+        )
         avail_seats = getattr(flight_instance.available_seats, req.cabin)
         if avail_seats < len(req.passengers):
             raise PolicyViolationException(f"There are only {avail_seats} available seats in {req.cabin} cabin.")

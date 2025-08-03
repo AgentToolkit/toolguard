@@ -6,8 +6,7 @@ from {{ path_to_module(domain.app_api.file_name) }} import {{ domain.app_api_cla
 
 def {{ method.name }}(history: ChatHistory, api: {{ domain.app_api_class_name }}, {{ method.signature }}):
     """
-    Checks that a tool call complies with the following policy:
-    >{{ policy }}
+    Policy to check: {{ policy }}
 
     Args:
         history (ChatHistory): provide question-answer services over the past chat messages.
