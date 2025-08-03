@@ -37,12 +37,6 @@ async def generate_toolguards_from_openapi(app_name: str, tool_policies: List[To
     return await generate_toolguards_from_domain(app_name, tool_policies, py_root, domain)
 
 async def generate_toolguards_from_domain(app_name: str, tool_policies: List[ToolPolicy], py_root:str, domain: RuntimeDomain)->ToolGuardsCodeGenerationResult:
-    #Save policies in folder
-    FileTwin(
-        file_name="policies.json", 
-        content=json.dumps([tool_policy.model_dump() for tool_policy in tool_policies], indent=2))\
-            .save(py_root)
-
     #Setup env
     venv.run(join(py_root, PY_ENV), PY_PACKAGES)
     pyright.config(py_root)

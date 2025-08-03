@@ -131,9 +131,6 @@ class ChatHistoryImpl(ChatHistory):
     def __init__(self, messages: List[Dict], llm: LLM) -> None:
         self.messages = messages
         self.llm = llm
-
-    def ask(self, question:str)->str:
-        return ask_llm(question, self.messages, self.llm)
     
     def ask_bool(self, question:str)->bool:
         return bool(ask_llm(question, self.messages, self.llm))
