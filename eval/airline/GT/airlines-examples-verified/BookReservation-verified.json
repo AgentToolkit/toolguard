@@ -48,7 +48,7 @@
             "iteration_added": 1,
             "violating_examples": [
                 "The agent attempts to use BookReservation but enters an incorrect user ID that does not exist in the system records.",
-                "After obtaining the user ID, the agent makes a call to BookReservation without confirming the trip type, thereby not gathering necessary booking information. This violates the policy requirement of collecting all necessary details before invoking the tool.",
+                "After obtaining the user ID, the agent makes a call to BookReservation without confirming the trip type, thereby not gathering necessary booking information.",
                 "Upon receiving an ID query from a user, the agent assumes the ID is correct without verifying it against system records and proceeds to book a reservation, breaching the mandate for ID confirmation."
             ],
             "compliance_examples": [
@@ -97,23 +97,20 @@
         },
         {
             "policy_name": "Passenger Information Completeness",
-            "description": "Ensure all required passenger details are collected. Limit to five passengers per reservation, with details including first name, last name, and date of birth. Ensure all passengers are in the same cabin class.",
+            "description": "Ensure all required passenger details are collected. Limit to five passengers per reservation, with details including first name, last name, and date of birth.",
             "references": [
-                "Passengers: Each reservation can have at most five passengers. The agent needs to collect the first name, last name, and date of birth for each passenger.",
-                "All passengers must fly the same flights in the same cabin."
+                "Passengers: Each reservation can have at most five passengers. The agent needs to collect the first name, last name, and date of birth for each passenger."
             ],
             "iteration_added": 1,
             "violating_examples": [
                 "An agent attempts to book a reservation using BookReservation for six passengers instead of the allowed maximum of five.",
                 "An agent calls BookReservation with the passenger details incomplete, missing the date of birth for each passenger.",
-                "The agent attempts to book a reservation using BookReservation without verifying that all passengers are flying in the same cabin class, where some passengers are booked in business class and others in economy.",
                 "An agent attempts to book a reservation with no passengers.",
                 "Booking a reservation for one passenger with missing first name information.",
                 "Booking a reservation for one passenger with missing last name information."
             ],
             "compliance_examples": [
-                "An agent successfully gathers and verifies all required passenger information including first name, last name, and date of birth for each of the five passengers.",
-                "The agent confirms that all passengers are to fly in the same cabin class, economy, and proceeds with booking a reservation using BookReservation."
+                "An agent successfully gathers and verifies all required passenger information including first name, last name, and date of birth for each of the five passengers."
             ]
         },
         {

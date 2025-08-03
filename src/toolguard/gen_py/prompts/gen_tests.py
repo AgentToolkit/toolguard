@@ -19,11 +19,10 @@ async def generate_tool_item_tests(
     The function goal is to check the argument data, and raise an exception if they violated the requirements in the policy item.
 
     **Test Generation Rules:**
-    - Make sure to Python import all items in fn_src, common and domain modules. Example:
-    - Each **policy item** has multiple **compliance** and **violation** test examples.
-        - For **each compliance example, ONE test method** is generated. 
-            - If an exception occurrs in the function-under-test, let the exception propagate up.
-        - For **each violation example, ONE test** is generated.
+    - Make sure to Python import all items in fn_src, common and domain modules.
+    - Each `tool_item` has multiple `compliance_examples` and `violation_examples` examples.
+        - For each `compliance_examples`, ONE test method is generated. 
+        - For each `violation_examples`, ONE test method is generated.
             - The function-under-test is EXPECTED to raise a `PolicyViolationException`.
             - use `with pytest.raises(PolicyViolationException): function_under_test()` to expect for exceptions.
             
@@ -34,9 +33,11 @@ async def generate_tool_item_tests(
     **Data population and references:**
     - When populating domain objects, use pydantic `.model_construct()`. 
     - If the class extends `pydantic.RootModel`, always pass the `root` argument.
-    - You should mock the return_value from **ALL tools listed in `dependent_tool_names`**. 
+    - For compliance examples, populate all fields. 
+        - For collections (arrays, dict and sets) populate at least one item.
+    - You should mock the return_value from ALL tools listed in `dependent_tool_names`. 
         - Use side_effect to return the expected value only when the expected parameters are passed.
-    - You should mock the chat_history services. 
+    - You should also mock the chat_history services. 
     
     **Example:** Testing the function `check_create_reservation`, 
     * Policy: `cannot book a room for a date in the past`
@@ -81,7 +82,7 @@ def test_book_in_the_past():
     user = User.model_construct(user_id=123, ...)
     hotel = Hotel.model_construct(hotel_id="789", ...)
 
-    api = MagicMock()
+    api = MagicMock(spec=SomeAPI)
     api.get_user.side_effect = lambda user_id: user if user_id == 123 else None
     api.get_hotel.side_effect = lambda hotel_id: hotel if hotel_id == "789" else None
     
