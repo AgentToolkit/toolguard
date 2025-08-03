@@ -16,7 +16,7 @@ import toolguard.utils.pyright as pyright
 from toolguard.gen_py.prompts.gen_tests import generate_tool_item_tests, improve_tool_tests
 from toolguard.gen_py.prompts.improve_guard import improve_tool_guard_fn
 from toolguard.gen_py.prompts.python_code import PythonCodeModel
-from toolguard.gen_py.prompts.tool_dependencies import tool_information_dependencies
+from toolguard.gen_py.prompts.tool_dependencies import tool_dependencies
 from toolguard.gen_py.templates import load_template
 
 logger = logging.getLogger(__name__)
@@ -94,8 +94,8 @@ class ToolGuardGenerator:
         fn_name = guard_item_fn_name(item)
         dep_tools = set()
         if self.domain.app_api_size > 1:
-            dep_tools = await tool_information_dependencies(item.name, item.description, self.domain.app_api)
-            # dep_tools = set(dep_tools) #workaround. generative AI
+            domain = Domain.model_construct(**self.domain.model_dump()) #remove runtime fields
+            dep_tools = await tool_dependencies(item, domain)
         logger.debug(f"Dependencies of {item.name}: {dep_tools}")
 
         test_file_name = join(TESTS_DIR, self.tool_policy.tool_name, f"{test_fn_module_name(item)}.py")
