@@ -33,6 +33,7 @@
             ]
         },
         {
+            "skip": true,
             "policy_name": "Obtain Cancellation Information",
             "description": "Before invoking the 'cancel_reservation' tool, ensure you have gathered the user's ID, reservation ID, and cancellation reason (such as change of plans, airline cancellation, or other reasons). This information is essential to comply with refund processing requirements.",
             "references": [
@@ -60,8 +61,8 @@
             ],
             "iteration_added": 2,
             "violating_examples": [
-                "A user contacts support to cancel a reservation for an economy class ticket without having purchased travel insurance, and the booking was made more than 24 hours ago, yet the agent proceeds with cancellation.",
-                "A basic user requests a reservation cancellation 48 hours after purchase, without the airline canceling any flights, and the agent mistakenly processes the cancellation, violating the 24-hour window requirement for non-business class tickets."
+                "A user contacts support to cancel a reservation for an economy class ticket without having purchased travel insurance, and the booking was made more than 24 hours ago.",
+                "A basic user requests a reservation cancellation 48 hours after purchase, without the airline canceling any flights and the reservation has no insurance."
             ],
             "compliance_examples": [
                 "An agent checks and confirms the reservation was made within 24 hours before invoking CancelReservation.",

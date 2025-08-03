@@ -27,7 +27,9 @@ async def improve_tool_guard_fn(prev_impl: PythonCodeModel, domain: Domain, poli
     - You should just validate the tool-call arguments. You should never call the tool itself.
     - If needed, you may use the `api` interface to get additional information from the backend.
     - If needed to check information in the previous chat messages, you may use the `history` object.
-    - History services are slow and expensive. Prefer calling domain functions over history services.
+    - `History.ask_bool(question)` function is slow and expensive. 
+        - `History.ask_bool(question)` function use an LLM to answer natural language questions on messages in the past conversation .
+        - Prefer using the API functions to get data, over history services.
 
     **Example: ** 
 prev_impl = ```python

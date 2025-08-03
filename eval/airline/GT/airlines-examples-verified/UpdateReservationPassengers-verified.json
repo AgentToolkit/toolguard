@@ -41,23 +41,19 @@
         },
         {
             "policy_name": "Updating Passengers Information",
-            "description": "Ensure all passengers including first name, last name, and date of birth. Ensure all passengers are in the same cabin class.",
+            "description": "Ensure all passengers including first name, last name, and date of birth.",
             "references": [
-                "The agent needs to collect the first name, last name, and date of birth for each passenger.",
-                "All passengers must fly the same flights in the same cabin."
+                "The agent needs to collect the first name, last name, and date of birth for each passenger."
             ],
             "iteration_added": 1,
             "violating_examples": [
                 "An agent attempts updating passengers while missing the date of birth for each passenger.",
-                "An agent attempts updating passengers information while changing their cabins so that they do not fly in the same cabin.",
-                "An agent attempts updating passengers information while changing their cabins so that all three of them fly in a different cabin.",
                 "An agent attempts updating passengers information while missing a passenger's first name.",
                 "An agent attempts updating passengers information while missing a passenger's last name."
             ],
             "compliance_examples": [
                 "A user asks for replacing one passengers with another, providing all required details.",
-                "A gold user flying business asks to replace himself with a different person, providing all his details.",
-                "An agent attempts to modify passengers information so that all passengers fly in the same cabin."
+                "A gold user flying business asks to replace himself with a different person, providing all his details."
             ]
         },
         {
