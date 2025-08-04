@@ -6,9 +6,6 @@ import logging
 
 #important to load the env variables BEFORE policy_adherence library (so programmatic_ai configuration will take place)
 import dotenv
-
-from toolguard.logging_utils import init_logging
-
 dotenv.load_dotenv() 
 
 logger = logging.getLogger(__name__)
@@ -89,6 +86,7 @@ async def gen_all():
 
 
 if __name__ == '__main__':
+    from toolguard.logging_utils import init_logging
     init_logging()
     asyncio.run(gen_all())
     logger.info("Done")

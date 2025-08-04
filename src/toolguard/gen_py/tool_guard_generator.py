@@ -110,29 +110,22 @@ class ToolGuardGenerator:
             else:
                 res = await improve_tool_tests(test_file, domain, item, errors)
 
-            test_content = res.get_code_content()
             test_file = FileTwin(
-                file_name= test_file_name,
-                content=test_content
-            )
-            test_file.save(self.py_path)
+                    file_name= test_file_name,
+                    content=res.get_code_content()
+                )\
+                .save(self.py_path)
             test_file.save_as(self.py_path, self.debug_dir(item, f"{trial_no}_{test_fn_module_name(item)}.py"))
 
             lint_report = pyright.run(self.py_path, test_file.file_name, self.py_env)
-            lint_report_filename =self.debug_dir(item, f"{trial_no}_{to_snake_case(item.name)}_pyright.json")
-            report = FileTwin(
-                file_name=lint_report_filename,
-                content=lint_report.model_dump_json(indent=2)
-            )
-            report.save(self.py_path)
-
+            FileTwin(
+                    file_name= self.debug_dir(item, f"{trial_no}_pyright_{test_fn_module_name(item)}.json"),
+                    content=lint_report.model_dump_json(indent=2)
+                ).save(self.py_path)
+            
             if lint_report.summary.errorCount>0:
                 logger.warning(f"Generated tests with {lint_report.summary.errorCount} Python errors {test_file.file_name}.")
-                FileTwin(
-                        file_name=self.debug_dir(item, f"{trial_no}_{test_fn_module_name(item)}_errors.json"), 
-                        content=lint_report.model_dump_json(indent=2)
-                    ).save(self.py_path, )
-                errors = lint_report.list_error_messages()
+                errors = lint_report.list_error_messages(test_file.content)
                 continue
 
             #syntax ok, try to run it...
@@ -188,7 +181,7 @@ class ToolGuardGenerator:
                     ).save(self.py_path, )
                 logger.warning(f"Generated function {module_name} with {lint_report.summary.errorCount} errors.")
                 
-                errors = lint_report.list_error_messages()
+                errors = lint_report.list_error_messages(guard_fn.content)
                 continue
             
             return guard_fn
