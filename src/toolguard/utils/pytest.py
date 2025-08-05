@@ -113,7 +113,13 @@ def run(folder:str, test_file:str, report_file)->TestReport:
             "PYTHONPATH": "."
         },
         cwd=folder)
-    return read_test_report(os.path.join(folder, report_file))
+    report = read_test_report(os.path.join(folder, report_file))
+
+    #overwrite it with indented version
+    with open(os.path.join(folder, report_file), "w", encoding="utf-8") as f:
+        json.dump(report.model_dump(), f, indent=2)
+
+    return report
 
 def configure(folder:str):
     """adds the test function docstring to the output report"""

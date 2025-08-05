@@ -16,8 +16,9 @@ async def gen_all():
     output_dir = "eval/airline/output"
     now = datetime.now()
     out_folder = os.path.join(output_dir, now.strftime("%Y-%m-%d_%H_%M_%S"))
+    os.makedirs(out_folder, exist_ok=True)
     add_log_file_handler(os.path.join(out_folder, "run.log"))
-    
+
     # ##Tau1 with wrapper
     # from tau_bench.envs.airline.airline_wrapper import AirlineAPI
     # funcs = [member for name, member in inspect.getmembers(AirlineAPI, predicate=inspect.isfunction)]
@@ -50,7 +51,7 @@ async def gen_all():
     return await generate_guards_from_tool_policies(funcs,
         from_step1_path="eval/airline/GT/airlines", 
         to_step2_path=out_folder, 
-        tool_names=["cancel_reservation"],
+        tool_names=["update_reservation_baggages"],
         app_name="airline"
     )
 

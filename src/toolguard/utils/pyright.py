@@ -38,11 +38,11 @@ class DiagnosticsReport(BaseModel):
     summary: Summary
 
     def list_error_messages(self, file_content: str)->List[str]:
-        msgs = []
+        msgs = set()
         for d in self.generalDiagnostics:
             if d.severity == ERROR:
-                msgs.append(f"Syntax error: {d.message}.  code block: \'{get_text_by_range(file_content, d.range)}, \'")
-        return msgs
+                msgs.add(f"Syntax error: {d.message}.  code block: \'{get_text_by_range(file_content, d.range)}, \'")
+        return list(msgs)
 
 def get_text_by_range(file_content: str, rng: Range)-> str:
     lines = file_content.splitlines()

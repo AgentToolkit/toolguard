@@ -78,8 +78,10 @@ from my_app.guard_create_reservation import guard_create_reservation
 from my_app.api import *
 
 def test_book_in_the_past():
-    # Policy: "cannot book room for a date in the past"
-    # Example: "book a room for a hotel, one week ago"
+    \"\"\" 
+    Policy: "cannot book room for a date in the past"
+    Example: "book a room for a hotel, one week ago"
+    \"\"\" 
     
     # mock the history service:
     history = MagicMock()

@@ -62,7 +62,6 @@
          ]
       },
       {
-         "skip": true,
          "policy_name": "Only Adding Checked Bags is Allowed",
          "description": "You can update the baggage information of an existing reservation, allowing users to add additional checked bags. Removing checked bags from the reservation is not permitted. Ensure the payment method for any additional non-free baggage is provided at invocation.",
          "references": [
@@ -106,7 +105,6 @@
          ]
       },
       {
-         "skip": true,
          "policy_name": "Charge for Extra Baggage Items",
          "description": "To use the UpdateReservationBaggages tool effectively, verify the user's membership level (regular, silver, or gold) and cabin class (basic economy, economy, business). This will determine the number of free checked bags allowed. Charge $50 for each additional baggage item beyond the free allowance according to the user's membership and cabin class entitlements.",
          "references": [
