@@ -5,7 +5,7 @@ import sys
 import markdown
 import logging
 
-from toolguard.core import steps1and2
+from toolguard.core import build_toolguards
 from toolguard.llm.tg_litellm import LitellmModel
 
 logger = logging.getLogger(__name__)
@@ -52,7 +52,7 @@ def main():
 		if callable(obj) and hasattr(obj, 'name') and hasattr(obj, 'args_schema'):
 			tools.append(obj)
 	
-	steps1and2(
+	build_toolguards(
 		policy_text = policy_text, 
 		tools = tools,
 		step1_out_dir = os.path.join(args.out_dir, args.step1_dir_name), 
