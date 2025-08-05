@@ -77,11 +77,11 @@ async def gen_all():
     #     in tool_policy_paths.items()]
     
     # return await generate_toolguards_from_openapi("airline", tool_policies, out_folder, oas_path)
-    from toolguard.core import step2
-    return await step2(funcs,
-        step1_path="eval/airline/GT/airlines", 
-        step2_path=out_folder, 
-        tools=["cancel_reservation"],
+    from toolguard.core import generate_guards_from_tool_policies
+    return await generate_guards_from_tool_policies(funcs,
+        from_step1_path="eval/airline/GT/airlines", 
+        to_step2_path=out_folder, 
+        tool_names=["cancel_reservation"],
         app_name="airline")
 
 
