@@ -34,11 +34,12 @@ async def generate_tool_item_tests(
     - For compliance examples, populate all fields. 
         - For collections (arrays, dict and sets) populate at least one item.
     - You should mock the return_value from ALL tools listed in `dependent_tool_names`. 
-        - Use side_effect to return the expected value only when the expected parameters are passed.
+        - Use `side_effect` to return the expected value only when the expected parameters are passed.
     - For time dependent attributes, compute the timestamp dynamically (avoid hardcoded times).
-        - for example, to set a timestamp occurred 24 hours ago: `created_at = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%S")`.
+        - for example, to set a timestamp occurred 24 hours ago, use something like: `created_at = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%S")`.
+        - import the required date and time libraries. for example: `from datetime import datetime, timedelta`
     - You should also mock the chat_history services.
-    - If you have a choice passing a plain Dict or a Pydantic model, prefer the model.
+    - If you have a choice passing a plain a Pydantic model or a `Dictionary`, prefer Pydantic.
     
     **Example:** Testing the function `check_create_reservation`, 
     * Policy: `cannot book a room for a date in the past`
@@ -52,14 +53,19 @@ class SomeAPI(ABC):
         ...
     def get_hotel(self, hotel_id):
         ...
-    def create_reservation(self, args: Reservation):
+    def create_reservation(self, user_id: str, hotel_id: str, reservation_date: str, persons: int):
+        \"\"\"
+        Args:
+            ...
+            reservation_date: check in date, in `YYYY-MM-DDTHH:MM:SS` format
+        \"\"\"
         ...
 ```
     * fn_under_test_name: `guard_create_reservation`
     * fn_src:
 ```python
 # file: my_app/guard_create_reservation.py
-def guard_create_reservation(args:Reservation, history: ChatHistory, api: SomeAPI):
+def guard_create_reservation(history: ChatHistory, api: SomeAPI, user_id: str, hotel_id: str, reservation_date: str, persons: int):
     ...
 ```
 
@@ -80,17 +86,17 @@ def test_book_in_the_past():
     history.ask_bool.return_value = True #Mock that True is the answer to the question
 
     # mock other tools function return values 
-    user = User.model_construct(user_id=123, ...)
-    hotel = Hotel.model_construct(hotel_id="789", ...)
+    user = User(user_id="123", ...)
+    hotel = Hotel(hotel_id="789", ...)
 
     api = MagicMock(spec=SomeAPI)
-    api.get_user.side_effect = lambda user_id: user if user_id == 123 else None
+    api.get_user.side_effect = lambda user_id: user if user_id == "123" else None
     api.get_hotel.side_effect = lambda hotel_id: hotel if hotel_id == "789" else None
     
     #invoke function under test.
     with pytest.raises(PolicyViolationException):
         next_week = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S")
-        check_create_reservation(user_id=123, hotel_id="789", reservation_date=next_week, persons=3, history, api)
+        check_create_reservation(user_id="123", hotel_id="789", reservation_date=next_week, persons=3, history, api)
 ```
 
     Args:
