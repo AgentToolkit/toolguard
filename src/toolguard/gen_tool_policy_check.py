@@ -1,6 +1,9 @@
 import asyncio
 import inspect
 import os
+import subprocess
+import sys
+
 from os.path import join
 from typing import Callable, List, Tuple
 from loguru import logger
@@ -50,6 +53,7 @@ async def generate_tool_guards_fns(app_name: str, tool_policies: List[ToolPolicy
     
     #Setup env (slow, hence last):
     venv.run(join(py_root, PY_ENV), PY_PACKAGES)
+    #subprocess.run([sys.executable, "-m", "pip", "install"] + PY_PACKAGES, check=True)
     pyright.config(py_root)
     pytest.configure(py_root)
     
