@@ -16,6 +16,7 @@ from toolguard.stages_tptd.text_tool_policy_generator import step1_main_with_too
 logger = logging.getLogger(__name__)
 
 async def build_toolguards(policy_text:str, tools: List[Callable], out_dir:str, step1_llm:TG_LLM, app_name:str="my_app", tools2run:List[str]|None=None, short1=False):
+
 	os.makedirs(out_dir, exist_ok=True)
 	step1_out_dir = join(out_dir, "step1")
 	step2_out_dir = join(out_dir, "step2")
@@ -31,7 +32,6 @@ async def generate_guards_from_tool_policies(
 		app_name: str,
 		tool_names: Optional[List[str]] = None) -> ToolGuardsCodeGenerationResult:
 	os.makedirs(to_step2_path, exist_ok=True)
-	add_log_file_handler(os.path.join(to_step2_path, "run.log"))
 
 	files = [f for f in os.listdir(from_step1_path) 
 		  if os.path.isfile(join(from_step1_path, f)) and f.endswith(".json")]
