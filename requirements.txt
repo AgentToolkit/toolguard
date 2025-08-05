@@ -3,7 +3,7 @@ pydantic
 litellm
 pytest
 pytest-json-report
-loguru
+# loguru
 pyright
 datamodel-code-generator
 flask

@@ -28,6 +28,7 @@ class JSchema(DocumentWithRef):
     example: Optional[Any] = None
     required: Optional[List[str]] = None
     allOf: Optional[List[Union[Reference, 'JSchema']]] = None
+    anyOf: Optional[List[Union[Reference, 'JSchema']]] = None
     nullable: Optional[bool] = None #in OPenAPISpec https://swagger.io/docs/specification/v3_0/data-models/data-types/#null
     
     def __str__(self) -> str:

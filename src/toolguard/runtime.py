@@ -4,20 +4,20 @@ import inspect
 import json
 import os
 from types import ModuleType
-from typing import Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Type
 from pydantic import BaseModel, PrivateAttr
 import importlib.util
 import inspect
 import os
 
-from toolguard.data_types import ChatHistory, Domain, FileTwin, ToolPolicy
+from toolguard.data_types import API_PARAM, HISTORY_PARAM, RESULTS_FILENAME, ChatHistory, FileTwin, RuntimeDomain, ToolPolicy
 
 class LLM(ABC):
     @abstractmethod
     def generate(self, messages: List[Dict])->str:
         ...
 
-def load(directory: str, filename: str = "result.json") -> "ToolGuardsCodeGenerationResult":
+def load(directory: str, filename: str = RESULTS_FILENAME) -> "ToolGuardsCodeGenerationResult":
     full_path = os.path.join(directory, filename)
     with open(full_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
@@ -31,16 +31,19 @@ class ToolGuardCodeResult(BaseModel):
     test_files: List[FileTwin|None]
 
 class ToolGuardsCodeGenerationResult(BaseModel):
-    domain: Domain
+    domain: RuntimeDomain
     tools: Dict[str, ToolGuardCodeResult]
-    _llm: LLM = PrivateAttr()
+    _llm: LLM|None = PrivateAttr()
+    
+    def __post_init__(self):
+        self._llm = None
 
     @property
     def root_dir(self):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         return os.path.dirname(cur_dir)
 
-    def save(self, directory: str, filename: str = "result.json") -> 'ToolGuardsCodeGenerationResult':
+    def save(self, directory: str, filename: str = RESULTS_FILENAME) -> 'ToolGuardsCodeGenerationResult':
         full_path = os.path.join(directory, filename)
         with open(full_path, 'w', encoding='utf-8') as f:
             json.dump(self.model_dump(), f, indent=2)
@@ -50,39 +53,38 @@ class ToolGuardsCodeGenerationResult(BaseModel):
         self._llm = llm
         return self
     
-    def check_tool_call(self, tool_name:str, args: dict, messages: List):
+    def check_tool_call(self, tool_name:str, args: dict, messages: List, delegate:Any):
         tool = self.tools.get(tool_name)
         if tool is None:
             return
         #assert tool, f"Unknown tool {tool_name}"
 
-        guard_file = os.path.join(self.root_dir, tool.guard_file.file_name)
-        module = load_module_from_path(guard_file, file_to_module(tool.guard_file.file_name))
+        # guard_file = os.path.join(self.root_dir, tool.guard_file.file_name)
+        module = load_module_from_path(tool.guard_file.file_name, self.root_dir)
         guard_fn =find_function_in_module(module, tool.guard_fn_name)
         assert guard_fn, "Guard not found"
 
         sig = inspect.signature(guard_fn)
         guard_args = {}
         for p_name, param in sig.parameters.items():
-            if p_name == "args":
-                if issubclass(param.annotation, BaseModel):
-                    guard_args[p_name] = param.annotation.model_construct(**args)
-                else:
-                    guard_args[p_name] = args
-            elif p_name == "history":
+            if p_name == HISTORY_PARAM:
                 guard_args[p_name] = ChatHistoryImpl(messages, self._llm)
-            elif p_name == "api":
-                api_impl_file = os.path.join(self.root_dir, self.domain.api_impl.file_name)
-                module = load_module_from_path(api_impl_file, file_to_module(self.domain.api_impl.file_name))
-                cls = find_class_in_module(module, self.domain.api_impl_class_name)
-                assert cls
-                guard_args[p_name] = cls()
+            elif p_name == API_PARAM:
+                module = load_module_from_path(self.domain.app_api_impl.file_name, self.root_dir)
+                cls = find_class_in_module(module, self.domain.app_api_impl_class_name)
+                assert cls, f"class {self.domain.app_api_impl_class_name} not found in {self.domain.app_api_impl.file_name}"
+                guard_args[p_name] = cls(delegate)
+            else:
+                arg = args.get(p_name)
+                if inspect.isclass(param.annotation) and issubclass(param.annotation, BaseModel):
+                    guard_args[p_name] = param.annotation.model_construct(arg)
+                else:
+                    guard_args[p_name] = arg
         
         guard_fn(**guard_args)
 
 def file_to_module(file_path:str):
     return file_path.removesuffix('.py').replace('/', '.')
-
 
 def load_module_from_path(file_path: str, py_root:str) -> ModuleType:
     """
@@ -96,8 +98,7 @@ def load_module_from_path(file_path: str, py_root:str) -> ModuleType:
     if not os.path.exists(full_path):
         raise ImportError(f"Module file does not exist: {full_path}")
 
-    # Create a unique module name based on the file path
-    module_name = os.path.splitext(os.path.basename(full_path))[0]
+    module_name = file_to_module(file_path)
 
     spec = importlib.util.spec_from_file_location(module_name, full_path)
     if spec is None or spec.loader is None:
@@ -130,9 +131,6 @@ class ChatHistoryImpl(ChatHistory):
     def __init__(self, messages: List[Dict], llm: LLM) -> None:
         self.messages = messages
         self.llm = llm
-
-    def ask(self, question:str)->str:
-        return ask_llm(question, self.messages, self.llm)
     
     def ask_bool(self, question:str)->bool:
         return bool(ask_llm(question, self.messages, self.llm))
@@ -167,8 +165,8 @@ class Litellm(LLM):
 
 
 class MTKLLM(LLM):
-    from middleware_core.llm import LLMClient
-    def __init__(self, client: LLMClient):
+    # from middleware_core.llm import LLMClient
+    def __init__(self, client: LLM):
         self.client = client
     
     def generate(self, messages: List[Dict]) -> str:

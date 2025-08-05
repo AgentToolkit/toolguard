@@ -1,0 +1,63 @@
+
+from typing import List
+from toolguard.data_types import Domain, ToolPolicyItem
+from programmatic_ai import generative
+
+from toolguard.gen_py.prompts.python_code import PythonCodeModel
+
+@generative
+async def improve_tool_guard_fn(prev_impl: PythonCodeModel, domain: Domain, policy_item: ToolPolicyItem, review_comments: List[str])-> PythonCodeModel:
+    """
+    Improve the previous tool-call guard implementation (in Python) to cover all tool policy-items according to the review-comments.
+
+    Args:
+        prev_impl (PythonCodeModel): previous implementation of the tool-call check.
+        domain (Domain): Python code defining available data types and other tool interfaces.
+        policy_item (ToolPolicyItem): Requirements for this tool.
+        review_comments (List[str]): Review comments on the current implementation. For example, pylint errors or Failed unit-tests.
+
+    Returns:
+        PythonCodeModel: Improved implementation of the tool-call check.
+
+    **Implementation Rules:**"
+    - Never change the function signature. Never change the function parameters' names or type annotation.
+    - ALL policy items must be checked.
+    - The code should be simple.
+    - The code should be well documented.
+    - You should just validate the tool-call arguments. You should never call the tool itself.
+    - If needed, you may use the `api` interface to get additional information from the backend.
+    - If needed to check information in the previous chat messages, you may use the `history` object.
+    - `History.ask_bool(question)` function is slow and expensive. 
+        - `History.ask_bool(question)` function use an LLM to answer natural language questions on messages in the past conversation .
+        - Prefer using the API functions to get data, over history services.
+
+    **Example: ** 
+prev_impl = ```python
+from typing import *
+from rt_toolguard.data_types import ChatHistory
+from airline.airline_types import *
+from airline.i_airline import I_Airline
+
+def guard_Checked_Bag_Allowance_by_Membership_Tier(history: ChatHistory, api: I_Airline, user_id: str, passengers: list[Passenger]):
+    \"\"\"
+    Limit to five passengers per reservation.
+    \"\"\"
+    pass #FIXME
+```
+
+should return something like:
+```python
+from typing import *
+from rt_toolguard.data_types import ChatHistory
+from airline.airline_types import *
+from airline.i_airline import I_Airline
+
+def guard_Checked_Bag_Allowance_by_Membership_Tier(history: ChatHistory, api: I_Airline, user_id: str, passengers: list[Passenger]):
+    \"\"\"
+    Limit to five passengers per reservation.
+    \"\"\"
+    if len(passengers) > 5:
+        raise PolicyViolationException("More than five passengers are not allowed.")
+```
+    """
+    ...

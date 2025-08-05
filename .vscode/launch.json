@@ -27,23 +27,23 @@
             "justMyCode": false
             
         },
-        {
-            "name": "Gen ODM",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "tests/gen_odm_rules.py",
-            "console": "integratedTerminal",
-            "args": [],
-            "justMyCode": false
-        },
-        {
-            "name": "Gen DMN",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "tests/gen_dmn_rules.py",
-            "console": "integratedTerminal",
-            "args": [],
-            "justMyCode": false
-        },
+        // {
+        //     "name": "Gen ODM",
+        //     "type": "debugpy",
+        //     "request": "launch",
+        //     "program": "tests/gen_odm_rules.py",
+        //     "console": "integratedTerminal",
+        //     "args": [],
+        //     "justMyCode": false
+        // },
+        // {
+        //     "name": "Gen DMN",
+        //     "type": "debugpy",
+        //     "request": "launch",
+        //     "program": "tests/gen_dmn_rules.py",
+        //     "console": "integratedTerminal",
+        //     "args": [],
+        //     "justMyCode": false
+        // },
     ]
 }
