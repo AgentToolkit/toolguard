@@ -82,8 +82,8 @@ class ToolGuardGenerator:
         
         #2) Tests generated, now generate guards
         try:
-            guard_fn = await self.improve_tool_item_guard_test_loop(item, init_guard_fn, test_file)
-            logger.debug(f"tool item generated successfully {item.name}") # 😄🎉 Happy path 
+            guard_fn = await self.improve_tool_item_guard_green_loop(item, init_guard_fn, test_file)
+            logger.debug(f"tool item generated successfully '{item.name}'") # 😄🎉 Happy path 
             return test_file, guard_fn
         except Exception as ex:
             logger.warning("guard generation failed. returning initial guard", ex)
@@ -95,12 +95,12 @@ class ToolGuardGenerator:
         if self.domain.app_api_size > 1:
             domain = Domain.model_construct(**self.domain.model_dump()) #remove runtime fields
             dep_tools = await tool_dependencies(item, domain)
-        logger.debug(f"Dependencies of {item.name}: {dep_tools}")
+        logger.debug(f"Dependencies of '{item.name}': {dep_tools}")
 
         test_file_name = join(TESTS_DIR, self.tool_policy.tool_name, f"{test_fn_module_name(item)}.py")
         errors = []
-        for trial_no in range(MAX_TEST_GEN_TRIALS):
-            logger.debug(f"Generating tests iteration t{trial_no} for tool {item.name}.")
+        for trial_no in "a b c".split():
+            logger.debug(f"Generating tests iteration {trial_no} for tool {self.tool_policy.tool_name} '{item.name}'.")
             domain = Domain.model_construct(**self.domain.model_dump()) #remove runtime fields
             first_time = trial_no == 0
             if first_time:
@@ -113,11 +113,11 @@ class ToolGuardGenerator:
                     content=res.get_code_content()
                 )\
                 .save(self.py_path)
-            test_file.save_as(self.py_path, self.debug_dir(item, f"t{trial_no}.py"))
+            test_file.save_as(self.py_path, self.debug_dir(item, f"test_{trial_no}.py"))
 
             syntax_report = pyright.run(self.py_path, test_file.file_name, self.py_env)
             FileTwin(
-                    file_name= self.debug_dir(item, f"t{trial_no}_pyright.json"),
+                    file_name= self.debug_dir(item, f"test_{trial_no}_pyright.json"),
                     content=syntax_report.model_dump_json(indent=2)
                 ).save(self.py_path)
             
@@ -127,8 +127,8 @@ class ToolGuardGenerator:
                 continue
 
             #syntax ok, try to run it...
-            logger.debug(f"Generated Tests... (trial=t{trial_no})")
-            report_file_name = self.debug_dir(item, f"t{trial_no}_pytest_report.json")
+            logger.debug(f"Generated Tests for tool {self.tool_policy.tool_name} '{item.name}'(trial=t{trial_no})")
+            report_file_name = self.debug_dir(item, f"test_{trial_no}_pytest.json")
             pytest_report = pytest.run(self.py_path, test_file.file_name, report_file_name)
             if pytest_report.all_tests_collected_successfully() and pytest_report.non_empty_tests():
                 return test_file
@@ -139,19 +139,20 @@ class ToolGuardGenerator:
         
         raise Exception("Generated tests contain errors")
     
-    async def improve_tool_item_guard_test_loop(self, item: ToolPolicyItem, guard_fn: FileTwin, tests: FileTwin)->FileTwin:
+    async def improve_tool_item_guard_green_loop(self, item: ToolPolicyItem, guard_fn: FileTwin, tests: FileTwin)->FileTwin:
         trial_no = 0
         while trial_no < MAX_TOOL_IMPROVEMENTS:
-            pytest_report_file = self.debug_dir(item, f"g{trial_no}_pytest_report.json")
+            pytest_report_file = self.debug_dir(item, f"guard_{trial_no}_pytest.json")
             errors = pytest.run(
                     self.py_path, 
                     tests.file_name,
                     pytest_report_file
                 ).list_errors()
             if not errors:
-                return guard_fn
+                logger.debug(f"'{item.name}' guard function generated succeffult and is Green 😄🎉. ")
+                return guard_fn #Green
             
-            logger.debug(f"Tool {item.name} guard function unit-tests failed. Retrying...")
+            logger.debug(f"'{item.name}' guard function unit-tests failed. Retrying...")
             
             trial_no += 1
             guard_fn = await self.improve_tool_item_guard(guard_fn, errors, item, trial_no)
@@ -162,7 +163,7 @@ class ToolGuardGenerator:
         module_name = guard_item_fn_module_name(item)
         errors = []
         for trial in "a b c".split():
-            logger.debug(f"Improving guard function {module_name}... (trial = {round}.{trial})")
+            logger.debug(f"Improving guard function '{module_name}'... (trial = {round}.{trial})")
             domain = Domain.model_construct(**self.domain.model_dump()) #omit runtime fields
             prev_python = PythonCodeModel.create(python_code=prev_version.content)
             res = await improve_tool_guard_fn(prev_python, domain, item, review_comments + errors)
@@ -172,17 +173,17 @@ class ToolGuardGenerator:
                 content=res.get_code_content()
             )
             guard_fn.save(self.py_path)
-            guard_fn.save_as(self.py_path, self.debug_dir(item, f"g{round}_{trial}.py"))
+            guard_fn.save_as(self.py_path, self.debug_dir(item, f"guard_{round}_{trial}.py"))
 
             syntax_report = pyright.run(self.py_path, guard_fn.file_name, self.py_env)
             FileTwin(
-                    file_name=self.debug_dir(item, f"g{round}_{trial}.pyright.json"), 
+                    file_name=self.debug_dir(item, f"guard_{round}_{trial}.pyright.json"), 
                     content=syntax_report.model_dump_json(indent=2)
                 ).save(self.py_path)
             logger.info(f"Generated function {module_name} with {syntax_report.summary.errorCount} errors.")
             
             if syntax_report.summary.errorCount == 0:
-                guard_fn.save_as(self.py_path, self.debug_dir(item, f"g{round}_final.py"))
+                guard_fn.save_as(self.py_path, self.debug_dir(item, f"guard_{round}_final.py"))
                 return guard_fn
 
             errors = syntax_report.list_error_messages(guard_fn.content)

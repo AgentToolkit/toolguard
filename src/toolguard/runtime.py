@@ -4,20 +4,21 @@ import inspect
 import json
 import os
 from types import ModuleType
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Type, Callable, TypeVar
 from pydantic import BaseModel, PrivateAttr
 import importlib.util
 import inspect
 import os
 
-from toolguard.data_types import API_PARAM, HISTORY_PARAM, RESULTS_FILENAME, ChatHistory, FileTwin, RuntimeDomain, ToolPolicy
+import functools
+from rt_toolguard.data_types import API_PARAM, HISTORY_PARAM, RESULTS_FILENAME, ChatHistory, FileTwin, RuntimeDomain, ToolPolicy
 
 class LLM(ABC):
     @abstractmethod
     def generate(self, messages: List[Dict])->str:
         ...
 
-def load(directory: str, filename: str = RESULTS_FILENAME) -> "ToolGuardsCodeGenerationResult":
+def load_toolguards(directory: str, filename: str = RESULTS_FILENAME) -> "ToolGuardsCodeGenerationResult":
     full_path = os.path.join(directory, filename)
     with open(full_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
@@ -33,10 +34,17 @@ class ToolGuardCodeResult(BaseModel):
 class ToolGuardsCodeGenerationResult(BaseModel):
     domain: RuntimeDomain
     tools: Dict[str, ToolGuardCodeResult]
-    _llm: LLM|None = PrivateAttr()
+    _llm: LLM = PrivateAttr()
+    _guards: Dict[str, Callable] = PrivateAttr()
     
-    def __post_init__(self):
-        self._llm = None
+    def model_post_init(self, __context):
+        self._llm = None # type: ignore
+        self._guards = {}
+        for tool_name, tool_result in self.tools.items():
+            module = load_module_from_path(tool_result.guard_file.file_name, self.root_dir)
+            guard_fn =find_function_in_module(module, tool_result.guard_fn_name)
+            assert guard_fn, "Guard not found"
+            self._guards[tool_name] = guard_fn
 
     @property
     def root_dir(self):
@@ -53,17 +61,7 @@ class ToolGuardsCodeGenerationResult(BaseModel):
         self._llm = llm
         return self
     
-    def check_tool_call(self, tool_name:str, args: dict, messages: List, delegate:Any):
-        tool = self.tools.get(tool_name)
-        if tool is None:
-            return
-        #assert tool, f"Unknown tool {tool_name}"
-
-        # guard_file = os.path.join(self.root_dir, tool.guard_file.file_name)
-        module = load_module_from_path(tool.guard_file.file_name, self.root_dir)
-        guard_fn =find_function_in_module(module, tool.guard_fn_name)
-        assert guard_fn, "Guard not found"
-
+    def _make_args(self, guard_fn:Callable, args: dict, messages: List, delegate:Any)->Dict[str, Any]:
         sig = inspect.signature(guard_fn)
         guard_args = {}
         for p_name, param in sig.parameters.items():
@@ -80,20 +78,18 @@ class ToolGuardsCodeGenerationResult(BaseModel):
                     guard_args[p_name] = param.annotation.model_construct(arg)
                 else:
                     guard_args[p_name] = arg
-        
-        guard_fn(**guard_args)
+        return guard_args
+
+    def check_toolcall(self, tool_name:str, args: dict, messages: List, delegate: Any):
+        guard_fn = self._guards.get(tool_name)
+        if guard_fn is None: #No guard assigned to this tool
+            return
+        guard_fn(**self._make_args(guard_fn, args, messages, delegate))
 
 def file_to_module(file_path:str):
     return file_path.removesuffix('.py').replace('/', '.')
 
 def load_module_from_path(file_path: str, py_root:str) -> ModuleType:
-    """
-    Dynamically loads a Python module from a given file path, optionally relative to a base path.
-
-    Args:
-        file_path (str): The relative path to the Python file (e.g., 'my_module.py').
-        py_path (str): The base directory where the file is located.
-    """
     full_path = os.path.abspath(os.path.join(py_root, file_path))
     if not os.path.exists(full_path):
         raise ImportError(f"Module file does not exist: {full_path}")
@@ -163,16 +159,6 @@ class Litellm(LLM):
             custom_llm_provider= self.custom_provider)
         return resp.choices[0].message.content
 
-
-class MTKLLM(LLM):
-    # from middleware_core.llm import LLMClient
-    def __init__(self, client: LLM):
-        self.client = client
-    
-    def generate(self, messages: List[Dict]) -> str:
-        return self.client.generate(messages)
-
-
 def ask_llm(question:str, conversation: List[Dict], llm: LLM)->str:
     prompt = f"""You are given a question and an historical conversation between a user and an ai-agent.
 Your task is to answer the question according to the conversation.
@@ -185,3 +171,31 @@ Question:
 """
     msg = {"role":"system", "content": prompt}
     return llm.generate([msg])
+
+
+
+T = TypeVar("T")
+def guard_methods(obj: T, guards_folder: str) -> T:
+    """Wraps all public bound methods of the given instance using the given wrapper."""
+    for attr_name in dir(obj):
+        if attr_name.startswith("_"):
+            continue
+        attr = getattr(obj, attr_name)
+        if callable(attr):
+            wrapped = guard_before_call(guards_folder)(attr)
+            setattr(obj, attr_name, wrapped)
+    return obj
+
+def guard_before_call(guards_folder: str) -> Callable[[Callable], Callable]:
+    """Decorator factory that logs function calls to the given logfile."""
+    toolguards = load_toolguards(guards_folder)
+    llm = Litellm(model_name="ASASA", custom_provider="azure") #FIXME example
+    toolguards.use_llm(llm)
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            api_object = func.__self__ # type: ignore
+            toolguards.check_toolcall(func.__name__, kwargs, [], api_object)
+            return func(*args, **kwargs)
+        return wrapper  # type: ignore
+    return decorator

@@ -28,14 +28,15 @@ def guard_keep_the_same_origin_and_destination(history: ChatHistory, api: I_Airl
         if the_flight.origin != reservation.origin:
             raise PolicyViolationException("Origin cannot be changed for non-basic-economy reservations.")
     
-        last_flight = flights[-1]
-        flight_info = last_flight if isinstance(last_flight, FlightInfo) else FlightInfo(**last_flight)
-        the_flight = api.get_scheduled_flight(flight_number=flight_info.flight_number)
-        if the_flight.destination != reservation.destination:
-            raise PolicyViolationException("Destination cannot be changed for non-basic-economy reservations.")
+        if reservation.flight_type == "one_way":
+            last_flight = flights[-1]
+            flight_info = last_flight if isinstance(last_flight, FlightInfo) else FlightInfo(**last_flight)
+            the_flight = api.get_scheduled_flight(flight_number=flight_info.flight_number)
+            if the_flight.destination != reservation.destination:
+                raise PolicyViolationException("Destination cannot be changed for non-basic-economy reservations.")
 
         # Validate that the trip type remains unchanged
-        if reservation.flight_type != 'one_way' and reservation.flight_type != 'round_trip':
-            raise PolicyViolationException("Trip type cannot be changed for non-basic-economy reservations.")
+        # if reservation.flight_type != 'one_way' and reservation.flight_type != 'round_trip':
+        #     raise PolicyViolationException("Trip type cannot be changed for non-basic-economy reservations.")
 
     # Note: Prices are not updated based on the current price, hence no check is needed for price updates.

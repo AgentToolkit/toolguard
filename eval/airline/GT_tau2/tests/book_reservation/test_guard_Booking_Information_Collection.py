@@ -7,6 +7,9 @@ from airline.airline_types import *
 from airline.i_airline import I_Airline
 from rt_toolguard.data_types import PolicyViolationException
 
+def raise_value_error() -> None:
+    raise ValueError("Invalid user_id")
+
 class TestBookingInformationCollectionCompliance(unittest.TestCase):
 
     user_id = 'regular_user'
@@ -46,7 +49,7 @@ class TestBookingInformationCollectionCompliance(unittest.TestCase):
             },
             membership = "regular"
         )
-        self.api.get_user_details.side_effect = lambda user_id: user if user_id == 'regular_user' else None
+        self.api.get_user_details.side_effect = lambda user_id: user if user_id == 'regular_user' else raise_value_error()
 
     def test_compliance_user_id_trip_type_iata_codes(self):
 

@@ -68,7 +68,11 @@ class TestCheckedBagAllowance(unittest.TestCase):
             self.silver_user_id: silver_user,
             self.gold_user_id: gold_user,
         }
-        self.api.get_user_details.side_effect = users.get
+        def get_user_details(u_id):
+            if u_id in users:
+                return users[u_id]
+            raise ValueError
+        self.api.get_user_details.side_effect = get_user_details
 
     def test_regular_member_economy_class_one_free_bag(self):
         
