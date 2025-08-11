@@ -8,7 +8,7 @@ import logging
 import dotenv
 import markdown
 
-from toolguard.stages_tptd.text_tool_policy_generator import step1_main
+from toolguard.stages_tptd.text_tool_policy_generator import ToolInfo, step1_main
 dotenv.load_dotenv() 
 
 from toolguard.llm.tg_litellm import LitellmModel
@@ -63,12 +63,14 @@ async def gen_all():
     # )
 
     llm = LitellmModel(model_name='gpt-4o-2024-08-06')
-    step1_out_dir = os.path.join(output_dir, "step1")
+    step1_out_dir = os.path.join(out_folder, "step1")
+    
     doc_summary = lambda doc: doc.strip().split("\n", 1)[1].strip() if "\n" in doc else None
-
-    # tools_descriptions = {fn.__name__: doc_summary(inspect.getdoc(fn)) for fn in funcs}
-    # tools_details = {fn.__name__:inspect.getdoc(fn) for fn in funcs}
-    tools_info = []
+    tools_info = [ToolInfo(
+            name=fn.__name__,
+            description=doc_summary(inspect.getdoc(fn)) or "",
+            parameters=inspect.getdoc(fn)
+        ) for fn in funcs]
     
     await step1_main(policy_text, tools_info, step1_out_dir, llm, short1=False)
 
