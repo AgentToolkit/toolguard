@@ -1,9 +1,10 @@
+import asyncio
 import json
 import os
 import re
 from typing import List, Dict
 import time
-from litellm import completion
+from litellm import acompletion
 from litellm.types.utils import ModelResponse
 from litellm.exceptions import RateLimitError
 import json
@@ -88,9 +89,9 @@ class LitellmModel(TG_LLM):
 			self.anthropic = True
 		
 
-	def generate(self, messages: List[Dict])->str:
+	async def generate(self, messages: List[Dict])->str:
 		if self.rits:
-			response = completion(
+			response = await acompletion(
 				messages=messages,
 				model=self.model_name,
 				custom_llm_provider="openai",
@@ -103,68 +104,30 @@ class LitellmModel(TG_LLM):
 
 		else:
 			llm_provider = "anthropic" if self.anthropic else "azure"
-			response = completion(
+			response = await acompletion(
 				messages=messages,
 				model=self.model_name,
 				custom_llm_provider=llm_provider)
 
 		# the same format for OpenAI and Anthropic
 		return response["choices"][0]["message"]["content"]
+
 	
-	def valid_json_gen(self,messages: List[Dict],schema:Dict):
-		for attempt in range(5):
-			try:
-				response = self.chat_json(messages)
-				validate(instance=response, schema=schema)
-				return response
-			except ValidationError as e:
-				print(f"Attempt {attempt + 1} failed schema validation: {e.message}")
-				# messages.append({
-				# 	"role": "system",
-				# 	"content": f"Your previous response did not match the schema. Please ensure the response follows this schema strictly: {json.dumps(schema)}"
-				# })
-			except Exception as e:
-				print(f"Attempt {attempt + 1} failed due to error: {str(e)}")
-		
-		raise ValueError("Failed to get a valid response after 5 attempts.")
-	
-	
-	def chat_json(self, messages: List[Dict], max_retries: int = 5, backoff_factor: float = 1.5) -> Dict:
+	async def chat_json(self, messages: List[Dict], max_retries: int = 5, backoff_factor: float = 1.5) -> Dict:
 		retries = 0
 		while retries < max_retries:
 			try:
-				if self.rits:
-					response = completion(
-						messages=messages,
-						model=self.model_name,
-						custom_llm_provider="openai",
-						base_url=model_to_endpoint[self.model_name],
-						extra_headers={
-							'RITS_API_KEY': os.getenv("RITS_API_KEY"),
-							'Content-Type': 'application/json',
-						},
-					)
-					res = response["choices"][0]["message"]["content"]
-					res = self.extract_json_from_string(res)
-					if res is None:
-						wait_time = backoff_factor ** retries
-						print(f"Error: not json format. Retrying in {wait_time:.1f} seconds... (attempt {retries + 1}/{max_retries})")
-						print(f"Error: not json format. Retrying in {wait_time:.1f} seconds... (attempt {retries + 1}/{max_retries})")
-						print(response["choices"][0]["message"]["content"])
-						time.sleep(wait_time)
-						retries += 1
-					else:
-						return res
+				response = await self.generate(messages)
+				res = self.extract_json_from_string(response)
+				if res is None:
+					wait_time = backoff_factor ** retries
+					print(f"Error: not json format. Retrying in {wait_time:.1f} seconds... (attempt {retries + 1}/{max_retries})")
+					print(f"Error: not json format. Retrying in {wait_time:.1f} seconds... (attempt {retries + 1}/{max_retries})")
+					print(response["choices"][0]["message"]["content"])
+					time.sleep(wait_time)
+					retries += 1
 				else:
-					llm_provider = "anthropic" if self.anthropic else "azure"
-					response = completion(
-						messages=messages,
-						model=self.model_name,
-						response_format={"type": "json_object"},
-						custom_llm_provider=llm_provider
-					)
-					res = response["choices"][0]["message"]["content"]
-					return json.loads(res)
+					return res
 			except RateLimitError as e:
 				wait_time = backoff_factor ** retries
 				print(f"Rate limit hit. Retrying in {wait_time:.1f} seconds... (attempt {retries + 1}/{max_retries})")
@@ -202,9 +165,6 @@ class LitellmModel(TG_LLM):
 			print("No JSON found in the string.")
 			print(s)
 			return None
-		
-		
-		
 	
 	
 if __name__ == '__main__':
@@ -213,8 +173,11 @@ if __name__ == '__main__':
 	#model = "claude-3-5-sonnet-20240620"
 	#model = "meta-llama/llama-3-3-70b-instruct"
 	aw = LitellmModel(model)
-	resp = aw.generate([{"role": "user", "content": "what is the weather?"}])
-	print(resp)
-	resp = aw.chat_json([{"role": "user", "content": "what is the weather? please answer in json format"}])
-	print(resp)
+
+	async def my_test():
+		resp = await aw.generate([{"role": "user", "content": "what is the weather?"}])
+		print(resp)
+		resp = await aw.chat_json([{"role": "user", "content": "what is the weather? please answer in json format"}])
+		print(resp)
+	asyncio.run(my_test())
 	

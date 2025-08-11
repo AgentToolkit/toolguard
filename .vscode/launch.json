@@ -17,15 +17,15 @@
             "name": "Step1",
             "type": "debugpy",
             "request": "launch",
-            "module": "policy_adherence",
+            "module": "toolguard",
             "console": "integratedTerminal",
             "args": [
                 "--policy-path", "/Users/davidboaz/Documents/GitHub/tau_airline/input/wiki.md",
-                "--oas", "/Users/davidboaz/Documents/GitHub/tau_airline/input/openapi.yaml",
-                "--out-dir", "/Users/davidboaz/Documents/GitHub/tau_airline/output/dd",
+                "--tools-py-file", "/Users/davidboaz/Documents/GitHub/ToolGuardAgent/src/appointment_app/lg_tools.py",
+                "--out-dir", "/Users/davidboaz/Documents/GitHub/gen_policy_validator/eval/airline/output/dd",
+                "--short-step1",
             ],
             "justMyCode": false
-            
         },
         // {
         //     "name": "Gen ODM",

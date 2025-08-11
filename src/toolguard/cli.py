@@ -1,6 +1,8 @@
 import argparse
+import asyncio
 import os
 import sys
+from typing import Callable, List
 
 import markdown
 import logging
@@ -28,10 +30,21 @@ def main():
 	
 	policy_text = open(policy_path, 'r', encoding='utf-8').read()
 	policy_text = markdown.markdown(policy_text)
+
 	llm = LitellmModel(args.step1_model_name)
-	
-	tools_py_file = args.tools_py_file
-	file_path = args.tools_py_file
+	tools = extract_functions(args.tools_py_file)
+	asyncio.run(
+		build_toolguards(
+			policy_text = policy_text, 
+			tools = tools,
+			out_dir = args.out_dir,
+			step1_llm = llm,
+			tools2run = args.tools2run,
+			short1 = args.short_step1
+		)
+	)
+
+def extract_functions(file_path:str) ->List[Callable]:
 	import importlib.util
 	import inspect
 	module_name = os.path.splitext(os.path.basename(file_path))[0]
@@ -52,13 +65,5 @@ def main():
 		if callable(obj) and hasattr(obj, 'name') and hasattr(obj, 'args_schema'):
 			tools.append(obj)
 	
-	build_toolguards(
-		policy_text = policy_text, 
-		tools = tools,
-		step1_out_dir = os.path.join(args.out_dir, args.step1_dir_name), 
-		step2_out_dir = os.path.join(args.out_dir, args.step2_dir_name),
-		step1_llm = llm,
-		tools2run = args.tools2run,
-		short1 = args.short_step1
-	)
-	
+	return tools
+
