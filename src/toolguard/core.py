@@ -26,9 +26,11 @@ async def build_toolguards(policy_text:str, tools: List[Callable], out_dir:str, 
 	return result
 
 def functions_to_tool_info(funcs: List[Callable])->List[ToolInfo]:
+	#Assumes @tool decorator from langchain https://python.langchain.com/docs/how_to/custom_tools/ 
+	# or a plain function with doc string
 	return [ToolInfo(
 				name=func.name if hasattr(func, 'name') else func.__name__,
-				description= func.__doc__.strip() if func.__doc__ else "",
+				description= func.description if hasattr(func, 'description') else func.__doc__.strip() if func.__doc__ else "",
 				parameters=func.args_schema.model_json_schema() if hasattr(func, 'args_schema') else {}
 			) for func in funcs]
 
@@ -40,17 +42,21 @@ async def generate_guards_from_tool_policies(
 		tool_names: Optional[List[str]] = None) -> ToolGuardsCodeGenerationResult:
 	os.makedirs(to_step2_path, exist_ok=True)
 
-	files = [f for f in os.listdir(from_step1_path) 
-		  if os.path.isfile(join(from_step1_path, f)) and f.endswith(".json")]
+	tool_policies = load_policies_in_folder(from_step1_path)
+	tool_policies = [policy for policy in tool_policies if (not tool_names) or (policy.tool_name in tool_names)]
+	return await generate_toolguards_from_functions(app_name, tool_policies, to_step2_path, funcs=funcs)
+	
+def load_policies_in_folder(folder:str, ):
+	files = [f for f in os.listdir(folder) 
+		if os.path.isfile(join(folder, f)) and f.endswith(".json")]
 	tool_policies = []
 	for file in files:
 		tool_name = file[:-len(".json")]
-		if (not tool_names) or (tool_name in tool_names):
-			policy = load_tool_policy(join(from_step1_path, file), tool_name)
+		policy = load_tool_policy(join(folder, file), tool_name)
+		if policy.policy_items:
 			tool_policies.append(policy)
-	
-	return await generate_toolguards_from_functions(app_name, tool_policies, to_step2_path, funcs=funcs)
-	
+	return tool_policies
+
 def load_tool_policy(file_path:str, tool_name:str)->ToolPolicy:
     with open(file_path, "r") as file:
         d = json.load(file)
