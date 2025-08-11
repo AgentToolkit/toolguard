@@ -12,6 +12,14 @@
             "console": "integratedTerminal",
             "args": [],
             "justMyCode": false
+        },{
+            "name": "Gen Tau2",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "tests/run_tau2.py",
+            "console": "integratedTerminal",
+            "args": [],
+            "justMyCode": false
         },
         {
             "name": "Step1",

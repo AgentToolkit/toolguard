@@ -1,0 +1,174 @@
+{
+    "policies": [
+        {
+            "policy_name": "Explicit User Confirmation",
+            "description": "Before booking a reservation, the agent must list the action details and obtain explicit user confirmation (yes) to proceed.",
+            "references": [
+                "Before taking any actions that update the booking database (booking, modifying flights, editing baggage, upgrading cabin class, or updating passenger information), you must list the action details and obtain explicit user confirmation (yes) to proceed."
+            ],
+            "iteration_added": 0,
+            "violating_examples": [
+                "A reservation was booked without confirming the details with the user. The agent proceeded with booking a flight from SFO to JFK under Sara Doe's account, without explicitly asking for confirmation.",
+                "An agent modifies the flight date from '2024-01-01' to '2024-01-05' for a user's reservation without listing the changes and getting a 'yes' from the user.",
+                "Upgrading from economy to business class was done without notifying the user of the change in price and benefits, nor asking for explicit confirmation.",
+                "An agent updates the baggage count from 1 to 3 non-free baggage items and completes the reservation without listing these changes and receiving explicit user agreement.",
+                "The passenger seat preference was changed from window to aisle without explicitly listing this action and receiving a confirmation from the user."
+            ],
+            "compliance_examples": [
+                "Before booking a flight from SFO to JFK, the agent messages: 'You have selected a one_way flight from SFO to JFK in economy class. Please confirm by replying yes to proceed.' The user replies 'yes', and the booking proceeds.",
+                "An agent lists the changes saying: 'We will update your flight to round_trip, depart on '2024-01-01' and return on '2024-01-05'. Please reply yes for confirmation.' The user responds with 'yes', and the agent proceeds.",
+                "Prior to upgrading to business class, the agent lists the benefits and price change, requesting: 'To confirm this upgrade, please respond with yes.' The user confirms with 'yes', and the change is made.",
+                "The agent lists the updated baggage count: 'Your reservation will now include 3 non-free baggage items. Please confirm by typing yes.' Upon receiving 'yes', the reservation is updated.",
+                "The agent communicates: 'Changing your seat preference from window to aisle. Please reply with yes to confirm this change.' The user replies 'yes', allowing the change to be made."
+            ]
+        },
+        {
+            "policy_name": "User ID Requirement",
+            "description": "The agent must first obtain the user id before booking a flight reservation.",
+            "references": [
+                "The agent must first obtain the user id, then ask for the trip type, origin, destination."
+            ],
+            "iteration_added": 0,
+            "violating_examples": [
+                "An agent attempts to book a reservation without obtaining the user id, jumping straight to asking for the trip type.",
+                "Booking a flight where the agent first asks for origin and destination but skips obtaining the user id entirely.",
+                "Agent begins discussing payment methods before even verifying or asking for the user's ID.",
+                "The agent starts the reservation process, asking for cabin class preferences without first obtaining the user ID."
+            ],
+            "compliance_examples": [
+                "The agent starts by confirming the user id 'sara_doe_496' before proceeding to ask whether the trip is 'one_way' or 'round_trip'.",
+                "Agent obtains the user id 'john_smith_789' and confirms its validity before discussing origin and destination details.",
+                "Initially, the agent retrieves the user id 'william_turner_301', then proceeds to inquire about travel preferences.",
+                "The agent correctly retrieves user ID 'kate_lee_077' before requesting details about flight type, origin, and destination."
+            ]
+        },
+        {
+            "policy_name": "Passengers Information Requirement",
+            "description": "For a booking, the agent needs to collect the first name, last name, and date of birth for each passenger, and all passengers must fly the same flights in the same cabin.",
+            "references": [
+                "Passengers: Each reservation can have at most five passengers. The agent needs to collect the first name, last name, and date of birth for each passenger. All passengers must fly the same flights in the same cabin."
+            ],
+            "iteration_added": 0,
+            "violating_examples": [
+                "Booking a reservation with six passengers, exceeding the maximum allowed number.",
+                "For a passenger named John Doe, only providing the first name 'John', with no last name and date of birth.",
+                "Booking flights for multiple passengers where one flies economy and the other flies business, while the policy mandates all passengers must share the same cabin.",
+                "Not specifying the date of birth for any of the passengers involved in the reservation, only their first and last names.",
+                "For the reservation, one passenger is scheduled to fly from JFK to LAX, while another is traveling from JFK to SFO, violating the requirement that all passengers must fly the same flights."
+            ],
+            "compliance_examples": [
+                "A reservation with three passengers, each clearly detailed: passenger 1 with name 'John Smith', DOB '1985-02-15'; passenger 2 with name 'Jane Doe', DOB '1990-07-10'; passenger 3 with name 'Emily Black', DOB '1975-11-30'. All fly from SFO to JFK in business class.",
+                "Booking a one-way ticket for two passengers on the same flight from SFO to JFK in economy class, with detailed information: passenger 1 is 'Alice Brown', DOB '1995-01-01', and passenger 2 is 'Bob White', DOB '1988-05-23'.",
+                "Five passenger reservation sharing same cabin 'basic_economy' and flights: passenger details include 'Chris Grey' DOB '2000-06-25', alongside each of the remaining four passengers with their uniquely specified names and DOBs.",
+                "Booking a round-trip flight with full details for passenger 1 named 'Sara Doe', DOB '1993-04-15', passenger 2 is her child 'Alex Doe', DOB '2010-09-01'. Both on the same flights in same cabin class 'economy'.",
+                "Booking requires capturing first name, last name, and DOB for four passengers traveling on the same flight in 'business' cabin: passenger 1 is 'Tommy', DOB '1992-08-17', and so on for others."
+            ]
+        },
+        {
+            "policy_name": "Payment Method Validity",
+            "description": "For safety reasons, all payment methods used in a reservation must already be present in the user profile.",
+            "references": [
+                "Payment: each reservation can use at most one travel certificate, at most one credit card, and at most three gift cards. The remaining amount of a travel certificate is not refundable. All payment methods must already be in user profile for safety reasons."
+            ],
+            "iteration_added": 0,
+            "violating_examples": [
+                "A reservation attempt is made using a credit card 'credit_card_8976543'. However, this credit card is not listed in the user's profile, consequently breaching the requirement to use only payment methods present in the user profile.",
+                "A user attempts to make a reservation using two travel certificates. This violates the policy condition that states only one travel certificate per reservation is allowed.",
+                "The booking is placed using four gift cards. This contradicts the policy which explicitly limits the use to a maximum of three gift cards per reservation.",
+                "A reservation is processed with an unspecified payment method, a gift card named 'gift_card_123456'. Checking the user profile reveals this gift card isn't registered there.",
+                "Using a travel certificate 'certificate_001897' for payment, which turns out to be unlisted in the user's profile, goes against the policy of having all payment methods pre-listed for safety reasons."
+            ],
+            "compliance_examples": [
+                "A user makes a reservation using a payment method involving one travel certificate 'certificate_567890' that's securely registered in their profile. This adheres to the rule of no more than one permitted certificate.",
+                "Reservation is successfully booked with two gift cards: 'gift_card_654321' and 'gift_card_12846', each verified against the user profile for their existence and thus conforming to the policy of utilizing registered payment methods.",
+                "Completing a booking using a single credit card 'credit_card_564738' listed in the user's profile aligns well with the policy, ensuring all payment methods are pre-validated for safety.",
+                "A user finalizes a reservation with no insurance, paying with precisely three gift cards named 'gift_card_112233', 'gift_card_123456', and 'gift_card_654321'. All these cards are registered in the user's profile, following the outlined policy."
+            ]
+        },
+        {
+            "policy_name": "Checked Bag Allowance Regular Member",
+            "description": "If the booking user is a regular member, they receive 0 free checked bag for each basic economy passenger, 1 free checked bag for each economy passenger, and 2 free checked bags for each business passenger.",
+            "references": [
+                "Checked bag allowance: If the booking user is a regular member, 0 free checked bag for each basic economy passenger, 1 free checked bag for each economy passenger, and 2 free checked bags for each business passenger."
+            ],
+            "iteration_added": 0,
+            "violating_examples": [
+                "A regular member books a reservation with two basic economy passengers and records 1 free checked bag for each, which exceeds the allowance of 0 free checked bags.",
+                "A regular member makes a reservation for three economy passengers but records 2 free checked bags for each, surpassing the allowance which should be only 1 free checked bag per passenger.",
+                "Booking includes one business passenger and records 3 free checked bags for this passenger, exceeding the correct allowance of 2 free checked bags.",
+                "A reservation for regular member includes two business passengers and sets 5 free checked bags, violating the allowance of 2 per passenger by providing 1 extra baggage.",
+                "Booking made for a regular member and involves one basic economy passenger while setting up 1 free checked bag instead of 0, violating the allowance."
+            ],
+            "compliance_examples": [
+                "A regular member makes a booking with one basic economy passenger and records 0 free checked bags complying with the policy.",
+                "A reservation includes three economy passengers for a regular member and records 1 free checked bag for each, following the proper allowance for economy class.",
+                "Booking for a regular member involves one business passenger and accurately records 2 free checked bags, complying with the policy.",
+                "A regular member books a reservation with no business passengers but includes two economy passengers and sets up 1 free checked bag per passenger, adhering to the correct allowance.",
+                "Reservation includes one basic economy passenger and correctly records 0 free checked bags for a regular member, following the checked bag allowance policy."
+            ]
+        },
+        {
+            "policy_name": "Checked Bag Allowance Silver Member",
+            "description": "If the booking user is a silver member, they receive 1 free checked bag for each basic economy passenger, 2 free checked bag for each economy passenger, and 3 free checked bags for each business passenger.",
+            "references": [
+                "If the booking user is a silver member, 1 free checked bag for each basic economy passenger, 2 free checked bag for each economy passenger, and 3 free checked bags for each business passenger."
+            ],
+            "iteration_added": 0,
+            "violating_examples": [
+                "A silver member books a reservation for 2 basic economy passengers, claiming 2 free checked bags without purchasing any additional bags.",
+                "A silver member attempts to book a reservation with 4 economy passengers, expecting 8 free checked bags, but incorrectly selects only 6 free bags.",
+                "While booking a reservation for business class under a silver membership, the user selects 5 free bags per passenger instead of the allowed 3 bags per passenger.",
+                "A silver member books a reservation with 3 business passengers, and the system incorrectly allocates only 6 free checked bags instead of the required 9 bags."
+            ],
+            "compliance_examples": [
+                "A silver member books a reservation for 3 basic economy passengers and accurately receives 3 free checked bags, aligning with policy requirements.",
+                "While booking, the silver member includes 5 economy passengers and correctly anticipates 10 free checked bags.",
+                "For a silver member booking a business class ticket with 2 passengers, the user receives 6 free checked bags matching the allowed policy.",
+                "In compliance with the policy, a silver member books a reservation for 1 passenger in economy class and correctly selects 2 free checked bags."
+            ]
+        },
+        {
+            "policy_name": "Checked Bag Allowance Gold Member",
+            "description": "If the booking user is a gold member, they receive 2 free checked bag for each basic economy passenger, 3 free checked bag for each economy passenger, and 3 free checked bags for each business passenger.",
+            "references": [
+                "If the booking user is a gold member, 2 free checked bag for each basic economy passenger, 3 free checked bag for each economy passenger, and 3 free checked bags for each business passenger."
+            ],
+            "iteration_added": 0,
+            "violating_examples": [
+                "A reservation is booked for a gold member with one basic economy passenger, but only 1 free checked bag is provided.",
+                "Booking a flight for a gold member with three economy passengers, and only 8 free checked bags are allocated instead of 9.",
+                "The booking user, a gold member, adds 5 business passengers but only receives 12 free checked bags.",
+                "A reservation is made for a gold member with two basic economy passengers, but receives only 3 free checked bags instead of 4.",
+                "A reservation is created for a gold member where 2 economy passengers are booked and only 4 free checked bags are provided instead of 6."
+            ],
+            "compliance_examples": [
+                "A gold member books a flight with one basic economy passenger and correctly receives 2 free checked bags.",
+                "Booking a reservation for a gold member with two economy passengers, where 6 free checked bags are allocated as per the policy.",
+                "A reservation is made for a gold member with 3 business passengers, and 9 free checked bags are accurately provided.",
+                "The user, a gold member, makes a booking with 4 basic economy passengers, correctly receiving 8 free checked bags.",
+                "A gold member books a flight including one business and two economy passengers; the reservation correctly allocates a total of 9 free checked bags (3 for business, 3x2 for economy)."
+            ]
+        },
+        {
+            "policy_name": "Travel Insurance Offer",
+            "description": "The agent should ask if the user wants to buy the travel insurance, which is $30 per passenger and enables a full refund if the user needs to cancel the flight due to health or weather reasons.",
+            "references": [
+                "Travel insurance: the agent should ask if the user wants to buy the travel insurance, which is 30 dollars per passenger and enables full refund if the user needs to cancel the flight given health or weather reasons."
+            ],
+            "iteration_added": 0,
+            "violating_examples": [
+                "A user books a reservation and the agent does not ask if they want to buy travel insurance.",
+                "The agent tells the user about insurance but incorrectly states that it costs $25 per passenger instead of $30.",
+                "A user cancels their flight due to weather conditions, but the agent didn't initially offer insurance, preventing a full refund.",
+                "The agent offers insurance but doesn't matter if it covers cancellations due to health or weather reasons.",
+                "Booking a reservation for multiple passengers without offering travel insurance for each individual passenger."
+            ],
+            "compliance_examples": [
+                "The agent successfully asks a user booking a reservation if they want to buy travel insurance, specifying a charge of $30 per passenger.",
+                "A user booking a flight for two passengers is offered travel insurance for $60 total ($30 per passenger), which covers cancellations due to health or weather.",
+                "While booking, the agent explains the benefits and cost of a travel insurance policy, ensuring the user understands it offers a full refund in case of cancellations due to health or weather reasons.",
+                "The agent asks a user if they want the travel insurance when booking a one-way flight, clarifying that it's $30 per passenger and covers emergency cancellations."
+            ]
+        }
+    ]
+}

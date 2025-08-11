@@ -1,0 +1,8 @@
+{
+  "typeCheckingMode": "basic",
+  "reportOptionalIterable": "warning",
+  "reportArgumentType": "warning",
+  "reportOptionalMemberAccess": "warning",
+  "reportOptionalSubscript": "warning",
+  "reportAttributeAccessIssue": "error"
+}
