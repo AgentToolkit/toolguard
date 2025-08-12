@@ -9,9 +9,6 @@ from toolguard.llm.tg_llm import TG_LLM
 # from toolguard.stages_tptd.create_oas_summary import OASSummarizer
 from toolguard.stages_tptd.utils import read_prompt_file, generate_messages, save_output, find_mismatched_references
 
-import dotenv
-dotenv.load_dotenv()
-
 class ToolInfo(BaseModel):
 	name: str
 	description: str
@@ -347,6 +344,9 @@ async def step1_main(policy_text:str, tools:List[ToolInfo], step1_output_dir:str
 # 	await step1_main(policy_text, tools_descriptions, tools_details, step1_output_dir, llm, tools2run, short1)
 
 if __name__ == '__main__':
+	import dotenv
+	dotenv.load_dotenv()
+	
 	import markdown
 	parser = argparse.ArgumentParser(description='parser')
 	parser.add_argument('--model-name', type=str,default='gpt-4o-2024-08-06')
