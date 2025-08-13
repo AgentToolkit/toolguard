@@ -5,7 +5,7 @@ import sys
 from dotenv import load_dotenv
 from loguru import logger
 
-from op_only_oas import op_only_oas
+from archive.op_only_oas import op_only_oas
 from toolguard.common.open_api import read_openapi
 from dmn.gen_rules import generate_tools_check_rules
 from run_gen import load_tool_policy

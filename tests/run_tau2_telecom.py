@@ -50,7 +50,7 @@ async def gen_all():
             parameters=inspect.getdoc(fn)
         ) for fn in funcs]
     step1_out_dir = os.path.join(out_folder, "step1")
-    await step1_main(policy_text, tools_info, step1_out_dir, llm, short1=False)
+    await step1_main(policy_text, tools_info, step1_out_dir, llm, short1=False, tools_shortlist=["resume_line"])
 
     return
     # Step2

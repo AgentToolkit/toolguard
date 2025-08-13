@@ -19,6 +19,7 @@ For each question:
     * Then return a true or false value.
 
 Format the Output in JSON:
+```
 {
   "is_valid": {
     "justification": "Explain whether this example actually is a __EXAMPLE_TYPE__ example , and why.",
@@ -37,3 +38,4 @@ Format the Output in JSON:
     "value": true or false
   }
 }
+```
