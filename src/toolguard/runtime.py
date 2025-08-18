@@ -3,7 +3,7 @@ import inspect
 import json
 import os
 from types import ModuleType
-from typing import Any, Dict, List, Optional, Type, Callable, TypeVar
+from typing import Any, Dict, List, Optional, Type, Callable, TypeVar, Union
 from pydantic import BaseModel
 import importlib.util
 import inspect
@@ -36,6 +36,9 @@ class ToolGuardsCodeGenerationResult(BaseModel):
             json.dump(self.model_dump(), f, indent=2)
         return self
 
+FuncList = list[Callable[..., Any]]
+FuncDelegate = Union[FuncList, object]
+
 class ToolguardRuntime:
 
     def __init__(self, result: ToolGuardsCodeGenerationResult, ctx_dir: str) -> None:
@@ -48,7 +51,16 @@ class ToolguardRuntime:
             assert guard_fn, "Guard not found"
             self._guards[tool_name] = guard_fn
     
-    def _make_args(self, guard_fn:Callable, args: dict,  delegate:Any)->Dict[str, Any]:
+    def _functions_by_name(self, delegate: FuncDelegate):
+        fn_by_name = {}
+        if isinstance(delegate, list):
+            return {fn: fn for fn in delegate}
+        return {name: member
+            for name, member in inspect.getmembers(delegate, predicate=inspect.isroutine)
+            if not name.startswith("_")   # exclude private/special
+        }
+
+    def _make_args(self, guard_fn:Callable, args: dict,  delegate: FuncDelegate)->Dict[str, Any]:
         sig = inspect.signature(guard_fn)
         guard_args = {}
         for p_name, param in sig.parameters.items():
@@ -56,7 +68,8 @@ class ToolguardRuntime:
                 module = load_module_from_path(self._result.domain.app_api_impl.file_name, self._ctx_dir)
                 cls = find_class_in_module(module, self._result.domain.app_api_impl_class_name)
                 assert cls, f"class {self._result.domain.app_api_impl_class_name} not found in {self._result.domain.app_api_impl.file_name}"
-                guard_args[p_name] = cls(delegate)
+                fn_by_name = self._functions_by_name(delegate)
+                guard_args[p_name] = cls(fn_by_name)
             else:
                 arg = args.get(p_name)
                 if inspect.isclass(param.annotation) and issubclass(param.annotation, BaseModel):
@@ -65,7 +78,7 @@ class ToolguardRuntime:
                     guard_args[p_name] = arg
         return guard_args
 
-    def check_toolcall(self, tool_name:str, args: dict, delegate: Any):
+    def check_toolcall(self, tool_name:str, args: dict, delegate: FuncDelegate):
         guard_fn = self._guards.get(tool_name)
         if guard_fn is None: #No guard assigned to this tool
             return

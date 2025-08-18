@@ -179,15 +179,10 @@ class APIExtractor:
         param_names =[p for p in list(sig.parameters.keys()) if p != "self"]
         call_args_str = ", ".join(param_names)
 
-        # Generate code string
-        # module_name = func.__module__
-        # return f"""
-        # from {module_name} import {func_name}
-        # return unwrap_fn({func_name})({call_args_str})
-        # """
         return f"""
         fn = self._delegates.get('{func_name}')
-        assert(fn, f"Expected function {func_name} does not exist in the API")
+        if fn is None:
+            raise KeyError(f"Expected function '{func_name}' does not exist in the API")
         return fn({call_args_str})
 """
     
