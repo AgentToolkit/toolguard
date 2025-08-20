@@ -1,6 +1,7 @@
 
 import os
 import inspect
+import re
 from typing import Callable
 
 from toolguard.common.str import to_snake_case
@@ -40,37 +41,3 @@ def temp_python_path(path: str):
     else:
         # Already in sys.path, no need to remove
         yield
-
-def extract_docstr_args(func:Callable) -> str:
-    doc = inspect.getdoc(func)
-    if not doc:
-        return ""
-
-    lines = doc.splitlines()
-    args_start = None
-    for i, line in enumerate(lines):
-        if line.strip().lower() == "args:":
-            args_start = i
-            break
-
-    if args_start is None:
-        return ""
-
-
-    # List of known docstring section headers
-    next_sections = {"returns:", "raises:", "examples:", "notes:", "attributes:", "yields:"}
-
-    # Capture lines after "Args:" that are indented
-    args_lines = []
-    for line in lines[args_start + 1:]:
-        # Stop if we hit a new section (like "Returns:", "Raises:", etc.)
-        stripped = line.strip().lower()
-        if stripped in next_sections:
-            break
-        args_lines.append(" "*8 + line.strip())
-
-    # Join all lines into a single string
-    if not args_lines:
-        return ""
-
-    return "\n".join(args_lines)
