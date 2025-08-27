@@ -6,10 +6,8 @@ from types import ModuleType
 from typing import Any, Dict, List, Optional, Type, Callable, TypeVar, Union
 from pydantic import BaseModel
 import importlib.util
-import inspect
-import os
-
 import functools
+
 from toolguard.data_types import API_PARAM, RESULTS_FILENAME, FileTwin, RuntimeDomain, ToolPolicy
 
 def load_toolguards(directory: str, filename: str = RESULTS_FILENAME) -> "ToolguardRuntime":

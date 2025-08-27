@@ -1,8 +1,9 @@
 
 import os
-import inspect
-import re
 from typing import Callable
+import sys
+from pathlib import Path
+from contextlib import contextmanager
 
 from toolguard.common.str import to_snake_case
 
@@ -26,9 +27,7 @@ def module_to_path(module:str)->str:
 def unwrap_fn(fn: Callable)->Callable: 
     return fn.func if hasattr(fn, "func") else fn
 
-import sys
-from pathlib import Path
-from contextlib import contextmanager
+
 @contextmanager
 def temp_python_path(path: str):
     path = str(Path(path).resolve())
