@@ -1,7 +1,7 @@
 
 from typing import Set
 from toolguard.data_types import Domain, ToolPolicyItem
-from mellea import generative
+from programmatic_ai import generative
 
 
 @generative

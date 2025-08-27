@@ -1,7 +1,7 @@
 
 from typing import List, Set
 from toolguard.data_types import Domain, FileTwin, ToolPolicyItem
-from mellea import generative
+from programmatic_ai import generative
 
 from toolguard.gen_py.prompts.python_code import PythonCodeModel
 

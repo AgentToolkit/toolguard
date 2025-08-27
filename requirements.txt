@@ -12,4 +12,5 @@ markdown
 anyio
 docstring-parser
 # pydantic-xml[lxml] #for DMN
-mellea
+#-e git+ssh://git@github.ibm.com/IBM-Research-AI/programmatic-ai.git#egg=programmatic-ai
+programmatic-ai @ git+ssh://git@github.ibm.com/IBM-Research-AI/programmatic-ai.git
