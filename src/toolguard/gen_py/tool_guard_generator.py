@@ -7,6 +7,7 @@ import re
 from typing import Callable, List, Set, Tuple
 
 from toolguard.common import py
+from toolguard.common.py_doc_str import extract_docstr_args
 from toolguard.common.str import to_snake_case
 from toolguard.data_types import DEBUG_DIR, TESTS_DIR, Domain, FileTwin, RuntimeDomain, ToolPolicy, ToolPolicyItem, ToolPolicyItem
 from toolguard.gen_py.consts import guard_fn_module_name, guard_fn_name, guard_item_fn_module_name, guard_item_fn_name, test_fn_module_name
@@ -250,7 +251,7 @@ class ToolGuardGenerator:
         sig = inspect.signature(tool_fn)
         sig_str = self._signature_str(sig)
         args_call = ", ".join([p for p in sig.parameters if p != "self"])
-        args_doc_str = py.extract_docstr_args(tool_fn)
+        args_doc_str = extract_docstr_args(tool_fn)
         return FileTwin(
             file_name=file_name,
             content=load_template("tool_guard.j2").render(
@@ -281,7 +282,7 @@ class ToolGuardGenerator:
             )
         )
         sig_str = self._signature_str(inspect.signature(tool_fn))
-        args_doc_str = py.extract_docstr_args(tool_fn)
+        args_doc_str = extract_docstr_args(tool_fn)
         return FileTwin(
             file_name=file_name,
             content=load_template("tool_item_guard.j2").render(
