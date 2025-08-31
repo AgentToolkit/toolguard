@@ -252,6 +252,10 @@ class ToolGuardGenerator:
         sig_str = self._signature_str(sig)
         args_call = ", ".join([p for p in sig.parameters if p != "self"])
         args_doc_str = extract_docstr_args(tool_fn)
+        extra_imports = []
+        if "Decimal" in sig_str:
+            extra_imports.append("from decimal import Decimal")
+        
         return FileTwin(
             file_name=file_name,
             content=load_template("tool_guard.j2").render(
@@ -262,7 +266,8 @@ class ToolGuardGenerator:
                     "args_call": args_call,
                     "args_doc_str": args_doc_str
                 },
-                items=items
+                items=items,
+                extra_imports = extra_imports
             )
         ).save(self.py_path)
 
@@ -283,6 +288,9 @@ class ToolGuardGenerator:
         )
         sig_str = self._signature_str(inspect.signature(tool_fn))
         args_doc_str = extract_docstr_args(tool_fn)
+        extra_imports = []
+        if "Decimal" in sig_str:
+            extra_imports.append("from decimal import Decimal")
         return FileTwin(
             file_name=file_name,
             content=load_template("tool_item_guard.j2").render(
@@ -290,9 +298,10 @@ class ToolGuardGenerator:
                 method = {
                     "name": guard_item_fn_name(tool_item),
                     "signature": sig_str,
-                    "args_doc_str": args_doc_str
+                    "args_doc_str": args_doc_str,
                 },
-                policy = tool_item.description
+                policy = tool_item.description,
+                extra_imports = extra_imports
             )
         ).save(self.py_path)
     

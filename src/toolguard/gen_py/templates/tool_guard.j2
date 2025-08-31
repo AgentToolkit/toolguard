@@ -1,8 +1,8 @@
 from typing import *
-from decimal import Decimal
-
+{% for imp in extra_imports %}{{ imp }}
+{% endfor %}
 import {{to_snake_case(domain.app_name)}}
-import {{to_snake_case(domain.toolguard_common.file_name)}} import PolicyViolationException
+from {{path_to_module(domain.toolguard_common.file_name)}} import PolicyViolationException
 from {{ path_to_module(domain.app_types.file_name) }} import *
 from {{ path_to_module(domain.app_api.file_name) }} import {{ domain.app_api_class_name }}
 

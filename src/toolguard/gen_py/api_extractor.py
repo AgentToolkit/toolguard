@@ -121,7 +121,6 @@ class APIExtractor:
             "from typing import * # type: ignore",
             "from abc import ABC, abstractmethod",
             f"from {types_module} import *",
-            f"from decimal import Decimal",
             ""]
         
         lines.append(f"class {interface_name}(ABC):") #Abstract class
@@ -139,25 +138,30 @@ class APIExtractor:
                 lines.append(f"{indent}{indent}...")
                 lines.append("")
         
+        if any(["Decimal" in line for line in lines]):
+            lines.insert(2, "from decimal import Decimal")
+
         return "\n".join(lines)
     
     def _generate_impl_from_functions(self, funcs: List[Callable], class_name:str, interface_module_name:str, interface_name: str, types_module:str)->str:
         lines = [
             "# Auto-generated class",
             "from typing import *",
-            f"from decimal import Decimal",
+            "from abc import ABC, abstractmethod",
             f"from {interface_module_name} import {interface_name}",
             f"from {types_module} import *",
             "",
-    #         """def unwrap_fn(fn: Callable)->Callable: 
-    # return fn.func if hasattr(fn, "func") else fn""",
-    #         "",
+            """class ToolInvoker(ABC):
+    @abstractmethod
+    def invoke(self, toolname: str, arguments: Dict[str, Any])->object:
+        ...""",
+            "",
         ]
         
         lines.append(f"class {class_name}({interface_name}):") #class
         lines.append("")
-        lines.append(f"""    def __init__(self, delegates: Dict[str, Callable]):
-        self._delegates = delegates
+        lines.append(f"""    def __init__(self, delegate: ToolInvoker):
+        self._delegate = delegate
     """)
 
         if not funcs:
@@ -170,22 +174,18 @@ class APIExtractor:
                 lines.append(self._generate_delegate_code(func))
                 lines.append("")
         
+        if any(["Decimal" in line for line in lines]):
+            lines.insert(2, f"from decimal import Decimal")
+
         return "\n".join(lines)
     
     def _generate_delegate_code(self, func:Callable)->str:
-        # Get function details
         func_name = _get_type_name(func)
-        sig = inspect.signature(func)
-        
-        # Extract arguments
-        param_names =[p for p in list(sig.parameters.keys()) if p != "self"]
-        call_args_str = ", ".join(param_names)
 
         return f"""
-        fn = self._delegates.get('{func_name}')
-        if fn is None:
-            raise KeyError(f"Expected function '{func_name}' does not exist in the API")
-        return fn({call_args_str})
+        args = locals().copy()
+        args.pop("self", None)
+        return self._delegate.invoke('{func_name}', args)
 """
     
     def _get_function_with_docstring(self, func:FunctionType, func_name:str)->List[str]:
@@ -551,7 +551,6 @@ class APIExtractor:
         lines.append("# Auto-generated type definitions")
         lines.append("from datetime import date, datetime")
         lines.append("from enum import Enum")
-        lines.append("from decimal import Decimal")
         lines.append("from typing import *")
         lines.append("from pydantic import BaseModel, Field")
         lines.append("from dataclasses import dataclass")
@@ -573,6 +572,9 @@ class APIExtractor:
             if class_def:  # Only add non-empty class definitions
                 lines.extend(class_def)
                 lines.append("")
+
+        if any(["Decimal" in line for line in lines]):
+            lines.insert(2, f"from decimal import Decimal")
         
         return "\n".join(lines)
     
