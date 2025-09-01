@@ -26,6 +26,7 @@ async def improve_tool_guard(prev_impl: PythonCodeModel, domain: Domain, policy_
         - Keep the implementation simple and well-documented.
         - Only validate the tool-call arguments; never call the tool itself.
         - If additional information is needed beyond the function arguments, use only the APIs of tools listed in `dependent_tool_names`.
+        - Generate code that enforces the given policy only, do not generate any additional logic that is not explicitly mentioned in the policy.
 
     **Example: ** 
 prev_impl = ```python
