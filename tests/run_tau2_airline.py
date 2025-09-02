@@ -34,14 +34,10 @@ async def gen_all():
     def doc_summary(doc): 
         paragraphs = [p.strip() for p in doc.split("\n\n") if p.strip()]
         return paragraphs[0] if paragraphs else ""
-    tools_info = [ToolInfo(
-            name=fn.__name__,
-            description=doc_summary(inspect.getdoc(fn)) or "",
-            parameters=inspect.getdoc(fn)
-        ) for fn in funcs]
-    step1_out_dir = "eval/airline/tau2/step1_long_gpt5"
+    tools_info = [ToolInfo.from_function(fn) for fn in funcs]
+    step1_out_dir = "eval/airline/tau2/step1_short_gpt5"
     # step1_out_dir = os.path.join(out_folder, "step1")
-    # await step1_main(policy_text, tools_info, step1_out_dir, llm, short1=False)
+    # await step1_main(policy_text, tools_info, step1_out_dir, llm, short1=True)
 
     # Step2
     from toolguard.core import generate_guards_from_tool_policies
