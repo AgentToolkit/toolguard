@@ -31,9 +31,6 @@ async def gen_all():
 
     # Step1
     llm = LitellmModel(model_name='gpt-5-chat-2025-08-07', provider="azure")
-    def doc_summary(doc): 
-        paragraphs = [p.strip() for p in doc.split("\n\n") if p.strip()]
-        return paragraphs[0] if paragraphs else ""
     tools_info = [ToolInfo.from_function(fn) for fn in funcs]
     step1_out_dir = "eval/airline/tau2/step1_short_gpt5"
     # step1_out_dir = os.path.join(out_folder, "step1")
@@ -44,7 +41,7 @@ async def gen_all():
     return await generate_guards_from_tool_policies(funcs,
         from_step1_path=step1_out_dir, 
         to_step2_path=out_folder, 
-        # tool_names=["book_reservation", "cancel_reservation", "update_reservation_passengers", "update_reservation_baggages", "update_reservation_flights"],
+        tool_names=["book_reservation"],# "cancel_reservation", "update_reservation_passengers", "update_reservation_baggages", "update_reservation_flights"],
         app_name="airline"
     )
 

@@ -3,7 +3,7 @@ import asyncio
 import json
 import os
 import inspect
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 from pydantic import BaseModel
 from toolguard.llm.tg_litellm import LitellmModel
 from toolguard.llm.tg_llm import TG_LLM
@@ -16,14 +16,14 @@ class ToolInfo(BaseModel):
 	parameters: Any
 
 	@classmethod
-    def from_function(cls, fn: Callable) -> "ToolInfo":
+	def from_function(cls, fn: Callable) -> "ToolInfo":
         # return cls(id=int(user_id), name=name)
 		def doc_summary(doc:str): 
 			paragraphs = [p.strip() for p in doc.split("\n\n") if p.strip()]
 			return paragraphs[0] if paragraphs else ""
-    	return ToolInfo(
+		return cls(
             name=fn.__name__,
-            description=doc_summary(inspect.getdoc(fn)) or "",
+			description=doc_summary(inspect.getdoc(fn) or ""),
             parameters=inspect.getdoc(fn)
         )
 
