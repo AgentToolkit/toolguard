@@ -74,6 +74,9 @@ class RuntimeDomain(Domain):
     app_api_impl_class_name: str = Field(..., description="Python class (implementaton) class name.")
     app_api_impl: FileTwin = Field(..., description="Python class containing all the API method implementations.")
 
+    def get_definitions_only(self):
+        return Domain.model_validate(self.model_dump())
+
 class PolicyViolationException(Exception):
     _msg: str
     def __init__(self, message:str):

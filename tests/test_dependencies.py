@@ -56,7 +56,8 @@ class TestToolsDependencies:
         funcs = [member for name, member in inspect.getmembers(AirlineTools, predicate=inspect.isfunction)
             if getattr(member, "__tool__", None)]  # only @is_tool]
         domain = generate_domain_from_functions("tests/temp", "airline", funcs, ["tau2"])
-        cls.domain = domain = Domain.model_construct(**domain.model_dump()) #remove runtime fields
+
+        cls.domain = domain.get_definitions_only()
 
     @classmethod
     def teardown_class(cls):
@@ -64,7 +65,7 @@ class TestToolsDependencies:
         print("Tearing down class resources")
 
     @pytest.mark.asyncio
-    async def test_passangers(self):
+    async def test_args_only(self):
         policy = ToolPolicyItem(
             name="up to five passengers",
             description="The total number of passengers in a reservation does not exceed five.",
@@ -95,8 +96,6 @@ class TestToolsDependencies:
             compliance_examples=[],
             violation_examples=[]
         )
-        process = await tool_policy_pseudo_code(policy, book_reservation_signature, self.domain)
-        print(process)
         deps = await tool_dependencies(policy, book_reservation_signature, self.domain)
         assert deps  == {"get_user_details"}
 
@@ -148,7 +147,5 @@ class TestToolsDependencies:
             compliance_examples=[],
             violation_examples=[]
         )
-        process = await tool_policy_pseudo_code(policy, update_flights_signature, self.domain)
-        print(process)
         deps = set(await tool_dependencies(policy, update_flights_signature, self.domain))
         assert deps == {"get_reservation_details", "get_scheduled_flight"}

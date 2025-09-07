@@ -12,9 +12,6 @@ from toolguard.common.py_doc_str import extract_docstr_args
 from toolguard.common.str import to_snake_case
 from toolguard.data_types import DEBUG_DIR, TESTS_DIR, Domain, FileTwin, RuntimeDomain, ToolPolicy, ToolPolicyItem, ToolPolicyItem
 from toolguard.gen_py.consts import guard_fn_module_name, guard_fn_name, guard_item_fn_module_name, guard_item_fn_name, test_fn_module_name
-# from toolguard.gen_py.prompts.pseudo_code import tool_policy_pseudo_code
-from toolguard.gen_py.prompts.analyze_dependencies import extract_api_dependencies_from_pseudo_code
-from toolguard.gen_py.prompts.pseudo_code import tool_policy_pseudo_code
 from toolguard.gen_py.tool_dependencies import tool_dependencies
 from toolguard.runtime import ToolGuardCodeResult, find_class_in_module, load_module_from_path
 import toolguard.utils.pytest as pytest
@@ -78,7 +75,7 @@ class ToolGuardGenerator:
         sig_str = f"{tool_fn_name}{str(inspect.signature(tool_fn))}"
         dep_tools = []
         if self.domain.app_api_size > 1:
-            domain = Domain.model_construct(**self.domain.model_dump()) #remove runtime fields
+            domain = self.domain.get_definitions_only() #remove runtime fields
             dep_tools = await tool_dependencies(item, sig_str, domain)
         logger.debug(f"Dependencies of '{item.name}': {dep_tools}")
 
@@ -105,7 +102,7 @@ class ToolGuardGenerator:
             return None, init_guard
         
     # async def tool_dependencies(self, policy_item: ToolPolicyItem, tool_signature: str) -> Set[str]:
-    #     domain = Domain.model_construct(**self.domain.model_dump()) #remove runtime fields
+    #     domain = self.domain.get_definitions_only() #remove runtime fields
     #     pseudo_code = await tool_policy_pseudo_code(policy_item, tool_signature, domain)
     #     dep_tools = await extract_api_dependencies_from_pseudo_code(pseudo_code, domain)
     #     return set(dep_tools)
@@ -119,7 +116,7 @@ class ToolGuardGenerator:
         trials = "a b c".split()
         for trial_no in trials:
             logger.debug(f"Generating tests iteration '{trial_no}' for tool {self.tool_policy.tool_name} '{item.name}'.")
-            domain = Domain.model_construct(**self.domain.model_dump()) #remove runtime fields
+            domain = self.domain.get_definitions_only() #remove runtime fields
             first_time = (trial_no == "a")
             if first_time:
                 res = await generate_init_tests(guard, item, domain, dep_tools)
@@ -187,7 +184,7 @@ class ToolGuardGenerator:
         trials = "a b c".split()
         for trial in trials:
             logger.debug(f"Improving guard function '{module_name}'... (trial = {round}.{trial})")
-            domain = Domain.model_construct(**self.domain.model_dump()) #omit runtime fields
+            domain = self.domain.get_definitions_only() #omit runtime fields
             prev_python = get_code_content(prev_guard.content)
             res = await improve_tool_guard(prev_python, domain, item, dep_tools, review_comments + errors)
 
