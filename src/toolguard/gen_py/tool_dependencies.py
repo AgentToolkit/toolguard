@@ -10,6 +10,7 @@ async def tool_dependencies(policy_item: ToolPolicyItem, tool_signature: str, do
     if all([f"{fn_name}(" in domain.app_api.content for fn_name in fn_names]):
         return fn_names
     if trial<=MAX_TRIALS:
+        # as tool_policy_pseudo_code has some temerature, we retry hoping next time the pseudo code will be correct
         return await tool_dependencies(policy_item, tool_signature, domain, trial+1)
     raise Exception("Failed to analyze api dependencies")
 

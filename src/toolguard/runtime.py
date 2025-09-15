@@ -14,8 +14,9 @@ from toolguard.data_types import API_PARAM, RESULTS_FILENAME, FileTwin, RuntimeD
 
 from abc import ABC, abstractmethod
 class IToolInvoker(ABC):
+    T = TypeVar("T")
     @abstractmethod
-    def invoke(self, toolname: str, arguments: Dict[str, Any])->object:
+    def invoke(self, toolname: str, arguments: Dict[str, Any], model: Type[T])->T:
         ...
 
 
@@ -127,18 +128,18 @@ def guard_methods(obj: T, guards_folder: str) -> T:
 class ToolMethodsInvoker(IToolInvoker):
     def __init__(self, object:object) -> None:
         self._obj = object
-    def invoke(self, toolname: str, arguments: Dict[str, Any])->object:
-        attr = getattr(self._obj, toolname)
-        assert callable(attr), f"Tool {toolname} was not found"
-        attr(**arguments)
+    def invoke(self, toolname: str, arguments: Dict[str, Any], model: Type[T])->T:
+        mtd = getattr(self._obj, toolname)
+        assert callable(mtd), f"Tool {toolname} was not found"
+        return mtd(**arguments)
 
 class ToolFunctionsInvoker(IToolInvoker):
     def __init__(self, funcs: List[Callable]) -> None:
         self._funcs_by_name = {func.__name__: func for func in funcs}
-    def invoke(self, toolname: str, arguments: Dict[str, Any])->object:
+    def invoke(self, toolname: str, arguments: Dict[str, Any], model: Type[T])->T:
         func = self._funcs_by_name.get(toolname)
         assert callable(func), f"Tool {toolname} was not found"
-        func(**arguments)
+        return func(**arguments)
 
 def guard_before_call(guards_folder: str) -> Callable[[Callable], Callable]:
     """Decorator factory that logs function calls to the given logfile."""

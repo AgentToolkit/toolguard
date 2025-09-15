@@ -5,8 +5,9 @@ from airline.airline_types import *
 
 from abc import ABC, abstractmethod
 class IToolInvoker(ABC):
+    T = TypeVar("T")
     @abstractmethod
-    def invoke(self, toolname: str, arguments: Dict[str, Any])->object:
+    def invoke(self, toolname: str, arguments: Dict[str, Any], model: Type[T])->T:
         ...
 
 class Airlineimpl(I_Airline):

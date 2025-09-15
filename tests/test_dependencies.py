@@ -9,10 +9,10 @@ load_dotenv()
 from toolguard.gen_py.tool_dependencies import tool_dependencies
 from toolguard.data_types import ToolPolicyItem
 from toolguard.gen_py.domain_from_funcs import generate_domain_from_functions
-from programmatic_ai.config import settings
 from tau2.domains.airline.tools import AirlineTools
 
 current_dir = str(Path(__file__).parent)
+from programmatic_ai.config import settings
 settings.sdk = os.getenv("PROG_AI_PROVIDER") # type: ignore
 
 book_reservation_signature = """

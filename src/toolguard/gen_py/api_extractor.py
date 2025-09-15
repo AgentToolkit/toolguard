@@ -146,14 +146,16 @@ class APIExtractor:
     def _generate_impl_from_functions(self, funcs: List[Callable], class_name:str, interface_module_name:str, interface_name: str, types_module:str)->str:
         lines = [
             "# Auto-generated class",
+            
             "from typing import *",
             "from abc import ABC, abstractmethod",
             f"from {interface_module_name} import {interface_name}",
             f"from {types_module} import *",
             "",
             """class IToolInvoker(ABC):
+    T = TypeVar("T")
     @abstractmethod
-    def invoke(self, toolname: str, arguments: Dict[str, Any])->object:
+    def invoke(self, toolname: str, arguments: Dict[str, Any], model: Type[T])->T:
         ...""",
             "",
         ]
@@ -182,9 +184,10 @@ class APIExtractor:
     def _generate_delegate_code(self, func:Callable)->List[str]:
         func_name = _get_type_name(func)
         indent = " "*4*2
+        T = "bla" #FIXME
         return [
             indent+"args = {k: v for k, v in locals().items() if k != 'self'}",
-            indent+f"return self._delegate.invoke('{func_name}', args)"
+            indent+f"return self._delegate.invoke('{func_name}', args, T)"
         ]
     
     def _get_function_with_docstring(self, func:FunctionType, func_name:str)->List[str]:
