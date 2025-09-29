@@ -13,8 +13,8 @@ from toolguard.gen_py.domain_from_funcs import generate_domain_from_functions
 from tau2.domains.airline.tools import AirlineTools
 
 current_dir = str(Path(__file__).parent)
-from programmatic_ai.config import settings
-settings.sdk = os.getenv("PROG_AI_PROVIDER") # type: ignore
+#from programmatic_ai.config import settings
+#settings.sdk = os.getenv("PROG_AI_PROVIDER") # type: ignore
 
 book_reservation_signature = """
     def guard_book_reservation(api: I_Airline, user_id: str, origin: str, destination: str, flight_type: Literal['round_trip', 'one_way'], cabin: Literal['business', 'economy', 'basic_economy'], flights: List[FlightInfo], passengers: List[Passenger], payment_methods: List[Payment], total_baggages: int, nonfree_baggages: int, insurance: Literal['yes', 'no']):

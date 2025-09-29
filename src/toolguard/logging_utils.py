@@ -14,7 +14,7 @@ def add_log_file_handler(log_file:str):
 def init_logging():
 	logging.getLogger().setLevel(logging.INFO) #Default for other libraries
 	logging.getLogger("toolguard").setLevel(logging.DEBUG) # debug for our library
-	logging.getLogger("programmatic_ai").setLevel(logging.DEBUG)
+	logging.getLogger("mellea").setLevel(logging.DEBUG)
 	init_log_console_handler()
 
 def init_log_console_handler():

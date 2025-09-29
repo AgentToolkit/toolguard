@@ -72,7 +72,7 @@ async def gen_all():
             parameters=inspect.getdoc(fn)
         ) for fn in funcs]
     
-    await step1_main(policy_text, tools_info, step1_out_dir, llm, short1=False)
+    await step1_main(policy_text, tools_info, step1_out_dir, llm, short=False)
 
 if __name__ == '__main__':
     from toolguard.logging_utils import init_logging

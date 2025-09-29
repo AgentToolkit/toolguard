@@ -318,7 +318,7 @@ class TextToolPolicyGenerator:
 			return False
 		return True
 
-async def step1_main(policy_text:str, tools:List[ToolInfo], step1_output_dir:str, llm:TG_LLM, tools_shortlist: Optional[List[str]]=None, short1=False):
+async def step1_main(policy_text:str, tools:List[ToolInfo], step1_output_dir:str, llm:TG_LLM, tools_shortlist: Optional[List[str]]=None, short=False):
 	if not os.path.isdir(step1_output_dir):
 		os.makedirs(step1_output_dir)
 		
@@ -328,7 +328,7 @@ async def step1_main(policy_text:str, tools:List[ToolInfo], step1_output_dir:str
 	
 	tpg = TextToolPolicyGenerator(llm, policy_text, tools, process_dir)
 	async def do_one_tool(fname):
-		if short1:
+		if short:
 			final_output = await tpg.generate_minimal_policy(fname)
 		else:
 			final_output = await tpg.generate_policy(fname)
