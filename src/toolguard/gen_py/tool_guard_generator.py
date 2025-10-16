@@ -85,11 +85,11 @@ class ToolGuardGenerator:
         except Exception as ex:
             logger.warning(f"Tests generation failed for item {item.name}", ex)
             try:
-                logger.warning("try to generate the code without tests...", ex)
+                logger.warning("try to generate the code without tests... %s", str(ex))
                 guard = await self._improve_guard(item, init_guard, [], dep_tools)
                 return None, guard
             except Exception as ex:
-                logger.warning("guard generation failed. returning initial guard", ex)
+                logger.warning("guard generation failed. returning initial guard: %s", str(ex))
                 return None, init_guard
         
         # Tests generated, now generate guards
@@ -98,7 +98,7 @@ class ToolGuardGenerator:
             logger.debug(f"tool item generated successfully '{item.name}'") # 😄🎉 Happy path 
             return guard_tests, guard
         except Exception as ex:
-            logger.warning("guard generation failed. returning initial guard", ex)
+            logger.warning("guard generation failed. returning initial guard: %s", str(ex))
             return None, init_guard
         
     # async def tool_dependencies(self, policy_item: ToolPolicyItem, tool_signature: str) -> Set[str]:

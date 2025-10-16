@@ -10,7 +10,7 @@ import inspect
 import os
 
 import functools
-from toolguard.data_types import API_PARAM, RESULTS_FILENAME, FileTwin, RuntimeDomain, ToolPolicy
+from .data_types import API_PARAM, RESULTS_FILENAME, FileTwin, RuntimeDomain, ToolPolicy
 
 from abc import ABC, abstractmethod
 class IToolInvoker(ABC):
