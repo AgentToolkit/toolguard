@@ -1,0 +1,226 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Math Tools API",
+    "version": "1.0.0",
+    "description": "A simple API providing basic mathematical operations: addition, subtraction, multiplication, and division."
+  },
+  "paths": {
+    "/tools/add": {
+      "post": {
+        "operationId": "add_tool",
+        "summary": "Add two numbers",
+        "description": "Add two numbers and return their sum.",
+        "x-input-examples": [
+          "add_tool(1.0, 2.0)",
+          "add_tool(-5.5, 3.2)",
+          "add_tool(0, 100.75)",
+          "add_tool(1e3, 2e3)"
+        ],
+        "x-output-examples": [3.0, -2.3, 100.75, 3000.0],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "a": {
+                    "type": "number",
+                    "description": "The first number.",
+                    "example": 5.0
+                  },
+                  "b": {
+                    "type": "number",
+                    "description": "The second number.",
+                    "example": 3.0
+                  }
+                },
+                "required": ["a", "b"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The sum of a and b.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "number",
+                  "example": 8.0
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/subtract": {
+      "post": {
+        "operationId": "subtract_tool",
+        "summary": "Subtract one number from another",
+        "description": "Subtract one number from another and return the result.",
+        "x-input-examples": [
+          "subtract_tool(10.0, 4.0)",
+          "subtract_tool(0.0, 1.5)",
+          "subtract_tool(-3.2, -5.8)",
+          "subtract_tool(1000, 1)"
+        ],
+        "x-output-examples": [6.0, -1.5, 2.6, 999.0],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "a": {
+                    "type": "number",
+                    "description": "The number to subtract from.",
+                    "example": 10.0
+                  },
+                  "b": {
+                    "type": "number",
+                    "description": "The number to subtract.",
+                    "example": 4.0
+                  }
+                },
+                "required": ["a", "b"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The result of a minus b.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "number",
+                  "example": 6.0
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/multiply": {
+      "post": {
+        "operationId": "multiply_tool",
+        "summary": "Multiply two numbers",
+        "description": "Multiply two numbers and return their product.",
+        "x-input-examples": [
+          "multiply_tool(2.0, 3.5)",
+          "multiply_tool(-1.2, 4.0)",
+          "multiply_tool(0, 999.99)",
+          "multiply_tool(100, 0.01)"
+        ],
+        "x-output-examples": [7.0, -4.8, 0.0, 1.0],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "a": {
+                    "type": "number",
+                    "description": "The first number.",
+                    "example": 2.0
+                  },
+                  "b": {
+                    "type": "number",
+                    "description": "The second number.",
+                    "example": 3.5
+                  }
+                },
+                "required": ["a", "b"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The product of a and b.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "number",
+                  "example": 7.0
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/divide": {
+      "post": {
+        "operationId": "divide_tool",
+        "summary": "Divide one number by another",
+        "description": "Divide one number by another. The divisor must not be zero.",
+        "x-input-examples": [
+          "divide_tool(10.0, 2.0)",
+          "divide_tool(3.0, 0.5)",
+          "divide_tool(-9.0, 3.0)",
+          "divide_tool(5.0, -2.5)"
+        ],
+        "x-output-examples": [5.0, 6.0, -3.0, -2.0],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "g": {
+                    "type": "number",
+                    "description": "The dividend.",
+                    "example": 10.0
+                  },
+                  "h": {
+                    "type": "number",
+                    "description": "The divisor (must not be zero).",
+                    "example": 2.0
+                  }
+                },
+                "required": ["g", "h"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The result of g divided by h.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "number",
+                  "example": 5.0
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Division by zero is not allowed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Division by zero is not allowed."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

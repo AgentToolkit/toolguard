@@ -4,18 +4,18 @@ import asyncio
 import logging
 from os.path import join
 import re
-from typing import Callable, List, Set, Tuple
+from typing import Callable, List, Tuple
 
 from toolguard.common import py
 from toolguard.common.llm_py import get_code_content
 from toolguard.common.py_doc_str import extract_docstr_args
 from toolguard.common.str import to_snake_case
-from toolguard.data_types import DEBUG_DIR, TESTS_DIR, Domain, FileTwin, RuntimeDomain, ToolPolicy, ToolPolicyItem, ToolPolicyItem
+from toolguard.data_types import DEBUG_DIR, TESTS_DIR, FileTwin, RuntimeDomain, ToolPolicy, ToolPolicyItem
 from toolguard.gen_py.consts import guard_fn_module_name, guard_fn_name, guard_item_fn_module_name, guard_item_fn_name, test_fn_module_name
 from toolguard.gen_py.tool_dependencies import tool_dependencies
 from toolguard.runtime import ToolGuardCodeResult, find_class_in_module, load_module_from_path
-import toolguard.utils.pytest as pytest
-import toolguard.utils.pyright as pyright
+import toolguard.gen_py.utils.pytest as pytest
+import toolguard.gen_py.utils.pyright as pyright
 from toolguard.gen_py.prompts.gen_tests import generate_init_tests, improve_tests
 from toolguard.gen_py.prompts.improve_guard import improve_tool_guard
 from toolguard.gen_py.templates import load_template
@@ -83,7 +83,7 @@ class ToolGuardGenerator:
         try:
             guard_tests = await self._generate_tests(item, init_guard, dep_tools)
         except Exception as ex:
-            logger.warning(f"Tests generation failed for item {item.name}", ex)
+            logger.warning(f"Tests generation failed for item {item.name} %s", str(ex))
             try:
                 logger.warning("try to generate the code without tests... %s", str(ex))
                 guard = await self._improve_guard(item, init_guard, [], dep_tools)

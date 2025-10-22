@@ -6,13 +6,12 @@ pytest-json-report
 # loguru
 pyright
 datamodel-code-generator
-flask
-flask-cors
 markdown
 anyio
 docstring-parser
-# pydantic-xml[lxml] #for DMN
-#-e git+ssh://git@github.ibm.com/IBM-Research-AI/programmatic-ai.git#egg=programmatic-ai
-# programmatic-ai @ git+ssh://git@github.ibm.com/IBM-Research-AI/programmatic-ai.git
 pytest-asyncio
 mellea
+
+# for ui:
+#flask
+#flask-cors

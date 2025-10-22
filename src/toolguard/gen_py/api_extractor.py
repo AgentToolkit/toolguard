@@ -656,8 +656,8 @@ def _is_global_or_class_function(func):
 
 # Example class for testing
 if __name__ == "__main__":
-    # from tau2.domains.airline.tools import AirlineTools
-    # extractor = APIExtractor("output", include_module_roots = ["tau2"])
+    # from airline2.domains.airline.tools import AirlineTools
+    # extractor = APIExtractor("output", include_module_roots = ["airline2"])
     # # interface_file, types_file = extractor.extract_from_class(AirlineTools, output_dir="output")
     # t = AirlineTools({})
     # interface_file, types_file = extractor.extract_from_functions([AirlineTools.book_reservation], "I_Tau", "my_app.i_tau", "my_app.tau_types")

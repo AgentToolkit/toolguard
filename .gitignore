@@ -9,3 +9,4 @@ dmn_item_definitions.xml
 **/*.egg-info/**
 clinic/clinic.db
 output
+.idea/

@@ -1,14 +1,13 @@
-import argparse
+
 import asyncio
-import os
-import sys
-from typing import Callable, List
+
 
 import markdown
 import logging
 
 from toolguard.core import build_toolguards
 from toolguard.llm.tg_litellm import LitellmModel
+from toolguard.tool_policy_extractor.text_tool_policy_generator import extract_functions
 
 logger = logging.getLogger(__name__)
 
@@ -44,26 +43,5 @@ def main():
 		)
 	)
 
-def extract_functions(file_path:str) ->List[Callable]:
-	import importlib.util
-	import inspect
-	module_name = os.path.splitext(os.path.basename(file_path))[0]
-	
-	# Add project root to sys.path
-	project_root = os.path.abspath(os.path.join(file_path, "..", ".."))  # Adjust as needed
-	if project_root not in sys.path:
-		sys.path.insert(0, project_root)
-	
-	spec = importlib.util.spec_from_file_location(module_name, file_path)
-	if not spec or not spec.loader:
-		raise ImportError(f"Could not load module from {file_path}")
-	
-	module = importlib.util.module_from_spec(spec)
-	spec.loader.exec_module(module)
-	tools = []
-	for name, obj in inspect.getmembers(module):
-		if callable(obj) and hasattr(obj, 'name') and hasattr(obj, 'args_schema'):
-			tools.append(obj)
-	
-	return tools
+
 

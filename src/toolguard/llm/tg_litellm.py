@@ -12,7 +12,7 @@ from jsonschema import validate, ValidationError
 
 import dotenv
 
-from toolguard.llm.tg_llm import TG_LLM
+from toolguard.llm.i_tg_llm import I_TG_LLM
 
 model_name_to_endpoint_list=[
 #	{"endpoint":"https://ete-litellm.bx.cloud9.ibm.com", "model_name":"claude-3-7-sonnet"},
@@ -78,7 +78,7 @@ model_to_endpoint = {
 anthropic_models = ['claude-3-5-sonnet-latest', 'claude-3-5-haiku']
 RITS = "RITS"
 
-class LitellmModel(TG_LLM):
+class LitellmModel(I_TG_LLM):
 	def __init__(self, model_name:str, provider: str):
 		self.model_name = model_name
 		self.provider = provider

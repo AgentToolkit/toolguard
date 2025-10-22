@@ -12,9 +12,9 @@ from toolguard.data_types import RuntimeDomain, ToolPolicy
 from toolguard.gen_py.domain_from_openapi import generate_domain_from_openapi
 from toolguard.runtime import ToolGuardsCodeGenerationResult
 from toolguard.gen_py.tool_guard_generator import ToolGuardGenerator
-import toolguard.utils.pytest as pytest
-import toolguard.utils.venv as venv
-import toolguard.utils.pyright as pyright
+import toolguard.gen_py.utils.pytest as pytest
+import toolguard.gen_py.utils.venv as venv
+import toolguard.gen_py.utils.pyright as pyright
 from toolguard.common.py import unwrap_fn
 
 logger = logging.getLogger(__name__)

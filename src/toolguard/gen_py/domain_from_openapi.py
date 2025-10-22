@@ -5,10 +5,10 @@ from os.path import join
 
 from toolguard.common.array import find
 from toolguard.common.py import module_to_path
-from toolguard.common.str import to_camel_case, to_snake_case
+from toolguard.common.str import to_camel_case
 from toolguard.gen_py.consts import *
 from toolguard.gen_py.templates import load_template
-from toolguard.utils.datamodel_codegen import run as dm_codegen
+from toolguard.gen_py.utils.datamodel_codegen import run as dm_codegen
 from toolguard.common.open_api import OpenAPI, Operation, Parameter, ParameterIn, PathItem, Reference, RequestBody, Response, JSchema, read_openapi
 from toolguard.data_types import FileTwin, RuntimeDomain
 
