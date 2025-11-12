@@ -34,6 +34,7 @@ class ToolGuardFullFlow:
 		step1_out_dir = join(self.work_dir, "step1")
 		step2_out_dir = join(self.work_dir, "step2")
 		self.gen_result = await build_toolguards(self.policy_text, self.tools, step1_out_dir, step2_out_dir, self.llm, self.app_name, tools2run, short1)
+		return self.gen_result
 		
 	def guard_tool_pass(self, tool_name:str,tool_params:dict) -> bool:
 		print("validate_tool_node")
@@ -49,7 +50,7 @@ class ToolGuardFullFlow:
 			toolguards.check_toolcall(tool_name, tool_params, list(self.tool_registry.values()))
 			print("ok to invoke tool")
 			return True
-		except Exception as e:
+		except PolicyViolationException as e:
 			error_message = "it is against the policy to invoke tool: " + tool_name + " Error: " + str(e)
 			print(error_message)
 			return False
