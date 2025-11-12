@@ -1,12 +1,10 @@
 import asyncio
 import os
+from os.path import join
 import shutil
-import sys
 from typing import List
 
 import markdown
-import dotenv
-dotenv.load_dotenv()
 
 from toolguard import build_toolguards
 from toolguard.llm.tg_litellm import LitellmModel
@@ -24,22 +22,26 @@ class ToolGuardFullFlow:
 		policy_text = open(wiki_path, 'r', encoding='utf-8').read()
 		self.policy_text = markdown.markdown(policy_text)
 		self.llm = LitellmModel(llm_model, "azure")
-		self.pydir = None
+		self.gen_result = None
 		self.tool_registry = {
 			(getattr(tool, "name", None) or getattr(tool, "__name__", None)): tool
 			for tool in tools
 			if getattr(tool, "name", None) or getattr(tool, "__name__", None)
 		}
 		
-	async def build_toolguards(self,tools2run: List[str] | None=None, short1=True):
-		self.pydir = await build_toolguards(self.policy_text,self.tools,self.work_dir, self.llm, self.app_name, tools2run, short1)
+	async def build_toolguards(self, tools2run: List[str] | None=None, short1=True):
+		os.makedirs(self.work_dir, exist_ok=True)
+		step1_out_dir = join(self.work_dir, "step1")
+		step2_out_dir = join(self.work_dir, "step2")
+		self.gen_result = await build_toolguards(self.policy_text, self.tools, step1_out_dir, step2_out_dir, self.llm, self.app_name, tools2run, short1)
 		
 	def guard_tool_pass(self, tool_name:str,tool_params:dict) -> bool:
 		print("validate_tool_node")
 		import sys
-		sys.path.insert(0, self.pydir)
+		step2_out_dir = join(self.work_dir, "step2")
+		sys.path.insert(0, step2_out_dir)
 		from rt_toolguard import load_toolguards
-		toolguards = load_toolguards(self.pydir)
+		toolguards = load_toolguards(step2_out_dir)
 		from rt_toolguard.data_types import PolicyViolationException
 
 		try:

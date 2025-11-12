@@ -3,7 +3,6 @@ pydantic
 litellm
 pytest
 pytest-json-report
-# loguru
 pyright
 datamodel-code-generator
 markdown
@@ -11,7 +10,7 @@ anyio
 docstring-parser
 pytest-asyncio
 mellea
-
+smolagents
 # for ui:
 #flask
 #flask-cors

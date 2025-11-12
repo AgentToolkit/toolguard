@@ -2,10 +2,12 @@
 from enum import StrEnum
 import json
 import os
-from pathlib import Path
+from os.path import join
 import subprocess
-from typing import Any, List, Dict, Literal, Optional, Set
+import sys
+from typing import Any, List, Dict, Optional
 from pydantic import BaseModel, Field
+from contextlib import contextmanager
 
 from toolguard.data_types import FileTwin
 
@@ -99,7 +101,48 @@ class TestReport(BaseModel):
                 errors.add(error)
         return list(errors)
 
-def run(folder:str, test_file:str, report_file)->TestReport:
+def run(folder:str, test_file:str, report_file:str)->TestReport:
+    # _run_in_subprocess(folder, test_file, report_file)
+    _run_safe_python(folder, test_file, report_file)
+    
+    report = read_test_report(os.path.join(folder, report_file))
+    #overwrite it with indented version
+    with open(os.path.join(folder, report_file), "w", encoding="utf-8") as f:
+        json.dump(report.model_dump(), f, indent=2)
+
+    return report
+
+@contextmanager
+def temp_sys_path(path):
+    """Temporarily insert a path into sys.path."""
+    sys.path.insert(0, path)
+    try:
+        yield
+    finally:
+        try:
+            sys.path.remove(path)
+        except ValueError:
+            pass
+
+def _run_safe_python(folder:str, test_file:str, report_file:str):
+    from smolagents.local_python_executor import LocalPythonExecutor
+    exec = LocalPythonExecutor(
+        additional_authorized_imports = ["pytest"],
+        max_print_outputs_length= None,
+        additional_functions = None,
+    )
+    exec.static_tools = {
+        "temp_sys_path": temp_sys_path
+    }
+    code = f"""
+import pytest
+with temp_sys_path("{folder}")
+    pytest.main(["{join(folder, test_file)}", "--quiet", "--json-report", "--json-report-file={join(folder, report_file)}"])
+"""
+    out = exec(code)
+    return out
+
+def _run_in_subprocess(folder:str, test_file:str, report_file:str):
     subprocess.run([
             "pytest",
             test_file,
@@ -113,13 +156,7 @@ def run(folder:str, test_file:str, report_file)->TestReport:
             "PYTHONPATH": "."
         },
         cwd=folder)
-    report = read_test_report(os.path.join(folder, report_file))
 
-    #overwrite it with indented version
-    with open(os.path.join(folder, report_file), "w", encoding="utf-8") as f:
-        json.dump(report.model_dump(), f, indent=2)
-
-    return report
 
 def configure(folder:str):
     """adds the test function docstring to the output report"""

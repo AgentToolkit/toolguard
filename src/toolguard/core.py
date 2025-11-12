@@ -15,27 +15,31 @@ from toolguard.tool_policy_extractor.text_tool_policy_generator import ToolInfo,
 
 logger = logging.getLogger(__name__)
 
-async def build_toolguards(policy_text:str, tools: List[Callable]|str, out_dir:str, step1_llm:I_TG_LLM, app_name:str= "my_app", tools2run: List[str] | None=None, short1=True):
-	os.makedirs(out_dir, exist_ok=True)
-	step1_out_dir = join(out_dir, "step1")
-	step2_out_dir = join(out_dir, "step2")
+async def build_toolguards(
+		policy_text:str, 
+		tools: List[Callable]|str, 
+		step1_out_dir:str, 
+		step2_out_dir:str, 
+		step1_llm:I_TG_LLM, 
+		app_name:str= "my_app", 
+		tools2run: List[str] | None=None, 
+		short1=True)->ToolGuardsCodeGenerationResult:
 	
 	if isinstance(tools, list): #supports list of functions or list of langgraph tools
 		tools_info = [ToolInfo.from_function(tool) for tool in tools]
 		await extract_policies(policy_text, tools_info, step1_out_dir, step1_llm, tools2run, short1)
-		await generate_guards_from_tool_policies(tools, step1_out_dir, step2_out_dir, app_name, None, tools2run)
+		return await generate_guards_from_tool_policies(tools, step1_out_dir, step2_out_dir, app_name, None, tools2run)
 	
-	elif isinstance(tools, str): #Backward compatibility to support OpenAPI specs
+	if isinstance(tools, str): #Backward compatibility to support OpenAPI specs
 		oas_path = tools
 		with open(oas_path, 'r', encoding='utf-8') as file:
 			oas = json.load(file)
 		summarizer = OASSummarizer(oas)
 		tools_info = summarizer.summarize()
 		await extract_policies(policy_text, tools_info, step1_out_dir, step1_llm, tools2run, short1)
-		await generate_guards_from_tool_policies_oas(oas_path, step1_out_dir, step2_out_dir, app_name, tools2run)
+		return await generate_guards_from_tool_policies_oas(oas_path, step1_out_dir, step2_out_dir, app_name, tools2run)
 	
-	return step2_out_dir
-
+	raise "Unknown tools"
 
 
 async def generate_guards_from_tool_policies(

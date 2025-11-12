@@ -1,6 +1,7 @@
 
 import asyncio
-
+import os
+from os.path import join
 
 import markdown
 import logging
@@ -32,11 +33,15 @@ def main():
 
 	llm = LitellmModel(args.step1_model_name, "azure") #FIXME from args
 	tools = extract_functions(args.tools_py_file)
+	os.makedirs(args.out_dir, exist_ok=True)
+	step1_out_dir = join(args.out_dir, args.step1_dir_name)
+	step2_out_dir = join(args.out_dir, args.step2_dir_name)
 	asyncio.run(
 		build_toolguards(
 			policy_text = policy_text, 
 			tools = tools,
-			out_dir = args.out_dir,
+			step1_out_dir = step1_out_dir,
+			step2_out_dir = step2_out_dir,
 			step1_llm = llm,
 			tools2run = args.tools2run,
 			short1 = args.short_step1

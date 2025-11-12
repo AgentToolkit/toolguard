@@ -14,7 +14,7 @@ import dotenv
 
 from toolguard.llm.i_tg_llm import I_TG_LLM
 
-model_name_to_endpoint_list=[
+rits_model_name_to_endpoint_list=[
 #	{"endpoint":"https://ete-litellm.bx.cloud9.ibm.com", "model_name":"claude-3-7-sonnet"},
 	{"endpoint":"https://inference-3scale-apicast-production.apps.rits.fmaas.res.ibm.com/avengers-jamba-9b","model_name":"ibm-fms/avengers-jamba-9b"},
 	{"endpoint":"https://inference-3scale-apicast-production.apps.rits.fmaas.res.ibm.com/codellama-34b-instruct-hf","model_name":"codellama/CodeLlama-34b-Instruct-hf"},
@@ -70,9 +70,9 @@ model_name_to_endpoint_list=[
 	{"endpoint":"https://inference-3scale-apicast-production.apps.rits.fmaas.res.ibm.com/qwen2-vl-72b-instruct","model_name":"Qwen/Qwen2-VL-72B-Instruct"},
 	{"endpoint":"https://inference-3scale-apicast-production.apps.rits.fmaas.res.ibm.com/slate-125m-english-rtrvr-v2","model_name":"ibm/slate-125m-english-rtrvr-v2"}]
 
-model_to_endpoint = {
+rits_model_to_endpoint = {
     entry["model_name"]: entry["endpoint"]
-    for entry in model_name_to_endpoint_list
+    for entry in rits_model_name_to_endpoint_list
 }
 
 anthropic_models = ['claude-3-5-sonnet-latest', 'claude-3-5-haiku']
@@ -89,7 +89,7 @@ class LitellmModel(I_TG_LLM):
 				messages=messages,
 				model=self.model_name,
 				custom_llm_provider="openai",
-				base_url=model_to_endpoint[self.model_name],
+				base_url=rits_model_to_endpoint[self.model_name],
 				extra_headers={
 					'RITS_API_KEY': os.getenv("RITS_API_KEY"),
 					'Content-Type': 'application/json'
