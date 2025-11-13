@@ -39,10 +39,11 @@ class ToolGuardFullFlow:
 	def guard_tool_pass(self, tool_name:str,tool_params:dict) -> bool:
 		print("validate_tool_node")
 		import sys
-		step2_out_dir = join(self.work_dir, "step2")
-		sys.path.insert(0, step2_out_dir)
+		
+		code_root_dir = self.gen_result.root_dir
+		sys.path.insert(0, code_root_dir)
 		from rt_toolguard import load_toolguards
-		toolguards = load_toolguards(step2_out_dir)
+		toolguards = load_toolguards(code_root_dir)
 		from rt_toolguard.data_types import PolicyViolationException
 
 		try:
@@ -68,8 +69,8 @@ if __name__ == '__main__':
 	asyncio.run(tgb.build_toolguards())
 	result_fail = tgb.guard_tool_pass("divide_tool", {"g": 5, "h": 0})
 	print(result_fail)
-	resullt_success = tgb.guard_tool_pass("divide_tool", {"g": 5, "h": 4})
-	print(resullt_success)
+	result_success = tgb.guard_tool_pass("divide_tool", {"g": 5, "h": 4})
+	print(result_success)
 	
 	
 	
