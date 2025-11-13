@@ -9,6 +9,8 @@ from typing import Any, Callable, List, Optional
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel
 
+
+from toolguard.data_types import ToolPolicy,load_tool_policy
 from toolguard.llm.i_tg_llm import I_TG_LLM
 from toolguard.tool_policy_extractor.utils import read_prompt_file, generate_messages, save_output, find_mismatched_references
 
@@ -373,24 +375,27 @@ class TextToolPolicyGenerator:
 			return False
 		return True
 
-async def extract_policies(policy_text:str, tools:List[ToolInfo], step1_output_dir:str, llm:I_TG_LLM, tools_shortlist: Optional[List[str]]=None, short=False):
+async def extract_policies(policy_text:str, tools:List[ToolInfo], step1_output_dir:str, llm:I_TG_LLM, tools_shortlist: Optional[List[str]]=None, short=False)->List[ToolPolicy]:
 	if not os.path.isdir(step1_output_dir):
 		os.makedirs(step1_output_dir)
 		
 	process_dir = os.path.join(step1_output_dir, "process")
 	if not os.path.isdir(process_dir):
 		os.makedirs(process_dir)
-	
+	output_tool_policies  = []
 	tpg = TextToolPolicyGenerator(llm, policy_text, tools, process_dir)
-	async def do_one_tool(fname):
+	async def do_one_tool(tool_name):
 		if short:
-			final_output = await tpg.generate_minimal_policy(fname)
+			final_output = await tpg.generate_minimal_policy(tool_name)
 		else:
-			final_output = await tpg.generate_policy(fname)
+			final_output = await tpg.generate_policy(tool_name)
 
-		with open(os.path.join(step1_output_dir, fname + ".json"), "w") as outfile1:
+		with open(os.path.join(step1_output_dir, tool_name + ".json"), "w") as outfile1:
 			outfile1.write(json.dumps(final_output, indent=2))
+		output_tool_policies.append(load_tool_policy(os.path.join(step1_output_dir, tool_name + ".json"), tool_name))
 
 	await asyncio.gather(*[do_one_tool(tool.name) for tool in tools if ((tools_shortlist is None) or (tool.name in tools_shortlist))])
 	print("All tools done")
+	return output_tool_policies
+	
 

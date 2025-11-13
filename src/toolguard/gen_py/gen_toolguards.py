@@ -89,6 +89,7 @@ async def generate_toolguards_from_domain(app_name: str, tool_policies: List[Too
         in zip(tools_w_poilicies, tool_results)
     }        
     return ToolGuardsCodeGenerationResult(
+        root_dir=py_root,
         domain=domain,
         tools=tools_result
     ).save(py_root)

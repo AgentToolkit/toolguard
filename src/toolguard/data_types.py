@@ -1,3 +1,4 @@
+import json
 from abc import ABC, abstractmethod
 import os
 from pathlib import Path
@@ -61,6 +62,23 @@ class ToolPolicyItem(BaseModel):
 class ToolPolicy(BaseModel):
     tool_name: str = Field(..., description="Name of the tool")
     policy_items: List[ToolPolicyItem] = Field(..., description="Policy items. All (And logic) policy items must hold whehn invoking the tool.")
+
+
+def load_tool_policy(file_path: str, tool_name: str) -> ToolPolicy:
+    with open(file_path, "r") as file:
+        d = json.load(file)
+    
+    items = [ToolPolicyItem(
+        name=item.get("policy_name"),
+        description=item.get("description"),
+        references=item.get("references"),
+        compliance_examples=item.get("compliance_examples"),
+        violation_examples=item.get("violating_examples")
+    )
+        for item in d.get("policies", [])
+        if not item.get("skip")]
+    return ToolPolicy(tool_name=tool_name, policy_items=items)
+
 
 class Domain(BaseModel):
     app_name: str = Field(..., description="Application name")

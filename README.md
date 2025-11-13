@@ -48,11 +48,11 @@ Uses the output from Step 1 and the OpenAPI spec to generate Python code that en
    ```bash
    pip install -r requirements.txt
    ```
-
+[.env.example](.env.example)
 4. **Create a `.env` file:**
 
-   Copy the `src/.env.example` to `src/.env` and fill in your environment variables. 
-   Replace `AZURE_OPENAI_API_KEY` with your actual API key.
+   Copy the `.env.example` to `src/.env` and fill in your environment variables. 
+   Replace `AZURE_OPENAI_API_KEY` with your actual API key. and add in TOOLGUARD_GENPY_ARGS your API_KEY.
 
 ## ▶️ Usage
 

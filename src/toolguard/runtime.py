@@ -35,6 +35,7 @@ class ToolGuardCodeResult(BaseModel):
     test_files: List[FileTwin|None]
 
 class ToolGuardsCodeGenerationResult(BaseModel):
+    root_dir: str
     domain: RuntimeDomain
     tools: Dict[str, ToolGuardCodeResult]
 
