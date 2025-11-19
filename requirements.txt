@@ -6,7 +6,6 @@ pytest-json-report
 pyright
 datamodel-code-generator
 markdown
-anyio
 docstring-parser
 pytest-asyncio
 mellea

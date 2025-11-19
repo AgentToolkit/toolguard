@@ -6,9 +6,8 @@ from os.path import join
 import markdown
 import logging
 
-from toolguard.core import build_toolguards
+from toolguard.buildtime import build_toolguards, load_functions_in_file
 from toolguard.llm.tg_litellm import LitellmModel
-from toolguard.tool_policy_extractor.text_tool_policy_generator import load_functions_in_file
 
 logger = logging.getLogger(__name__)
 

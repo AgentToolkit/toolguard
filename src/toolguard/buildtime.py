@@ -2,16 +2,18 @@ import asyncio
 import os
 from os.path import join
 from typing import Callable, List, Optional
-
+import inspect
 import json
 import logging
 
+from langchain_core.tools import BaseTool
 from toolguard.llm.i_tg_llm import I_TG_LLM
 from toolguard.runtime import ToolGuardsCodeGenerationResult
 from toolguard.data_types import ToolPolicy, ToolPolicyItem, load_tool_policy
 from toolguard.gen_py.gen_toolguards import generate_toolguards_from_functions, generate_toolguards_from_openapi
 from toolguard.tool_policy_extractor.create_oas_summary import OASSummarizer
 from toolguard.tool_policy_extractor.text_tool_policy_generator import ToolInfo, extract_policies
+from toolguard.common import py
 
 logger = logging.getLogger(__name__)
 
@@ -45,14 +47,14 @@ async def build_toolguards(
 async def generate_guards_from_tool_policies(
 		funcs: List[Callable],
 		tool_policies: List[ToolPolicy],
-		to_step2_path: str,
+		step2_path: str,
 		app_name: str,
 		lib_names: Optional[List[str]] = None,
 		tool_names: Optional[List[str]] = None) -> ToolGuardsCodeGenerationResult:
-	os.makedirs(to_step2_path, exist_ok=True)
+	os.makedirs(step2_path, exist_ok=True)
 	
 	tool_policies = [policy for policy in tool_policies if (not tool_names) or (policy.tool_name in tool_names)]
-	return await generate_toolguards_from_functions(app_name, tool_policies, to_step2_path, funcs=funcs, module_roots=lib_names)
+	return await generate_toolguards_from_functions(app_name, tool_policies, step2_path, funcs=funcs, module_roots=lib_names)
 
 
 async def generate_guards_from_tool_policies_oas(
@@ -78,3 +80,13 @@ def load_policies_in_folder(folder:str, ):
 			tool_policies.append(policy)
 	return tool_policies
 
+def load_functions_in_file(py_root:str, file_path: str) -> List[Callable]:
+	with py.temp_python_path(py_root):
+		module = py.load_module_from_path(file_path, py_root)
+	funcs = []
+	for name, obj in inspect.getmembers(module):
+		if isinstance(obj, BaseTool):
+			funcs.append(py.unwrap_fn(obj))
+		elif callable(obj) and not (name=='tool' and obj.__module__ =='langchain_core.tools.convert'):
+			funcs.append(obj)
+	return funcs

@@ -32,7 +32,6 @@ async def build_calculator(
     
     # step1
     step1_out_dir = join(run_dir, STEP1)
-    tools_info = []
     oas_path = tools if isinstance(tools, str) else None
     
     if oas_path:

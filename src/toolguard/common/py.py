@@ -99,7 +99,7 @@ def extract_docstr_args(func:Callable) -> str:
 def get_func_signature(obj)->str:
 	if inspect.isfunction(obj):
 		return inspect.signature(obj)
-	if hasattr(obj, "func") and inspect.isfunction(obj.func):
+	if hasattr(obj, "func") and inspect.isfunction(obj.func): # a @tool
 		return inspect.signature(obj.func)
 	if hasattr(obj, "args_schema"):
 		schema = obj.args_schema
