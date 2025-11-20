@@ -11,7 +11,7 @@ import pytest
 from toolguard import generate_guards_from_tool_policies_oas, generate_guards_from_tool_policies, extract_policies
 from toolguard import IToolInvoker, ToolFunctionsInvoker, ToolGuardsCodeGenerationResult, ToolMethodsInvoker, load_toolguard_code_result, load_toolguards
 from toolguard import LitellmModel, load_functions_in_file, ToolInfo
-from toolguard.tool_policy_extractor.create_oas_summary import OASSummarizer
+from toolguard.gen_spec.oas_summary import OASSummarizer
 
 wiki_path = "examples/calculator/inputs/policy_doc.md"
 model = "gpt-4o-2024-08-06"

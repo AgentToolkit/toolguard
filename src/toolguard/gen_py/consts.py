@@ -1,5 +1,5 @@
-from toolguard.common.str import to_snake_case
-from toolguard.data_types import ToolPolicy, ToolPolicyItem
+from ..common.str import to_snake_case
+from ..data_types import ToolPolicy, ToolPolicyItem
 
 
 RUNTIME_PACKAGE_NAME="rt_toolguard"

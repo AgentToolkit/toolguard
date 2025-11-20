@@ -2,7 +2,7 @@
 from typing import TypeVar
 from pydantic import BaseModel, Field
 
-from toolguard.common.dict import find_ref
+from .dict import find_ref
 
 
 class Reference(BaseModel):

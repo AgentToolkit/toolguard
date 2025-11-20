@@ -1,9 +1,9 @@
 import asyncio
 import re
 from typing import Set
-from toolguard.data_types import Domain, ToolPolicyItem
 from mellea.backends.types import ModelOption
-from toolguard.gen_py.prompts.pseudo_code import tool_policy_pseudo_code
+from ..data_types import Domain, ToolPolicyItem
+from .prompts.pseudo_code import tool_policy_pseudo_code
 
 MAX_TRIALS = 3
 async def tool_dependencies(policy_item: ToolPolicyItem, tool_signature: str, domain:Domain, trial=0) -> Set[str]:

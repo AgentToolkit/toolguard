@@ -5,15 +5,15 @@ from typing import Callable, List, Optional
 import inspect
 import json
 import logging
-
 from langchain_core.tools import BaseTool
-from toolguard.llm.i_tg_llm import I_TG_LLM
-from toolguard.runtime import ToolGuardsCodeGenerationResult
-from toolguard.data_types import ToolPolicy, ToolPolicyItem, load_tool_policy
-from toolguard.gen_py.gen_toolguards import generate_toolguards_from_functions, generate_toolguards_from_openapi
-from toolguard.tool_policy_extractor.create_oas_summary import OASSummarizer
-from toolguard.tool_policy_extractor.text_tool_policy_generator import ToolInfo, extract_policies
-from toolguard.common import py
+
+from .llm.i_tg_llm import I_TG_LLM
+from .runtime import ToolGuardsCodeGenerationResult
+from .data_types import ToolPolicy, ToolPolicyItem, load_tool_policy, ToolInfo
+from .gen_py.gen_toolguards import generate_toolguards_from_functions, generate_toolguards_from_openapi
+from .gen_spec.oas_summary import OASSummarizer
+from .gen_spec.spec_generator import extract_policies
+from .common import py
 
 logger = logging.getLogger(__name__)
 

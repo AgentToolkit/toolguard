@@ -6,19 +6,18 @@ from os.path import join
 import re
 from typing import Callable, List, Tuple
 
-from toolguard.common import py
-from toolguard.common.llm_py import get_code_content
-from toolguard.common.py_doc_str import extract_docstr_args
-from toolguard.common.str import to_snake_case
-from toolguard.data_types import DEBUG_DIR, TESTS_DIR, FileTwin, RuntimeDomain, ToolPolicy, ToolPolicyItem
-from toolguard.gen_py.consts import guard_fn_module_name, guard_fn_name, guard_item_fn_module_name, guard_item_fn_name, test_fn_module_name
-from toolguard.gen_py.tool_dependencies import tool_dependencies
-from toolguard.runtime import ToolGuardCodeResult, find_class_in_module
-import toolguard.gen_py.utils.pytest as pytest
-import toolguard.gen_py.utils.pyright as pyright
-from toolguard.gen_py.prompts.gen_tests import generate_init_tests, improve_tests
-from toolguard.gen_py.prompts.improve_guard import improve_tool_guard
-from toolguard.gen_py.templates import load_template
+from ..common import py
+from ..common.llm_py import get_code_content
+from ..common.py_doc_str import extract_docstr_args
+from ..common.str import to_snake_case
+from ..data_types import DEBUG_DIR, TESTS_DIR, FileTwin, RuntimeDomain, ToolPolicy, ToolPolicyItem
+from .consts import guard_fn_module_name, guard_fn_name, guard_item_fn_module_name, guard_item_fn_name, test_fn_module_name
+from .tool_dependencies import tool_dependencies
+from ..runtime import ToolGuardCodeResult, find_class_in_module
+from .utils import pytest, pyright
+from .prompts.gen_tests import generate_init_tests, improve_tests
+from .prompts.improve_guard import improve_tool_guard
+from .templates import load_template
 
 logger = logging.getLogger(__name__)
 

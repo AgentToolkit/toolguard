@@ -9,7 +9,7 @@ from typing import Any, List, Dict, Optional
 from pydantic import BaseModel, Field
 from contextlib import contextmanager
 
-from toolguard.data_types import FileTwin
+from ...data_types import FileTwin
 
 
 class TestOutcome(StrEnum):

@@ -4,9 +4,9 @@ import json
 import os
 from typing import List, Optional
 
-from toolguard.data_types import ToolInfo, ToolPolicy, load_tool_policy
-from toolguard.llm.i_tg_llm import I_TG_LLM
-from toolguard.tool_policy_extractor.utils import read_prompt_file, generate_messages, save_output, find_mismatched_references
+from ..data_types import ToolInfo, ToolPolicy, load_tool_policy
+from ..llm.i_tg_llm import I_TG_LLM
+from .utils import read_prompt_file, generate_messages, save_output, find_mismatched_references
 
 class TextToolPolicyGenerator:
 	def __init__(self, llm:I_TG_LLM, policy_document:str, tools:List[ToolInfo], out_dir:str) -> None:

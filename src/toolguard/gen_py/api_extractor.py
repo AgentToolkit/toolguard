@@ -9,8 +9,8 @@ from typing import Callable, DefaultDict, Dict, List, Literal, Optional, Set, Tu
 from typing import Annotated, Union
 from collections import defaultdict, deque
 import typing
-from toolguard.common.py import module_to_path, unwrap_fn
-from toolguard.data_types import FileTwin
+from ..common.py import module_to_path, unwrap_fn
+from ..data_types import FileTwin
 
 Dependencies = DefaultDict[type, Set[type]]
 

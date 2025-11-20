@@ -12,7 +12,7 @@ from jsonschema import validate, ValidationError
 
 import dotenv
 
-from toolguard.llm.i_tg_llm import I_TG_LLM
+from ..llm.i_tg_llm import I_TG_LLM
 
 rits_model_name_to_endpoint_list=[
 #	{"endpoint":"https://ete-litellm.bx.cloud9.ibm.com", "model_name":"claude-3-7-sonnet"},

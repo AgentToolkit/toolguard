@@ -12,7 +12,7 @@ setup(
     author_email="naamaz@il.ibm.com, davidbo@il.ibm.com",
     packages=find_packages(where="src"),
     package_data={
-        "toolguard": ["tool_policy_extractor/prompts/*.txt","gen_py/templates/*.j2"],
+        "toolguard": ["gen_spec/prompts/*.txt", "gen_py/templates/*.j2"],
     },
     package_dir={"": "src"},
     install_requires=requirements,

@@ -1,6 +1,6 @@
 
 from typing import List, Set
-from toolguard.data_types import Domain, FileTwin, ToolPolicyItem
+from ...data_types import Domain, FileTwin, ToolPolicyItem
 from mellea import generative
 
 # from toolguard.gen_py.prompts.python_code import PythonCodeModel

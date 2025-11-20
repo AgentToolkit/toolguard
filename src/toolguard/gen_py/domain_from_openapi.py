@@ -3,14 +3,14 @@ from pathlib import Path
 from typing import List, Optional, Tuple, Union
 from os.path import join
 
-from toolguard.common.array import find
-from toolguard.common.py import module_to_path
-from toolguard.common.str import to_camel_case
-from toolguard.gen_py.consts import *
-from toolguard.gen_py.templates import load_template
-from toolguard.gen_py.utils.datamodel_codegen import run as dm_codegen
-from toolguard.common.open_api import OpenAPI, Operation, Parameter, ParameterIn, PathItem, Reference, RequestBody, Response, JSchema, read_openapi
-from toolguard.data_types import FileTwin, RuntimeDomain
+from ..common.array import find
+from ..common.py import module_to_path
+from ..common.str import to_camel_case, to_pascal_case
+from .consts import *
+from .templates import load_template
+from .utils.datamodel_codegen import run as dm_codegen
+from ..common.open_api import OpenAPI, Operation, Parameter, ParameterIn, PathItem, Reference, RequestBody, Response, JSchema, read_openapi
+from ..data_types import FileTwin, RuntimeDomain
 
 ARGS = "args"
 
@@ -182,12 +182,14 @@ def _make_signature(op: Operation, params: List[Parameter], oas:OpenAPI)->Tuple[
             rsp_type = _oas_to_py_type(scm_or_ref, oas)
             if rsp_type is None:
                 rsp_type = f"{fn_name}Response"
-
+        else:
+            rsp_type = "Any"
     return args, rsp_type
 
 def _oas_to_py_type(scm_or_ref:Union[Reference, JSchema], oas:OpenAPI)->str | None:
     if isinstance(scm_or_ref, Reference):
-        return scm_or_ref.ref.split("/")[-1]
+        typ = scm_or_ref.ref.split("/")[-1]
+        return to_pascal_case(typ)
 
     scm = oas.resolve_ref(scm_or_ref, JSchema)
     if scm:

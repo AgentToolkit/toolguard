@@ -5,7 +5,7 @@ import inspect
 from types import ModuleType
 from typing import Callable
 import importlib.util
-from toolguard.common.str import to_snake_case
+from .str import to_snake_case
 
 def py_extension(filename:str)->str:
     return filename if filename.endswith(".py") else filename+".py" 

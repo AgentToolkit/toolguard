@@ -7,16 +7,14 @@ from typing import Callable, List, Literal, Optional, cast
 
 import mellea
 
-from toolguard.gen_py.consts import *
-from toolguard.gen_py.domain_from_funcs import generate_domain_from_functions
-from toolguard.data_types import RuntimeDomain, ToolPolicy
-from toolguard.gen_py.domain_from_openapi import generate_domain_from_openapi
-from toolguard.runtime import ToolGuardsCodeGenerationResult
-from toolguard.gen_py.tool_guard_generator import ToolGuardGenerator
-import toolguard.gen_py.utils.pytest as pytest
-import toolguard.gen_py.utils.venv as venv
-import toolguard.gen_py.utils.pyright as pyright
-from toolguard.common.py import unwrap_fn
+from .consts import *
+from .domain_from_funcs import generate_domain_from_functions
+from ..data_types import RuntimeDomain, ToolPolicy
+from .domain_from_openapi import generate_domain_from_openapi
+from ..runtime import ToolGuardsCodeGenerationResult
+from .tool_guard_generator import ToolGuardGenerator
+from .utils import pytest, venv, pyright
+from ..common.py import unwrap_fn
 
 logger = logging.getLogger(__name__)
 

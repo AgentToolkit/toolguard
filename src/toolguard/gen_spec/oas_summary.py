@@ -1,7 +1,7 @@
 import json
 from typing import Any, Dict, List
 
-from toolguard.data_types import ToolInfo
+from ..data_types import ToolInfo
 
 class OASSummarizer:
     def __init__(self, oas: Dict[str, Any]):

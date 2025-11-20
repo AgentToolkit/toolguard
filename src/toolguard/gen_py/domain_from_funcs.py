@@ -3,10 +3,10 @@ from pathlib import Path
 from typing import Callable, List
 from os.path import join
 
-from toolguard.gen_py.api_extractor import APIExtractor
-from toolguard.common.str import to_camel_case, to_snake_case
-from toolguard.data_types import FileTwin, RuntimeDomain
-from toolguard.gen_py.consts import *
+from .api_extractor import APIExtractor
+from ..common.str import to_camel_case, to_snake_case
+from ..data_types import FileTwin, RuntimeDomain
+from .consts import *
 
 
 def generate_domain_from_functions(py_path:str, app_name: str, funcs: List[Callable], include_module_roots: List[str])->RuntimeDomain:

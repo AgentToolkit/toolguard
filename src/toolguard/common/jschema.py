@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
 
-from toolguard.common.ref import DocumentWithRef, Reference
+from .ref import DocumentWithRef, Reference
 
 
 class JSONSchemaTypes(StrEnum):

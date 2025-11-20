@@ -1,4 +1,4 @@
-from toolguard.data_types import Domain, ToolPolicyItem
+from ...data_types import Domain, ToolPolicyItem
 from mellea import generative
 
 

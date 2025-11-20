@@ -1,7 +1,7 @@
 from jinja2 import Environment, PackageLoader, select_autoescape
 
-from toolguard.common.py import path_to_module
-from toolguard.common.str import to_snake_case
+from ...common.py import path_to_module
+from ...common.str import to_snake_case
 
 env = Environment(
     loader=PackageLoader("toolguard.gen_py", "templates"),
