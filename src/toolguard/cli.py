@@ -1,12 +1,15 @@
 
 import asyncio
+import inspect
 import os
 from os.path import join
+from typing import Callable, List
 
 import markdown
 import logging
 
-from toolguard.buildtime import build_toolguards, load_functions_in_file
+from toolguard.buildtime import build_toolguards
+from toolguard.common import py
 from toolguard.llm.tg_litellm import LitellmModel
 
 logger = logging.getLogger(__name__)
@@ -48,5 +51,13 @@ def main():
 		)
 	)
 
-
-
+def load_functions_in_file(py_root:str, file_path: str) -> List[Callable]:
+	with py.temp_python_path(py_root):
+		module = py.load_module_from_path(file_path, py_root)
+	funcs = []
+	for name, obj in inspect.getmembers(module):
+		# if isinstance(obj, BaseTool):
+		# 	funcs.append(py.unwrap_fn(obj))
+		if callable(obj) and not (name=='tool' and obj.__module__ =='langchain_core.tools.convert'):
+			funcs.append(obj)
+	return funcs

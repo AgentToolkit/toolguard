@@ -22,7 +22,13 @@ ENV_GENPY_BACKEND_NAME = 'TOOLGUARD_GENPY_BACKEND_NAME'
 ENV_GENPY_MODEL_ID = 'TOOLGUARD_GENPY_MODEL_ID'
 ENV_GENPY_ARGS = 'TOOLGUARD_GENPY_ARGS'
 
-async def generate_toolguards_from_functions(app_name: str, tool_policies: List[ToolPolicy], py_root:str, funcs: List[Callable], module_roots: Optional[List[str]]=None)->ToolGuardsCodeGenerationResult:
+async def generate_toolguards_from_functions(
+    app_name: str,
+    tool_policies: List[ToolPolicy],
+    py_root: str,
+    funcs: List[Callable],
+    module_roots: Optional[List[str]] = None,
+) -> ToolGuardsCodeGenerationResult:
     assert funcs, "Funcs cannot be empty"
     logger.debug(f"Starting... will save into {py_root}")
 

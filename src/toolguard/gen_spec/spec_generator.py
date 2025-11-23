@@ -300,9 +300,6 @@ class TextToolPolicyGenerator:
 		return True
 
 async def extract_policies(policy_text:str, tools:List[ToolInfo], step1_output_dir:str, llm:I_TG_LLM, tools_shortlist: Optional[List[str]]=None, short=False)->List[ToolPolicy]:
-	if not os.path.isdir(step1_output_dir):
-		os.makedirs(step1_output_dir)
-		
 	process_dir = os.path.join(step1_output_dir, "process")
 	if not os.path.isdir(process_dir):
 		os.makedirs(process_dir)
