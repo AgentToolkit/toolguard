@@ -78,7 +78,10 @@ async def generate_toolguards_from_domain(app_name: str, tool_policies: List[Too
     venv.run(join(py_root, PY_ENV), PY_PACKAGES)
     pyright.config(py_root)
     pytest.configure(py_root)
-
+    for tool_policy in tool_policies:
+        for policy in tool_policy.policy_items:
+            policy.name = policy.name.replace(".","_")
+        
     with start_melea_session():
         #tools
         tools_w_poilicies = [tool_policy for tool_policy in tool_policies if len(tool_policy.policy_items) > 0]
