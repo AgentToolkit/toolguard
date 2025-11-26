@@ -31,7 +31,6 @@ def langchain_tools_to_openapi(
             # Tools without args → empty schema
             request_body = None
 
-        response_schema = tool.get_output_schema().model_json_schema()
         paths[f"/tools/{tool.name}"] = {
             "post": {
                 "summary": tool.description,
@@ -40,7 +39,7 @@ def langchain_tools_to_openapi(
                 "responses": {
                     "200": {
                         "description": "Tool result",
-                        "content": {"application/json": response_schema},
+                        "content": {"application/json": tool.get_output_jsonschema()},
                     }
                 },
             }
