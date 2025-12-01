@@ -1,5 +1,5 @@
 import json
-import os
+import sys
 import subprocess
 from pydantic import BaseModel
 from typing import List, Optional
@@ -61,8 +61,8 @@ def get_text_by_range(file_content: str, rng: Range)-> str:
     return "\n".join(selected_lines)
 
 
-def run(folder:str, py_file:str, venv_name:str)->DiagnosticsReport:
-    py_path = os.path.join(venv_name, "bin", "python3")
+def run(folder:str, py_file:str)->DiagnosticsReport:
+    py_path = sys.executable
     res = subprocess.run([
             "pyright", 
             # "--venv-path", venv_path,

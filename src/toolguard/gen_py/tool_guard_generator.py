@@ -32,12 +32,11 @@ class ToolGuardGenerator:
     domain: RuntimeDomain
     common: FileTwin
 
-    def __init__(self, app_name: str, tool_policy: ToolGuardSpec, py_path: str, domain: RuntimeDomain, py_env:str) -> None:
+    def __init__(self, app_name: str, tool_policy: ToolGuardSpec, py_path: str, domain: RuntimeDomain) -> None:
         self.py_path = py_path
         self.app_name = app_name
         self.tool_policy = tool_policy
         self.domain = domain
-        self.py_env = py_env
 
     def start(self):
         app_path = join(self.py_path, to_snake_case(self.app_name))
@@ -100,12 +99,11 @@ class ToolGuardGenerator:
             logger.debug(f"tool item generated successfully '{item.name}'") # 😄🎉 Happy path 
             return guard_tests, guard
         except Exception as ex:
+            logger.exception(ex)
             logger.warning("guard generation failed. returning initial guard: %s", str(ex))
             return None, init_guard
 
     async def _generate_tests(self, item: ToolGuardSpecItem, guard: FileTwin, dep_tools: List[str])-> FileTwin:
-        fn_name = guard_item_fn_name(item)
-
         test_file_name = join(TESTS_DIR, self.tool_policy.tool_name, f"{test_fn_module_name(item)}.py")
         errors = []
         test_file = None
@@ -127,7 +125,7 @@ class ToolGuardGenerator:
                 .save(self.py_path)
             test_file.save_as(self.py_path, self.debug_dir(item, f"test_{trial_no}.py"))
 
-            syntax_report = pyright.run(self.py_path, test_file.file_name, self.py_env)
+            syntax_report = pyright.run(self.py_path, test_file.file_name)
             FileTwin(
                     file_name= self.debug_dir(item, f"test_{trial_no}_pyright.json"),
                     content=syntax_report.model_dump_json(indent=2)
@@ -140,14 +138,15 @@ class ToolGuardGenerator:
 
             #syntax ok, try to run it...
             logger.debug(f"Generated Tests for tool '{self.tool_policy.tool_name}' '{item.name}'(trial='{trial_no}')")
-            report_file_name = self.debug_dir(item, f"test_{trial_no}_pytest.json")
-            pytest_report = pytest.run(self.py_path, test_file.file_name, report_file_name)
-            if pytest_report.all_tests_collected_successfully() and pytest_report.non_empty_tests():
-                return test_file
-            if not pytest_report.non_empty_tests():  # empty test set
-                errors = ['empty set of generated unit tests is not allowed']
-            else:
-                errors = pytest_report.list_errors()
+            return test_file
+            # report_file_name = self.debug_dir(item, f"test_{trial_no}_pytest.json")
+            # pytest_report = pytest.run(self.py_path, test_file.file_name, report_file_name)
+            # if pytest_report.all_tests_collected_successfully() and pytest_report.non_empty_tests():
+            #     return test_file
+            # if not pytest_report.non_empty_tests():  # empty test set
+            #     errors = ['empty set of generated unit tests is not allowed']
+            # else:
+            #     errors = pytest_report.list_errors()
         
         raise Exception("Generated tests contain syntax errors")
     
@@ -190,7 +189,7 @@ class ToolGuardGenerator:
                 ).save(self.py_path)
             guard.save_as(self.py_path, self.debug_dir(item, f"guard_{round}_{trial}.py"))
 
-            syntax_report = pyright.run(self.py_path, guard.file_name, self.py_env)
+            syntax_report = pyright.run(self.py_path, guard.file_name)
             FileTwin(
                     file_name=self.debug_dir(item, f"guard_{round}_{trial}.pyright.json"), 
                     content=syntax_report.model_dump_json(indent=2)

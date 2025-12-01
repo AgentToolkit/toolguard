@@ -1,5 +1,5 @@
 
-from typing import List, Set
+from typing import List
 from ...data_types import Domain, FileTwin, ToolGuardSpecItem
 from mellea import generative
 

@@ -10,7 +10,7 @@ from ..data_types import MeleaSessionData, RuntimeDomain, ToolGuardSpec
 from .domain_from_openapi import generate_domain_from_openapi
 from ..runtime import ToolGuardsCodeGenerationResult
 from .tool_guard_generator import ToolGuardGenerator
-from .utils import pytest, venv, pyright
+from .utils import pytest, pyright
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ async def generate_toolguards_from_domain(
     llm_data: MeleaSessionData
 ) -> ToolGuardsCodeGenerationResult:
     # Setup env
-    venv.run(join(py_root, consts.PY_ENV), consts.PY_PACKAGES)
+    # venv.run(join(py_root, consts.PY_ENV), consts.PY_PACKAGES)
     pyright.config(py_root)
     pytest.configure(py_root)
 
@@ -77,7 +77,7 @@ async def generate_toolguards_from_domain(
         tool_results = await asyncio.gather(
             *[
                 ToolGuardGenerator(
-                    app_name, tool_policy, py_root, domain, consts.PY_ENV
+                    app_name, tool_policy, py_root, domain
                 ).generate()
                 for tool_policy in tools_w_poilicies
             ]

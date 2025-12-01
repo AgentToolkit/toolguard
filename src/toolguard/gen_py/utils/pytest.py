@@ -3,14 +3,13 @@ from enum import StrEnum
 import json
 import os
 from os.path import join
-from pathlib import Path
-import subprocess
-import sys
 from typing import Any, List, Dict, Optional
 from pydantic import BaseModel, Field
-from contextlib import contextmanager
 
+from ...common.multi_process import run_in_process
+from ...common.safe_py import run_safe_python
 from ...data_types import FileTwin
+
 
 
 class TestOutcome(StrEnum):
@@ -94,7 +93,9 @@ class TestReport(BaseModel):
         #applicative test failure
         for test in self.tests:
             if test.outcome == TestOutcome.failed:
-                error = test.call.crash.message
+                error = test.call.longrepr
+                if test.call.crash:
+                    error = test.call.crash.message
                 if test.user_properties:
                     case_desc = test.user_properties[0].get("docstring")
                     if case_desc:
@@ -103,8 +104,7 @@ class TestReport(BaseModel):
         return list(errors)
 
 def run(folder:str, test_file:str, report_file:str)->TestReport:
-    # _run_in_subprocess(folder, test_file, report_file)
-    _run_safe_python(folder, test_file, report_file)
+    run_tests_in_separate_safe_process(folder, test_file, report_file)
     
     report = read_test_report(os.path.join(folder, report_file))
     #overwrite it with indented version
@@ -113,51 +113,27 @@ def run(folder:str, test_file:str, report_file:str)->TestReport:
 
     return report
 
-@contextmanager
-def temp_python_path(path: str):
-    path = str(Path(path).resolve())
-    if path not in sys.path:
-        sys.path.insert(0, path)
-        try:
-            yield
-        finally:
-            sys.path.remove(path)
-    else:
-        # Already in sys.path, no need to remove
-        yield
-
-def _run_safe_python(folder:str, test_file:str, report_file:str):
-    from smolagents.local_python_executor import LocalPythonExecutor
-    exec = LocalPythonExecutor(
-        additional_authorized_imports = ["pytest"],
-        max_print_outputs_length= None,
-        additional_functions = None,
-    )
-    exec.static_tools = {
-        "temp_sys_path": temp_sys_path
-    }
+def run_tests_in_separate_safe_process(folder:str, test_file:str, report_file:str):
     code = f"""
 import pytest
-with temp_sys_path("{folder}"):
-    pytest.main(["{join(folder, test_file)}", "--quiet", "--json-report", "--json-report-file={join(folder, report_file)}"])
-"""
-    out = exec(code)
-    return out
+pytest.main(["{join(folder, test_file)}", "--quiet", "--json-report", "--json-report-file={join(folder, report_file)}"])
+"""   
+    return run_in_process(run_safe_python, code, ["pytest"])
 
-def _run_in_subprocess(folder:str, test_file:str, report_file:str):
-    subprocess.run([
-            "pytest",
-            test_file,
-            # "--verbose",
-            "--quiet",
-            "--json-report", 
-            f"--json-report-file={report_file}"
-        ], 
-        env={
-            **os.environ, 
-            "PYTHONPATH": "."
-        },
-        cwd=folder)
+# def _run_in_subprocess(folder:str, test_file:str, report_file:str):
+#     subprocess.run([
+#             "pytest",
+#             test_file,
+#             # "--verbose",
+#             "--quiet",
+#             "--json-report", 
+#             f"--json-report-file={report_file}"
+#         ], 
+#         env={
+#             **os.environ, 
+#             "PYTHONPATH": "."
+#         },
+#         cwd=folder)
 
 
 def configure(folder:str):

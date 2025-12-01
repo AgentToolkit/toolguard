@@ -17,6 +17,7 @@ ENV_GENPY_BACKEND_NAME = "TOOLGUARD_GENPY_BACKEND_NAME"
 ENV_GENPY_MODEL_ID = "TOOLGUARD_GENPY_MODEL_ID"
 ENV_GENPY_ARGS = "TOOLGUARD_GENPY_ARGS"
 MeleaBackendName = Literal["ollama", "hf", "openai", "watsonx", "litellm"]
+
 class MeleaSessionData(BaseModel):
     backend_name: MeleaBackendName | None = None
     model_id: str| None = None

@@ -7,9 +7,6 @@ RUNTIME_INIT_PY = "__init__.py"
 RUNTIME_TYPES_PY = "data_types.py"
 RUNTIME_APP_TYPES_PY = "domain_types.py"
 
-PY_ENV = "my_env"
-PY_PACKAGES = ["pydantic", "pytest"]#, "litellm"]
-
 def guard_fn_name(tool_policy: ToolGuardSpec)->str:
     return to_snake_case(f"guard_{tool_policy.tool_name}")
 
