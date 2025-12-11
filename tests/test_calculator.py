@@ -55,7 +55,7 @@ def assert_toolgurards_run(gen_result: ToolGuardsCodeGenerationResult, tool_invo
             return {"args": args}
         return args
     
-    with load_toolguards(gen_result.root_dir) as toolguard:
+    with load_toolguards(gen_result.out_dir) as toolguard:
         from rt_toolguard.data_types import PolicyViolationException
 
         #test compliance

@@ -62,25 +62,25 @@ async def generate_toolguards_from_domain(
         for policy in tool_policy.policy_items:
             policy.name = policy.name.replace(".","_")
 
-    with mellea.start_session(
+    tools_w_poilicies = [
+        tool_policy
+        for tool_policy in tool_policies
+        if len(tool_policy.policy_items) > 0
+    ]
+
+    m = mellea.start_session(
         backend_name = llm_data.backend_name,
         model_id=llm_data.model_id,
         **llm_data.kw_args
-    ):
-        # tools
-        tools_w_poilicies = [
-            tool_policy
-            for tool_policy in tool_policies
-            if len(tool_policy.policy_items) > 0
+    )
+    tool_results = await asyncio.gather(
+        *[
+            ToolGuardGenerator(
+                app_name, tool_policy, py_root, domain, m
+            ).generate()
+            for tool_policy in tools_w_poilicies
         ]
-        tool_results = await asyncio.gather(
-            *[
-                ToolGuardGenerator(
-                    app_name, tool_policy, py_root, domain
-                ).generate()
-                for tool_policy in tools_w_poilicies
-            ]
-        )
+    )
 
     tools_result = {
         tool.tool_name: res for tool, res in zip(tools_w_poilicies, tool_results)

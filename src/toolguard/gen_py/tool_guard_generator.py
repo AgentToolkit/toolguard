@@ -7,6 +7,8 @@ from os.path import join
 import re
 from typing import Callable, List, Tuple
 
+from mellea import MelleaSession
+
 from ..common import py
 from ..common.llm_py import get_code_content
 from ..common.py_doc_str import extract_docstr_args
@@ -51,12 +53,14 @@ class ToolGuardGenerator:
         app_name: str,
         tool_policy: ToolGuardSpec,
         py_path: str,
-        domain: RuntimeDomain
+        domain: RuntimeDomain,
+        m: MelleaSession
     ) -> None:
         self.py_path = py_path
         self.app_name = app_name
         self.tool_policy = tool_policy
         self.domain = domain
+        self.m = m
 
     def start(self):
         app_path = join(self.py_path, to_snake_case(self.app_name))
@@ -116,7 +120,7 @@ class ToolGuardGenerator:
         dep_tools = []
         if self.domain.app_api_size > 1:
             domain = self.domain.get_definitions_only()  # remove runtime fields
-            dep_tools = list(await tool_dependencies(item, sig_str, domain))
+            dep_tools = list(await tool_dependencies(item, sig_str, domain, self.m))
         logger.debug(f"Dependencies of '{item.name}': {dep_tools}")
 
         # Generate tests
@@ -174,6 +178,7 @@ class ToolGuardGenerator:
             first_time = trial_no == "a"
             if first_time:
                 res = generate_init_tests(
+                    self.m,
                     fn_src=guard,
                     policy_item=item,
                     domain=domain,  # noqa: B023
@@ -182,6 +187,7 @@ class ToolGuardGenerator:
             else:
                 assert test_file
                 res = improve_tests(
+                    self.m,
                     prev_impl=test_file.content,  # noqa: B023
                     domain=domain,  # noqa: B023
                     policy_item=item,
@@ -277,6 +283,7 @@ class ToolGuardGenerator:
             domain = self.domain.get_definitions_only()  # omit runtime fields
             prev_python = get_code_content(prev_guard.content)
             res = improve_tool_guard(
+                self.m,
                 prev_impl=prev_python,  # noqa: B023
                 domain=domain,  # noqa: B023
                 policy_item=item,
