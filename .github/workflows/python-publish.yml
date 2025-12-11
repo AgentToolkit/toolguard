@@ -21,6 +21,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0    # IMPORTANT
+          fetch-tags: true  # IMPORTANT
 
       - uses: actions/setup-python@v5
         with:
