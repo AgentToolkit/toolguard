@@ -12,7 +12,19 @@
             "console": "integratedTerminal",
             "args": [],
             "justMyCode": false
-        },{
+        },
+        {
+            "name": "Debug Current Test File",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "${file}::${input:test_func}"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
             "name": "Gen Tau2 airline",
             "type": "debugpy",
             "request": "launch",
@@ -61,5 +73,12 @@
         //     "args": [],
         //     "justMyCode": false
         // },
+    ],
+    "inputs": [
+        {
+            "id": "test_func",
+            "description": "Test function name (e.g., test_something)",
+            "type": "promptString"
+        }
     ]
 }

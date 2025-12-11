@@ -239,7 +239,8 @@ class APIExtractor:
         else:
             ret_name = str(ret)
         return [
-            indent + "args = {k: v for k, v in locals().items() if k != 'self'}",
+            indent + "args = locals().copy()",
+            indent + "args.pop('self', None)",
             indent + f"return self._delegate.invoke('{func_name}', args, {ret_name})",
         ]
 

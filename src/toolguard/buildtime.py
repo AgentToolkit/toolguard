@@ -66,6 +66,8 @@ async def generate_guard_specs(
 	llm: I_TG_LLM,
     work_dir: str,
 )->List[ToolGuardSpec]:
+	os.makedirs(work_dir, exist_ok=True)
+	
 	# case1: path to OpenAPI spec
 	oas_path = tools if isinstance(tools, str) else None
 
