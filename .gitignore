@@ -8,3 +8,4 @@ output
 build
 docs/*.drawio.dtmp
 docs/*.bkp
+.venv
