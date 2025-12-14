@@ -5,7 +5,7 @@ from typing import Callable, List, Optional
 import mellea
 
 from .domain_from_funcs import generate_domain_from_functions
-from ..data_types import RuntimeDomain, ToolGuardSpec, MeleaSessionData
+from ..data_types import RuntimeDomain, ToolGuardSpec, MelleaSessionData
 from .domain_from_openapi import generate_domain_from_openapi
 from ..runtime import ToolGuardsCodeGenerationResult
 from .tool_guard_generator import ToolGuardGenerator
@@ -18,7 +18,7 @@ async def generate_toolguards_from_functions(
     tool_policies: List[ToolGuardSpec],
     py_root: str,
     funcs: List[Callable],
-    llm_data: MeleaSessionData,
+    llm_data: MelleaSessionData,
     module_roots: Optional[List[str]] = None,
 ) -> ToolGuardsCodeGenerationResult:
     assert funcs, "Funcs cannot be empty"
@@ -39,7 +39,7 @@ async def generate_toolguards_from_functions(
 
 
 async def generate_toolguards_from_openapi(
-    app_name: str, tool_policies: List[ToolGuardSpec], py_root: str, openapi_file: str, llm_data: MeleaSessionData
+    app_name: str, tool_policies: List[ToolGuardSpec], py_root: str, openapi_file: str, llm_data: MelleaSessionData
 ) -> ToolGuardsCodeGenerationResult:
     logger.debug(f"Starting... will save into {py_root}")
 
@@ -51,7 +51,7 @@ async def generate_toolguards_from_openapi(
 
 async def generate_toolguards_from_domain(
     app_name: str, tool_policies: List[ToolGuardSpec], py_root: str, domain: RuntimeDomain,
-    llm_data: MeleaSessionData
+    llm_data: MelleaSessionData
 ) -> ToolGuardsCodeGenerationResult:
     # Setup env
     # venv.run(join(py_root, consts.PY_ENV), consts.PY_PACKAGES)

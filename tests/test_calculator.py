@@ -10,7 +10,7 @@ import pytest
 from toolguard import IToolInvoker, ToolFunctionsInvoker, ToolGuardsCodeGenerationResult, ToolMethodsInvoker, load_toolguard_code_result, load_toolguards
 from toolguard import LitellmModel
 from toolguard.buildtime import build_toolguards
-from toolguard.data_types import MeleaSessionData
+from toolguard.data_types import MelleaSessionData
 from toolguard.runtime import LangchainToolInvoker
 
 wiki_path = "examples/calculator/inputs/policy_doc.md"
@@ -21,7 +21,7 @@ STEP1 = "step1"
 STEP2 = "step2"
 
 step1_llm = LitellmModel(model, llm_provider)
-step2_llm = MeleaSessionData()#initialized from env vars
+step2_llm = MelleaSessionData()#initialized from env vars
 
 async def _build_toolguards(
     model:str,

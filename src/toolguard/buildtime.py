@@ -9,7 +9,7 @@ from langchain_core.tools import BaseTool
 
 from .llm.i_tg_llm import I_TG_LLM
 from .runtime import ToolGuardsCodeGenerationResult
-from .data_types import MeleaSessionData, ToolGuardSpec, load_tool_policy, ToolInfo
+from .data_types import MelleaSessionData, ToolGuardSpec, load_tool_policy, ToolInfo
 from .gen_py.gen_toolguards import generate_toolguards_from_functions, generate_toolguards_from_openapi
 from .gen_spec.oas_summary import OASSummarizer
 from .gen_spec.spec_generator import extract_toolguard_specs
@@ -25,7 +25,7 @@ async def build_toolguards(
 		step1_out_dir:str, 
 		step2_out_dir:str, 
 		step1_llm:I_TG_LLM,
-		step2_llm: MeleaSessionData, 
+		step2_llm: MelleaSessionData, 
 		app_name:str= "my_app", 
 		tools2run: List[str] | None=None, 
 		short1=True)->ToolGuardsCodeGenerationResult:
@@ -97,7 +97,7 @@ async def generate_guards_from_specs(
 		tools: List[Callable] | List[BaseTool] | str,
 		tool_specs: List[ToolGuardSpec],
 		work_dir: str,
-		llm_data: MeleaSessionData,
+		llm_data: MelleaSessionData,
 		app_name: str = "myapp",
 		lib_names: Optional[List[str]] = None,
 		tool_names: Optional[List[str]] = None) -> ToolGuardsCodeGenerationResult:

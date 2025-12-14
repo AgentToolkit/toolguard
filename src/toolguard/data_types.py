@@ -16,16 +16,16 @@ API_PARAM = "api"
 ENV_GENPY_BACKEND_NAME = "TOOLGUARD_GENPY_BACKEND_NAME"
 ENV_GENPY_MODEL_ID = "TOOLGUARD_GENPY_MODEL_ID"
 ENV_GENPY_ARGS = "TOOLGUARD_GENPY_ARGS"
-MeleaBackendName = Literal["ollama", "hf", "openai", "watsonx", "litellm"]
+MelleaBackendName = Literal["ollama", "hf", "openai", "watsonx", "litellm"]
 
-class MeleaSessionData(BaseModel):
-    backend_name: MeleaBackendName | None = None
+class MelleaSessionData(BaseModel):
+    backend_name: MelleaBackendName | None = None
     model_id: str| None = None
     kw_args: Dict[str, Any]| None = None
 
     def model_post_init(self, __context):
         if not self.backend_name:
-            self.backend_name = cast(MeleaBackendName,
+            self.backend_name = cast(MelleaBackendName,
                 os.getenv(ENV_GENPY_BACKEND_NAME, "openai"),
             )
 
