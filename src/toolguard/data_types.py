@@ -33,7 +33,7 @@ class MelleaSessionData(BaseModel):
             self.model_id = os.getenv(ENV_GENPY_MODEL_ID)
             assert self.model_id, f"'{ENV_GENPY_MODEL_ID}' environment variable not set"
 
-        if not self.kw_args:
+        if self.kw_args is None:
             kw_args_val = os.getenv(ENV_GENPY_ARGS)
             self.kw_args = {}
             if kw_args_val:

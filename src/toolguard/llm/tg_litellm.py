@@ -2,18 +2,71 @@ import asyncio
 import json
 import os
 import re
-from typing import List, Dict
+from typing import Any, List, Dict
 import time
-from litellm import acompletion
-from litellm.types.utils import ModelResponse
+from litellm import completion
 from litellm.exceptions import RateLimitError
 import json
-from jsonschema import validate, ValidationError
-
+from abc import ABC
 import dotenv
 
 from ..llm.i_tg_llm import I_TG_LLM
 
+
+class LanguageModelBase(I_TG_LLM, ABC):
+
+	async def chat_json(self, messages: List[Dict], max_retries: int = 5, backoff_factor: float = 1.5) -> Dict:
+		retries = 0
+		while retries < max_retries:
+			try:
+				response = await self.generate(messages)
+				res = self.extract_json_from_string(response)
+				if res is None:
+					wait_time = backoff_factor ** retries
+					print(f"Error: not json format. Retrying in {wait_time:.1f} seconds... (attempt {retries + 1}/{max_retries})")
+					time.sleep(wait_time)
+					retries += 1
+				else:
+					return res
+			except RateLimitError as e:
+				wait_time = backoff_factor ** retries
+				print(f"Rate limit hit. Retrying in {wait_time:.1f} seconds... (attempt {retries + 1}/{max_retries})")
+				time.sleep(wait_time)
+				retries += 1
+			except Exception as e:
+				raise RuntimeError(f"Unexpected error during chat completion: {e}")
+		raise RuntimeError("Exceeded maximum retries due to rate limits.")
+	
+	def extract_json_from_string(self,s):
+		# Use regex to extract the JSON part from the string
+		match = re.search(r'```json\s*(\{.*?\})\s*```', s, re.DOTALL)
+		if match:
+			json_str = match.group(1)
+			try:
+				return json.loads(json_str)
+			except json.JSONDecodeError as e:
+				print(f"Failed to decode JSON: {e}")
+				return None
+		else:
+			## for rits?
+			match = re.search(r'(\{[\s\S]*\})', s)
+			if match:
+				json_str = match.group(1)
+				try:
+					return json.loads(json_str)
+				except json.JSONDecodeError as e:
+					print("response:")
+					print(s)
+					print("match:")
+					print(match.group(1))
+					print("Failed to parse JSON:", e)
+					return None
+			
+			print("No JSON found in the string.")
+			print(s)
+			return None
+
+			
 rits_model_name_to_endpoint_list=[
 #	{"endpoint":"https://ete-litellm.bx.cloud9.ibm.com", "model_name":"claude-3-7-sonnet"},
 	{"endpoint":"https://inference-3scale-apicast-production.apps.rits.fmaas.res.ibm.com/avengers-jamba-9b","model_name":"ibm-fms/avengers-jamba-9b"},
@@ -78,86 +131,33 @@ rits_model_to_endpoint = {
 anthropic_models = ['claude-3-5-sonnet-latest', 'claude-3-5-haiku']
 RITS = "RITS"
 
-class LitellmModel(I_TG_LLM):
-	def __init__(self, model_name:str, provider: str):
+		
+class LitellmModel(LanguageModelBase):
+	def __init__(self, model_name:str, provider: str, kw_args: Dict[str, Any] = {}):
 		self.model_name = model_name
 		self.provider = provider
+		self.kw_args = kw_args
 
 	async def generate(self, messages: List[Dict])->str:
+		provider = self.provider
+		base_url = None
+		extra_headers = {
+			'Content-Type': 'application/json'
+		}
 		if self.provider and self.provider.upper() == RITS:
-			response = await acompletion(
-				messages=messages,
-				model=self.model_name,
-				custom_llm_provider="openai",
-				base_url=rits_model_to_endpoint[self.model_name],
-				extra_headers={
-					'RITS_API_KEY': os.getenv("RITS_API_KEY"),
-					'Content-Type': 'application/json'
-				},
-			)
-			return response.choices[0].message.content
-
-		response = await acompletion(
+			provider = "openai"
+			base_url = rits_model_to_endpoint[self.model_name]
+			extra_headers['RITS_API_KEY'] = os.getenv("RITS_API_KEY") or ''
+		
+		response = completion(
 			messages=messages,
 			model=self.model_name,
-			custom_llm_provider=self.provider,
-			extra_headers={
-				'Content-Type': 'application/json'
-			},
+			custom_llm_provider=provider,
+			base_url=base_url,
+			extra_headers=extra_headers,
+			**self.kw_args
 		)
-		return response["choices"][0]["message"]["content"]
-
-	
-	async def chat_json(self, messages: List[Dict], max_retries: int = 5, backoff_factor: float = 1.5) -> Dict:
-		retries = 0
-		while retries < max_retries:
-			try:
-				response = await self.generate(messages)
-				res = self.extract_json_from_string(response)
-				if res is None:
-					wait_time = backoff_factor ** retries
-					print(f"Error: not json format. Retrying in {wait_time:.1f} seconds... (attempt {retries + 1}/{max_retries})")
-					time.sleep(wait_time)
-					retries += 1
-				else:
-					return res
-			except RateLimitError as e:
-				wait_time = backoff_factor ** retries
-				print(f"Rate limit hit. Retrying in {wait_time:.1f} seconds... (attempt {retries + 1}/{max_retries})")
-				time.sleep(wait_time)
-				retries += 1
-			except Exception as e:
-				raise RuntimeError(f"Unexpected error during chat completion: {e}")
-		raise RuntimeError("Exceeded maximum retries due to rate limits.")
-	
-	def extract_json_from_string(self,s):
-		# Use regex to extract the JSON part from the string
-		match = re.search(r'```json\s*(\{.*?\})\s*```', s, re.DOTALL)
-		if match:
-			json_str = match.group(1)
-			try:
-				return json.loads(json_str)
-			except json.JSONDecodeError as e:
-				print(f"Failed to decode JSON: {e}")
-				return None
-		else:
-			## for rits?
-			match = re.search(r'(\{[\s\S]*\})', s)
-			if match:
-				json_str = match.group(1)
-				try:
-					return json.loads(json_str)
-				except json.JSONDecodeError as e:
-					print("response:")
-					print(s)
-					print("match:")
-					print(match.group(1))
-					print("Failed to parse JSON:", e)
-					return None
-			
-			print("No JSON found in the string.")
-			print(s)
-			return None
+		return response.choices[0].message.content
 	
 	
 if __name__ == '__main__':
