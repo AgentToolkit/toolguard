@@ -2,8 +2,6 @@ from typing import List
 from ...data_types import Domain, FileTwin, ToolGuardSpecItem
 from mellea import generative
 
-# from toolguard.gen_py.prompts.python_code import PythonCodeModel
-
 
 @generative
 def generate_init_tests(

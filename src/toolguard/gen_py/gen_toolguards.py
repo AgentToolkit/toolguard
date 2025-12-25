@@ -68,10 +68,14 @@ async def generate_toolguards_from_domain(
         for spec in specs
     ] if len(spec.policy_items) > 0]
 
+    mellea_workaround = {"model_options": {"reasoning_effort": "medium"}}#FIXME https://github.com/generative-computing/mellea/issues/270
+    kw_args = llm_data.kw_args
+    kw_args.update(mellea_workaround)
+
     m = mellea.start_session(
         backend_name = llm_data.backend_name,
         model_id=llm_data.model_id,
-        **llm_data.kw_args
+        **kw_args
     )
     tool_results = await asyncio.gather(
         *[

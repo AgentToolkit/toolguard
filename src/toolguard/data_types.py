@@ -21,7 +21,7 @@ MelleaBackendName = Literal["ollama", "hf", "openai", "watsonx", "litellm"]
 class MelleaSessionData(BaseModel):
     backend_name: MelleaBackendName | None = None
     model_id: str| None = None
-    kw_args: Dict[str, Any]| None = None
+    kw_args: Dict[str, Any]| str | None = None
 
     def model_post_init(self, __context):
         if not self.backend_name:
@@ -33,16 +33,19 @@ class MelleaSessionData(BaseModel):
             self.model_id = os.getenv(ENV_GENPY_MODEL_ID)
             assert self.model_id, f"'{ENV_GENPY_MODEL_ID}' environment variable not set"
 
+        kw_args_val = None
         if self.kw_args is None:
             kw_args_val = os.getenv(ENV_GENPY_ARGS)
-            self.kw_args = {}
-            if kw_args_val:
-                try:
-                    self.kw_args = json.loads(kw_args_val)
-                except Exception as e:
-                    logger.warning(
-                        f"Failed to parse {ENV_GENPY_ARGS}: {e}. Using empty dict instead."
-                    )
+        elif isinstance(self.kw_args, str):
+            kw_args_val = self.kw_args
+
+        if kw_args_val:
+            try:
+                self.kw_args = json.loads(kw_args_val)
+            except Exception as e:
+                logger.warning(
+                    f"Failed to parse {ENV_GENPY_ARGS}: {e}. Using empty dict instead."
+                )
 
 class ToolInfo(BaseModel):
 	name: str

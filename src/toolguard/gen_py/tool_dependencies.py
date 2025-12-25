@@ -12,7 +12,7 @@ MAX_TRIALS = 3
 async def tool_dependencies(
     policy_item: ToolGuardSpecItem, tool_signature: str, domain: Domain, m: MelleaSession, trial=0
 ) -> Set[str]:
-    model_options = {ModelOption.TEMPERATURE: 0.8}
+    model_options = {}#{ModelOption.TEMPERATURE: 0.8}
     pseudo_code = tool_policy_pseudo_code(
         m,
         policy_item=policy_item,
