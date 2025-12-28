@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "toolguard"
-version = "0.1.11"
+version = "0.1.12"
 description = "Policy adherence code generation for guarding AI agent tools"
 readme = "README.md"
 
