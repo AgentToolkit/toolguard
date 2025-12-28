@@ -1,8 +1,6 @@
-import asyncio
 import re
 from typing import Set
 from mellea import MelleaSession
-from mellea.backends.types import ModelOption
 from ..data_types import Domain, ToolGuardSpecItem
 from .prompts.pseudo_code import tool_policy_pseudo_code
 

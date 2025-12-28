@@ -9,8 +9,7 @@ import markdown
 import pytest
 from toolguard import IToolInvoker, ToolFunctionsInvoker, ToolGuardsCodeGenerationResult, ToolMethodsInvoker, load_toolguard_code_result, load_toolguards
 from toolguard import LitellmModel
-from toolguard.buildtime import build_toolguards
-from toolguard.data_types import MelleaSessionData
+from toolguard.buildtime import generate_guard_specs, generate_guards_from_specs
 from toolguard.runtime import LangchainToolInvoker
 
 wiki_path = "examples/calculator/inputs/policy_doc.md"
@@ -20,16 +19,7 @@ app_name = "calc" # dont use "calculator", as it conflicts with example name
 STEP1 = "step1"
 STEP2 = "step2"
 
-step1_llm = LitellmModel(model, llm_provider)
-step2_llm = MelleaSessionData(
-    # backend_name = "litellm",
-    # model_id = "mistralai/mistral-medium-2505",
-    # kw_args = {
-    #     "WATSONX_API_KEY": os.getenv("TOOLGUARD_GENPY_APIKEY"),
-    #     "WATSONX_URL": os.getenv("WATSONX_URL", "https://us-south.ml.cloud.ibm.com"),
-    #     "WATSONX_PROJECT_ID": os.getenv("WATSONX_PROJECT_ID"),
-    # }
-)#initialized from env vars
+llm = LitellmModel(model, llm_provider)
 
 async def _build_toolguards(
     model:str,
@@ -45,17 +35,21 @@ async def _build_toolguards(
     step1_out_dir = join(run_dir, STEP1)
     step2_out_dir = join(run_dir, STEP2)
 
-    return await build_toolguards(
+    specs = await generate_guard_specs(
 		policy_text = policy_text, 
 		tools = tools, 
-		step1_out_dir = step1_out_dir, 
-		step2_out_dir = step2_out_dir, 
-		step1_llm = step1_llm,
-        step2_llm=step2_llm,
-		app_name= app_name+app_sufix, 
-		# tools2run = [], 
-		short1=True
+		work_dir = step1_out_dir, 
+		llm = llm,
+        short=True,
     )
+    guards = await generate_guards_from_specs(
+        tool_specs = specs,
+        tools = tools, 
+		work_dir = step2_out_dir, 
+		llm = llm,
+		app_name = app_name+app_sufix, 
+    )
+    return guards
 
 def assert_toolgurards_run(gen_result: ToolGuardsCodeGenerationResult, tool_invoker: IToolInvoker, openapi_spec = False):
     def make_args(args):

@@ -8,7 +8,7 @@ from typing import Callable, List
 import markdown
 import logging
 
-from .buildtime import build_toolguards
+from .buildtime import generate_guard_specs, generate_guards_from_specs
 from .common import py
 from .llm.tg_litellm import LitellmModel
 
@@ -39,16 +39,26 @@ def main():
 	os.makedirs(args.out_dir, exist_ok=True)
 	step1_out_dir = join(args.out_dir, args.step1_dir_name)
 	step2_out_dir = join(args.out_dir, args.step2_dir_name)
-	asyncio.run(
-		build_toolguards(
+
+	async def build_toolguards():
+		specs = await generate_guard_specs(
 			policy_text = policy_text, 
-			tools = tools,
-			step1_out_dir = step1_out_dir,
-			step2_out_dir = step2_out_dir,
-			step1_llm = llm,
-			tools2run = args.tools2run,
-			short1 = args.short_step1
+			tools = tools, 
+			work_dir = step1_out_dir, 
+			llm = llm,
+			short=args.short_step1,
 		)
+		guards = await generate_guards_from_specs(
+			tool_specs = specs,
+			tools = tools, 
+			work_dir = step2_out_dir, 
+			llm = llm,
+			tool_names=args.tools2run
+		)
+		return guards
+		
+	asyncio.run(
+		build_toolguards()
 	)
 
 from importlib import import_module
