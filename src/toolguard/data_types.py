@@ -12,6 +12,7 @@ DEBUG_DIR = "debug"
 TESTS_DIR = "tests"
 RESULTS_FILENAME = "result.json"
 API_PARAM = "api"
+ARGS_PARAM = "args"
 
 class ToolInfo(BaseModel):
 	name: str

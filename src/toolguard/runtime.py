@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from langchain_core.tools import BaseTool
 
 import functools
-from .data_types import API_PARAM, RESULTS_FILENAME, FileTwin, RuntimeDomain, ToolGuardSpec
+from .data_types import API_PARAM, ARGS_PARAM, RESULTS_FILENAME, FileTwin, RuntimeDomain, ToolGuardSpec
 
 from abc import ABC, abstractmethod
 
@@ -94,6 +94,9 @@ class ToolguardRuntime:
                 guard_args[p_name] = clazz(delegate)
             else:
                 arg_val = args.get(p_name)
+                if arg_val is None and p_name == ARGS_PARAM:
+                    arg_val = args
+                
                 if inspect.isclass(param.annotation) and issubclass(param.annotation, BaseModel):
                     guard_args[p_name] = param.annotation.model_construct(**arg_val)
                 else:
