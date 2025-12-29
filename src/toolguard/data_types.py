@@ -104,21 +104,9 @@ class ToolGuardSpec(BaseModel):
 def load_tool_policy(file_path: str, tool_name: str) -> ToolGuardSpec:
     with open(file_path, "r") as file:
         d = json.load(file)
-    spec = ToolGuardSpec.model_construct(tool_name=tool_name, **d)
+    d["tool_name"] = tool_name
+    spec = ToolGuardSpec.model_validate(d) #load deep
     return spec
-    # items = [
-    #     ToolGuardSpecItem(
-    #         name=item.get("name"),
-    #         description=item.get("description"),
-    #         references=item.get("references"),
-    #         compliance_examples=item.get("compliance_examples"),
-    #         violation_examples=item.get("violation_examples"),
-    #     )
-    #     for item in d.get("policy_items", [])
-    #     if not item.get("skip")
-    # ]
-    # return ToolGuardSpec(tool_name=tool_name, policy_items=items)
-
 
 class Domain(BaseModel):
     app_name: str = Field(..., description="Application name")

@@ -32,6 +32,7 @@ class SimpleBackend(Backend):
         }
 
         resp = await self.llm.generate([msg])
+        
         res = {"result": resp}
         mot = ModelOutputThunk(value=json.dumps(res))
         mot._generate_log = GenerateLog()
