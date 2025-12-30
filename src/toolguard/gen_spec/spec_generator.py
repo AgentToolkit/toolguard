@@ -144,10 +144,10 @@ class ToolGuardSpecGenerator:
         if "policy_items" not in tptd:
             tptd["policy_items"] = []
 
-        for policy in tptd["policy_items"]:
+        for item in tptd["policy_items"]:
             reviews = []
             for _iteration in range(5):
-                user_content = f"Policy Document:{self.policy_document}\nTools Descriptions:{json.dumps(self.tools_descriptions)}\nTarget Tool:{json.dumps(self.tools_descriptions[tool_name])}\npolicy: {json.dumps(policy)}"
+                user_content = f"Policy Document:{self.policy_document}\nTools Descriptions:{json.dumps(self.tools_descriptions)}\nTarget Tool:{json.dumps(self.tools_descriptions[tool_name])}\npolicy: {json.dumps(item)}"
                 response = await self.llm.chat_json(
                     generate_messages(system_prompt, user_content)
                 )
@@ -155,7 +155,7 @@ class ToolGuardSpecGenerator:
                     is_self_contained = response["is_self_contained"]
                     if not is_self_contained:
                         if "alternative_description" in response:
-                            policy["description"] = response["alternative_description"]
+                            item["description"] = response["alternative_description"]
                         else:
                             print(
                                 "Error: review is_self_contained is false but no alternative_description."
@@ -168,10 +168,10 @@ class ToolGuardSpecGenerator:
             if archive:
                 if "archive" not in newTPTD:
                     newTPTD["archive"] = []
-                policy["comments"] = comments
-                newTPTD["archive"].append(policy)
+                item["comments"] = comments
+                newTPTD["archive"].append(item)
             else:
-                newTPTD["policy_items"].append(policy)
+                newTPTD["policy_items"].append(item)
         save_output(self.out_dir, f"{tool_name}_rev.json", newTPTD)
         return newTPTD
 
@@ -179,14 +179,14 @@ class ToolGuardSpecGenerator:
         print("add_ref")
         system_prompt = read_prompt_file("add_references")
         # remove old refs (used to help avoid duplications)
-        for policy in tptd["policy_items"]:
-            policy["references"] = []
-            user_content = f"Policy Document:{self.policy_document}\nTools Descriptions:{json.dumps(self.tools_descriptions)}\nTarget Tool:{self.tools_details[tool_name].model_dump_json()}\npolicy: {json.dumps(policy)}"
+        for item in tptd["policy_items"]:
+            item["references"] = []
+            user_content = f"Policy Document:{self.policy_document}\nTools Descriptions:{json.dumps(self.tools_descriptions)}\nTarget Tool:{self.tools_details[tool_name].model_dump_json()}\npolicy: {json.dumps(item)}"
             response = await self.llm.chat_json(
                 generate_messages(system_prompt, user_content)
             )
             if "references" in response:
-                policy["references"] = response["references"]
+                item["references"] = response["references"]
             else:
                 print("Error! no references in response")
                 print(response)
@@ -208,18 +208,18 @@ class ToolGuardSpecGenerator:
         system_prompt = read_prompt_file("create_examples")
         system_prompt = system_prompt.replace("ToolX", tool_name)
 
-        for policy in tptd["policy_items"]:
+        for item in tptd["policy_items"]:
             # user_content = f"Policy Document:{state['policy_text']}\nTools Descriptions:{json.dumps(state['tools'])}\nTarget Tool:{json.dumps(state['target_tool_description'])}\nPolicy:{policy}"
-            user_content = f"Tools Descriptions:{json.dumps(self.tools_descriptions)}\nTarget Tool:{self.tools_details[tool_name].model_dump_json()}\nPolicy:{policy}"
+            user_content = f"Tools Descriptions:{json.dumps(self.tools_descriptions)}\nTarget Tool:{self.tools_details[tool_name].model_dump_json()}\nPolicy:{item}"
 
             response = await self.llm.chat_json(
                 generate_messages(system_prompt, user_content)
             )
             if "violation_examples" in response:
-                policy["violation_examples"] = response["violation_examples"]
+                item["violation_examples"] = response["violation_examples"]
 
             if "compliance_examples" in response:
-                policy["compliance_examples"] = response["compliance_examples"]
+                item["compliance_examples"] = response["compliance_examples"]
 
         save_output(self.out_dir, f"{tool_name}_examples.json", tptd)
         return tptd
@@ -228,24 +228,24 @@ class ToolGuardSpecGenerator:
         print("add_examples")
         system_prompt = read_prompt_file("add_examples")
         system_prompt = system_prompt.replace("ToolX", tool_name)
-        for policy in tptd["policy_items"]:
+        for item in tptd["policy_items"]:
             # user_content = f"Policy Document:{state['policy_text']}\nTools Descriptions:{json.dumps(state['tools'])}\nTarget Tool:{json.dumps(state['target_tool_description'])}\nPolicy:{policy}"
-            user_content = f"Tools Descriptions:{json.dumps(self.tools_descriptions)}\nTarget Tool:{self.tools_details[tool_name].model_dump_json()}\nPolicy:{policy}"
+            user_content = f"Tools Descriptions:{json.dumps(self.tools_descriptions)}\nTarget Tool:{self.tools_details[tool_name].model_dump_json()}\nPolicy:{item}"
             response = await self.llm.chat_json(
                 generate_messages(system_prompt, user_content)
             )
             if "violation_examples" in response:
                 for vexample in response["violation_examples"]:
                     # vexample["iteration"] = state["iteration"]
-                    if "violation_examples" not in policy:
-                        policy["violation_examples"] = []
-                    policy["violation_examples"].append(vexample)
+                    if "violation_examples" not in item:
+                        item["violation_examples"] = []
+                    item["violation_examples"].append(vexample)
             if "compliance_examples" in response:
                 for cexample in response["compliance_examples"]:
-                    if "compliance_examples" not in policy:
-                        policy["compliance_examples"] = []
+                    if "compliance_examples" not in item:
+                        item["compliance_examples"] = []
                     # cexample["iteration"] = state["iteration"]
-                    policy["compliance_examples"].append(cexample)
+                    item["compliance_examples"].append(cexample)
 
         save_output(self.out_dir, f"{tool_name}_ADD_examples{iteration}.json", tptd)
         return tptd
@@ -254,16 +254,16 @@ class ToolGuardSpecGenerator:
         print("merge_examples")
         system_prompt = read_prompt_file("merge_examples")
         system_prompt = system_prompt.replace("ToolX", tool_name)
-        for policy in tptd["policy_items"]:
-            # user_content = f"Policy Document:{state['policy_text']}\nTools Descriptions:{json.dumps(state['tools'])}\nTarget Tool:{json.dumps(state['target_tool_description'])}\nPolicy Name:{policy['policy_name']}\nPolicy Description:{policy['description']}"
-            user_content = f"Tools Descriptions:{json.dumps(self.tools_descriptions)}\nTarget Tool:{self.tools_details[tool_name].model_dump_json()}\nPolicy Name:{policy['policy_name']}\nPolicy Description:{policy['description']}"
-            user_content += f"\n\nViolating Examples: {policy['violating_examples']}"
-            user_content += f"\n\nCompliance Examples: {policy['compliance_examples']}"
+        for item in tptd["policy_items"]:
+            # user_content = f"Policy Document:{state['policy_text']}\nTools Descriptions:{json.dumps(state['tools'])}\nTarget Tool:{json.dumps(state['target_tool_description'])}\nPolicy Name:{policy['name']}\nPolicy Description:{policy['description']}"
+            user_content = f"Tools Descriptions:{json.dumps(self.tools_descriptions)}\nTarget Tool:{self.tools_details[tool_name].model_dump_json()}\nPolicy Name:{item['name']}\nPolicy Description:{item['description']}"
+            user_content += f"\n\nviolation Examples: {item['violation_examples']}"
+            user_content += f"\n\nCompliance Examples: {item['compliance_examples']}"
             response = await self.llm.chat_json(
                 generate_messages(system_prompt, user_content)
             )
-            policy["violation_examples"] = response["violation_examples"]
-            policy["compliance_examples"] = response["compliance_examples"]
+            item["violation_examples"] = response["violation_examples"]
+            item["compliance_examples"] = response["compliance_examples"]
 
         save_output(self.out_dir, f"{tool_name}_merge_examples.json", tptd)
         return tptd
@@ -271,21 +271,21 @@ class ToolGuardSpecGenerator:
     async def fix_examples(self, tool_name: str, tptd: dict) -> dict:
         print("fix_examples")
         orig_prompt = read_prompt_file("fix_example")
-        for policy in tptd["policy_items"]:
-            for etype in ["violating", "compliance"]:
+        for item in tptd["policy_items"]:
+            for etype in ["violation", "compliance"]:
                 fixed_examples = []
-                for example in policy[etype + "_examples"]:
+                for example in item[etype + "_examples"]:
                     system_prompt = orig_prompt.replace("ToolX", tool_name)
                     system_prompt = system_prompt.replace("__EXAMPLE_TYPE__", "")
 
-                    # user_content = f"Policy Document:{state['policy_text']}\nTools Descriptions:{json.dumps(state['tools'])}\nTarget Tool:{json.dumps(state['target_tool_description'])}\nPolicy Name:{policy['policy_name']}\nPolicy Description:{policy['description']}\nExample:{example}"
-                    user_content = f"Tools Descriptions:{json.dumps(self.tools_descriptions)}\nTarget Tool:{self.tools_details[tool_name].model_dump_json()}\nPolicy Name:{policy['policy_name']}\nPolicy Description:{policy['description']}\nExample:{example}"
+                    # user_content = f"Policy Document:{state['policy_text']}\nTools Descriptions:{json.dumps(state['tools'])}\nTarget Tool:{json.dumps(state['target_tool_description'])}\nPolicy Name:{policy['name']}\nPolicy Description:{policy['description']}\nExample:{example}"
+                    user_content = f"Tools Descriptions:{json.dumps(self.tools_descriptions)}\nTarget Tool:{self.tools_details[tool_name].model_dump_json()}\nPolicy Name:{item['name']}\nPolicy Description:{item['description']}\nExample:{example}"
 
                     response = await self.llm.chat_json(
                         generate_messages(system_prompt, user_content)
                     )
                     fixed_examples.append(response["revised_example"])
-                policy[etype + "_examples"] = fixed_examples
+                item[etype + "_examples"] = fixed_examples
 
         save_output(self.out_dir, f"{tool_name}_fix_examples.json", tptd)
         return tptd
@@ -294,17 +294,17 @@ class ToolGuardSpecGenerator:
     async def review_examples(self, tool_name: str, tptd: dict) -> dict:
         print("review_examples")
         system_prompt = read_prompt_file("examples_reviewer")
-        for policy in tptd["policy_items"]:
-            print(policy["name"])
-            for etype in ["violating", "compliance"]:
+        for item in tptd["policy_items"]:
+            print(item["name"])
+            for etype in ["violation", "compliance"]:
                 print(etype)
                 passed_examples = []
-                for example in policy[etype + "_examples"]:
+                for example in item[etype + "_examples"]:
                     print(example)
                     reviews = []
                     for _iteration in range(5):
-                        # user_content = f"Policy Document:{state['policy_text']}\nTools Descriptions:{json.dumps(state['tools'])}\nTarget Tool:{json.dumps(state['target_tool_description'])}\nPolicy Name:{policy['policy_name']}\nPolicy Description:{policy['description']}\nExample:{example}"
-                        user_content = f"Tools Descriptions:{json.dumps(self.tools_descriptions)}\nTarget Tool:{self.tools_details[tool_name].model_dump_json()}\nPolicy Name:{policy['policy_name']}\nPolicy Description:{policy['description']}\nExample:{example}"
+                        # user_content = f"Policy Document:{state['policy_text']}\nTools Descriptions:{json.dumps(state['tools'])}\nTarget Tool:{json.dumps(state['target_tool_description'])}\nPolicy Name:{policy['name']}\nPolicy Description:{policy['description']}\nExample:{example}"
+                        user_content = f"Tools Descriptions:{json.dumps(self.tools_descriptions)}\nTarget Tool:{self.tools_details[tool_name].model_dump_json()}\nPolicy Name:{item['name']}\nPolicy Description:{item['description']}\nExample:{example}"
                         response = await self.llm.chat_json(
                             generate_messages(system_prompt, user_content)
                         )
@@ -313,7 +313,7 @@ class ToolGuardSpecGenerator:
                     if keep:
                         passed_examples.append(example)
 
-                policy[etype + "_examples"] = passed_examples
+                item[etype + "_examples"] = passed_examples
 
         save_output(self.out_dir, f"{tool_name}_example_rev.json", tptd)
         return tptd

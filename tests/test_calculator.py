@@ -40,7 +40,7 @@ async def _build_toolguards(
 		tools = tools, 
 		work_dir = step1_out_dir, 
 		llm = llm,
-        short=True,
+        short=False,
     )
     guards = await generate_guards_from_specs(
         tool_specs = specs,
