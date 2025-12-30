@@ -40,8 +40,9 @@ def generate_init_tests(
         Data population and references:
         - For compliance examples, populate all fields.
             - For collections (arrays, dict and sets) populate at least one item.
-        - You should mock the return_value from ALL tools listed in `dependent_tool_names`.
-            - Use `side_effect` to return the expected value only when the expected parameters are passed.
+        - You should `MagicMock` to mock the return_value from ALL tools listed in `dependent_tool_names`.
+            - Use `MagicMock.side_effect` function to return the expected value only when the expected parameters are passed.
+            - Do not use `MagicMock.return_value`.
         - For time dependent attributes, compute the timestamp dynamically (avoid hardcoded times).
             - for example, to set a timestamp occurred 24 hours ago, use something like: `created_at = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%S")`.
             - import the required date and time libraries. for example: `from datetime import datetime, timedelta`
