@@ -338,7 +338,7 @@ async def extract_toolguard_specs(
     tools: List[ToolInfo],
     step1_output_dir: str,
     llm: I_TG_LLM,
-    tools_shortlist: Optional[List[str]] = None,
+    tools2guard: Optional[List[str]] = None,#None==all tools
     short=False,
 ) -> List[ToolGuardSpec]:
     if not os.path.isdir(step1_output_dir):
@@ -365,7 +365,7 @@ async def extract_toolguard_specs(
         *[
             do_one_tool(tool.name)
             for tool in tools
-            if ((tools_shortlist is None) or (tool.name in tools_shortlist))
+            if ((tools2guard is None) or (tool.name in tools2guard))
         ]
     )
     print("All tools done")
