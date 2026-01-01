@@ -48,12 +48,14 @@ Output Format (JSON):
     "violation_examples": [
         "Violating example 1",
         "Violating example 2,
-        "Violating example 3"
+        "Violating example 3",
+        "Violating example 4"
     ],
     "compliance_examples": [
        "Compliance example 1",
        "Compliance example 2",
-       "Compliance example 3"
+       "Compliance example 3",
+       "Compliance example 4"
     ]
 }
 
@@ -67,11 +69,13 @@ Output:
     "violation_examples": [
         "A user asks to rent a green car",
         "The user requests to rent medium blue car",
-        "Renting a small red car"
+        "Renting a small red car",
+        "Renting a big red car"
     ],
     "compliance_examples": [
         "A user asks to rent a red medium car",
         "The user requests to rent small blue car",
-        "Renting a big yellow car"
+        "Renting a big yellow car",
+        "Renting a small yellow car"
     ]
 }

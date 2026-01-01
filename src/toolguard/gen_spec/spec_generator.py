@@ -20,7 +20,7 @@ class ToolGuardSpecGenerator:
 
     async def generate_minimal_policy(self, tool_name: str) -> dict:
         tptd = await self.create_policy(tool_name)
-        tptd = await self.example_creator(tool_name, tptd,3)
+        tptd = await self.example_creator(tool_name, tptd,4)
         return tptd
 
     async def generate_policy(self, tool_name: str) -> dict:
