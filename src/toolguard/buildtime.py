@@ -23,6 +23,7 @@ async def generate_guard_specs(
     tools: List[Callable] | List[BaseTool] | str,
 	llm: I_TG_LLM,
     work_dir: str,
+	tools2guard:List[str]|None = None,
 	short = False
 )->List[ToolGuardSpec]:
 	os.makedirs(work_dir, exist_ok=True)
@@ -41,12 +42,12 @@ async def generate_guard_specs(
 			oas = json.load(file)
 		summarizer = OASSummarizer(oas)
 		tools_info = summarizer.summarize()
-		return await extract_toolguard_specs(policy_text, tools_info, work_dir, llm, None, short)
+		return await extract_toolguard_specs(policy_text, tools_info, work_dir, llm, tools2guard, short)
 	
 	# Case 3: List of functions + case 4: List of methods
 	if isinstance(tools, list):
 		tools_info = [ToolInfo.from_function(tool) for tool in tools]
-		return await extract_toolguard_specs(policy_text, tools_info, work_dir, llm, None, short)
+		return await extract_toolguard_specs(policy_text, tools_info, work_dir, llm, tools2guard, short)
 	
 	raise NotImplementedError()
 
