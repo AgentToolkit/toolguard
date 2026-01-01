@@ -41,7 +41,7 @@ class ToolGuardSpecGenerator:
         return tptd
 
     async def create_policy(self, tool_name: str) -> dict:
-        print("policy_creator_node")
+        print(f"policy_creator_node {tool_name}")
         system_prompt = read_prompt_file("create_policy")
         system_prompt = system_prompt.replace("ToolX", tool_name)
         user_content = f"Policy Document:{self.policy_document}\nTools Descriptions:{json.dumps(self.tools_descriptions)}\nTarget Tool:{self.tools_details[tool_name].model_dump_json()}\n"
@@ -52,7 +52,7 @@ class ToolGuardSpecGenerator:
     async def add_policies(
         self, tool_name: str, tptd: dict, iteration: int = 0
     ) -> dict:
-        print("add_policy")
+        print(f"add_policy {tool_name}")
         system_prompt = read_prompt_file("add_policies")
         user_content = f"Policy Document:{self.policy_document}\nTools Descriptions:{json.dumps(self.tools_descriptions)}\nTarget Tool:{self.tools_details[tool_name].model_dump_json()}\nTPTD: {json.dumps(tptd)}"
         response = await self.llm.chat_json(
@@ -73,18 +73,18 @@ class ToolGuardSpecGenerator:
         save_output(self.out_dir, f"{tool_name}_ADD_{iteration}.json", tptd)
         return tptd
 
-    async def split(self, tool_name, tptd: dict) -> dict:
+    async def split(self, tool_name: str, tptd: dict) -> dict:
         # todo: consider addition step to split policy by policy and not overall
-        print("split")
+        print(f"split {tool_name}")
         system_prompt = read_prompt_file("split")
         user_content = f"Policy Document:{self.policy_document}\nTools Descriptions:{json.dumps(self.tools_descriptions)}\nTarget Tool:{self.tools_details[tool_name].model_dump_json()}\nTPTD: {json.dumps(tptd)}"
         tptd = await self.llm.chat_json(generate_messages(system_prompt, user_content))
         save_output(self.out_dir, f"{tool_name}_split.json", tptd)
         return tptd
 
-    async def merge(self, tool_name, tptd: dict) -> dict:
+    async def merge(self, tool_name: str, tptd: dict) -> dict:
         # todo: consider addition step to split policy by policy and not overall
-        print("merge")
+        print(f"merge {tool_name}")
         system_prompt = read_prompt_file("merge")
         user_content = f"Policy Document:{self.policy_document}\nTools Descriptions:{json.dumps(self.tools_descriptions)}\nTarget Tool:{self.tools_details[tool_name].model_dump_json()}\nTPTD: {json.dumps(tptd)}"
         tptd = await self.llm.chat_json(generate_messages(system_prompt, user_content))
@@ -136,8 +136,8 @@ class ToolGuardSpecGenerator:
 
         return not (all(float(counts[key]) / num > 0.5 for key in counts)), comments
 
-    async def review_policy(self, tool_name, tptd) -> dict:
-        print("review_policy")
+    async def review_policy(self, tool_name: str, tptd) -> dict:
+        print(f"review_policy {tool_name}")
         system_prompt = read_prompt_file("policy_reviewer")
         newTPTD = {"policy_items": []}
 
@@ -176,7 +176,7 @@ class ToolGuardSpecGenerator:
         return newTPTD
 
     async def add_references(self, tool_name: str, tptd: dict) -> dict:
-        print("add_ref")
+        print(f"add_ref {tool_name}")
         system_prompt = read_prompt_file("add_references")
         # remove old refs (used to help avoid duplications)
         for item in tptd["policy_items"]:
@@ -195,13 +195,14 @@ class ToolGuardSpecGenerator:
         return tptd
 
     async def reference_correctness(self, tool_name: str, tptd: dict) -> dict:
-        print("reference_correctness")
+        print(f"reference_correctness {tool_name}")
         tptd, unmatched_policies = find_mismatched_references(
             self.policy_document, tptd
         )
         save_output(self.out_dir, f"{tool_name}_ref_orig_.json", unmatched_policies)
         save_output(self.out_dir, f"{tool_name}_ref_correction_.json", tptd)
         return tptd
+
 
     async def example_creator(self, tool_name: str, tptd: dict,fixed_examples:int=None) -> dict:
         print("example_creator")
@@ -210,6 +211,7 @@ class ToolGuardSpecGenerator:
             system_prompt = system_prompt.replace("EX_FIX_NUM", fixed_examples)
         else:
             system_prompt = read_prompt_file("create_examples")
+
         system_prompt = system_prompt.replace("ToolX", tool_name)
 
         for item in tptd["policy_items"]:
@@ -229,7 +231,7 @@ class ToolGuardSpecGenerator:
         return tptd
 
     async def add_examples(self, tool_name: str, tptd: dict, iteration: int) -> dict:
-        print("add_examples")
+        print(f"add_examples {tool_name}")
         system_prompt = read_prompt_file("add_examples")
         system_prompt = system_prompt.replace("ToolX", tool_name)
         for item in tptd["policy_items"]:
@@ -255,7 +257,7 @@ class ToolGuardSpecGenerator:
         return tptd
 
     async def merge_examples(self, tool_name: str, tptd: dict) -> dict:
-        print("merge_examples")
+        print(f"merge_examples {tool_name}")
         system_prompt = read_prompt_file("merge_examples")
         system_prompt = system_prompt.replace("ToolX", tool_name)
         for item in tptd["policy_items"]:
@@ -273,7 +275,7 @@ class ToolGuardSpecGenerator:
         return tptd
 
     async def fix_examples(self, tool_name: str, tptd: dict) -> dict:
-        print("fix_examples")
+        print(f"fix_examples {tool_name}")
         orig_prompt = read_prompt_file("fix_example")
         for item in tptd["policy_items"]:
             for etype in ["violation", "compliance"]:
@@ -296,7 +298,7 @@ class ToolGuardSpecGenerator:
 
     # todo: change to revew examples, write prompts
     async def review_examples(self, tool_name: str, tptd: dict) -> dict:
-        print("review_examples")
+        print(f"review_examples {tool_name}")
         system_prompt = read_prompt_file("examples_reviewer")
         for item in tptd["policy_items"]:
             print(item["name"])
@@ -353,7 +355,7 @@ async def extract_toolguard_specs(
         os.makedirs(process_dir)
     tpg = ToolGuardSpecGenerator(llm, policy_text, tools, process_dir)
 
-    async def do_one_tool(tool_name)->ToolGuardSpec:
+    async def do_one_tool(tool_name:str)->ToolGuardSpec:
         spec_dict = await tpg.generate_minimal_policy(tool_name) if short \
             else await tpg.generate_policy(tool_name)
         spec = ToolGuardSpec(tool_name=tool_name, **spec_dict)
