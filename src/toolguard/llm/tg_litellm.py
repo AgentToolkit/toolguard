@@ -4,7 +4,7 @@ import os
 import re
 from typing import Any, List, Dict
 import time
-from litellm import completion
+from litellm import acompletion
 from litellm.exceptions import RateLimitError
 import json
 from abc import ABC
@@ -152,7 +152,7 @@ class LitellmModel(LanguageModelBase):
 			base_url = rits_model_to_endpoint[self.model_name]
 			extra_headers['RITS_API_KEY'] = os.getenv("RITS_API_KEY") or ''
 		
-		response = completion(
+		response = await acompletion(
 			messages=messages,
 			model=self.model_name,
 			custom_llm_provider=provider,
