@@ -20,7 +20,7 @@ class ToolGuardSpecGenerator:
 
     async def generate_minimal_policy(self, tool_name: str) -> dict:
         tptd = await self.create_policy(tool_name)
-        tptd = await self.example_creator(tool_name, tptd)
+        tptd = await self.example_creator(tool_name, tptd,4)
         return tptd
 
     async def generate_policy(self, tool_name: str) -> dict:
@@ -203,9 +203,15 @@ class ToolGuardSpecGenerator:
         save_output(self.out_dir, f"{tool_name}_ref_correction_.json", tptd)
         return tptd
 
-    async def example_creator(self, tool_name: str, tptd: dict) -> dict:
-        print(f"example_creator {tool_name}")
-        system_prompt = read_prompt_file("create_examples")
+
+    async def example_creator(self, tool_name: str, tptd: dict,fixed_examples:int=None) -> dict:
+        print("example_creator")
+        if fixed_examples:
+            system_prompt = read_prompt_file("create_short_examples")
+            system_prompt = system_prompt.replace("EX_FIX_NUM", fixed_examples)
+        else:
+            system_prompt = read_prompt_file("create_examples")
+
         system_prompt = system_prompt.replace("ToolX", tool_name)
 
         for item in tptd["policy_items"]:
