@@ -41,7 +41,7 @@ class ToolGuardSpecGenerator:
         return tptd
 
     async def create_policy(self, tool_name: str) -> dict:
-        print(f"policy_creator_node {tool_name}")
+        print(f"policy_creator_node({tool_name})")
         system_prompt = read_prompt_file("create_policy")
         system_prompt = system_prompt.replace("ToolX", tool_name)
         user_content = f"Policy Document:{self.policy_document}\nTools Descriptions:{json.dumps(self.tools_descriptions)}\nTarget Tool:{self.tools_details[tool_name].model_dump_json()}\n"
@@ -52,7 +52,7 @@ class ToolGuardSpecGenerator:
     async def add_policies(
         self, tool_name: str, tptd: dict, iteration: int = 0
     ) -> dict:
-        print(f"add_policy {tool_name}")
+        print(f"add_policy({tool_name})")
         system_prompt = read_prompt_file("add_policies")
         user_content = f"Policy Document:{self.policy_document}\nTools Descriptions:{json.dumps(self.tools_descriptions)}\nTarget Tool:{self.tools_details[tool_name].model_dump_json()}\nTPTD: {json.dumps(tptd)}"
         response = await self.llm.chat_json(
@@ -75,7 +75,7 @@ class ToolGuardSpecGenerator:
 
     async def split(self, tool_name: str, tptd: dict) -> dict:
         # todo: consider addition step to split policy by policy and not overall
-        print(f"split {tool_name}")
+        print(f"split({tool_name})")
         system_prompt = read_prompt_file("split")
         user_content = f"Policy Document:{self.policy_document}\nTools Descriptions:{json.dumps(self.tools_descriptions)}\nTarget Tool:{self.tools_details[tool_name].model_dump_json()}\nTPTD: {json.dumps(tptd)}"
         tptd = await self.llm.chat_json(generate_messages(system_prompt, user_content))
@@ -84,7 +84,7 @@ class ToolGuardSpecGenerator:
 
     async def merge(self, tool_name: str, tptd: dict) -> dict:
         # todo: consider addition step to split policy by policy and not overall
-        print(f"merge {tool_name}")
+        print(f"merge({tool_name})")
         system_prompt = read_prompt_file("merge")
         user_content = f"Policy Document:{self.policy_document}\nTools Descriptions:{json.dumps(self.tools_descriptions)}\nTarget Tool:{self.tools_details[tool_name].model_dump_json()}\nTPTD: {json.dumps(tptd)}"
         tptd = await self.llm.chat_json(generate_messages(system_prompt, user_content))
@@ -137,7 +137,7 @@ class ToolGuardSpecGenerator:
         return not (all(float(counts[key]) / num > 0.5 for key in counts)), comments
 
     async def review_policy(self, tool_name: str, tptd) -> dict:
-        print(f"review_policy {tool_name}")
+        print(f"review_policy({tool_name})")
         system_prompt = read_prompt_file("policy_reviewer")
         newTPTD = {"policy_items": []}
 
@@ -176,7 +176,7 @@ class ToolGuardSpecGenerator:
         return newTPTD
 
     async def add_references(self, tool_name: str, tptd: dict) -> dict:
-        print(f"add_ref {tool_name}")
+        print(f"add_ref({tool_name})")
         system_prompt = read_prompt_file("add_references")
         # remove old refs (used to help avoid duplications)
         for item in tptd["policy_items"]:
@@ -195,7 +195,7 @@ class ToolGuardSpecGenerator:
         return tptd
 
     async def reference_correctness(self, tool_name: str, tptd: dict) -> dict:
-        print(f"reference_correctness {tool_name}")
+        print(f"reference_correctness({tool_name})")
         tptd, unmatched_policies = find_mismatched_references(
             self.policy_document, tptd
         )
@@ -204,8 +204,8 @@ class ToolGuardSpecGenerator:
         return tptd
 
 
-    async def example_creator(self, tool_name: str, tptd: dict,fixed_examples:int=None) -> dict:
-        print("example_creator")
+    async def example_creator(self, tool_name: str, tptd: dict, fixed_examples:int=None) -> dict:
+        print(f"example_creator({tool_name})")
         if fixed_examples:
             system_prompt = read_prompt_file("create_short_examples")
             system_prompt = system_prompt.replace("EX_FIX_NUM", fixed_examples)
@@ -231,7 +231,7 @@ class ToolGuardSpecGenerator:
         return tptd
 
     async def add_examples(self, tool_name: str, tptd: dict, iteration: int) -> dict:
-        print(f"add_examples {tool_name}")
+        print(f"add_examples({tool_name})")
         system_prompt = read_prompt_file("add_examples")
         system_prompt = system_prompt.replace("ToolX", tool_name)
         for item in tptd["policy_items"]:
@@ -257,7 +257,7 @@ class ToolGuardSpecGenerator:
         return tptd
 
     async def merge_examples(self, tool_name: str, tptd: dict) -> dict:
-        print(f"merge_examples {tool_name}")
+        print(f"merge_examples({tool_name})")
         system_prompt = read_prompt_file("merge_examples")
         system_prompt = system_prompt.replace("ToolX", tool_name)
         for item in tptd["policy_items"]:
@@ -275,7 +275,7 @@ class ToolGuardSpecGenerator:
         return tptd
 
     async def fix_examples(self, tool_name: str, tptd: dict) -> dict:
-        print(f"fix_examples {tool_name}")
+        print(f"fix_examples({tool_name})")
         orig_prompt = read_prompt_file("fix_example")
         for item in tptd["policy_items"]:
             for etype in ["violation", "compliance"]:
@@ -298,7 +298,7 @@ class ToolGuardSpecGenerator:
 
     # todo: change to revew examples, write prompts
     async def review_examples(self, tool_name: str, tptd: dict) -> dict:
-        print(f"review_examples {tool_name}")
+        print(f"review_examples({tool_name})")
         system_prompt = read_prompt_file("examples_reviewer")
         for item in tptd["policy_items"]:
             print(item["name"])
