@@ -5,6 +5,8 @@ import os
 import json
 from typing import List
 
+from pydantic import BaseModel
+
 
 def read_prompt_file(filename: str) -> str:
     with open(
@@ -20,9 +22,9 @@ def generate_messages(system_prompt: str, user_content: str) -> List[Dict[str, s
     ]
 
 
-def save_output(outdir: Path, filename: str | Path, content: Any):
-    with open(outdir / filename, "w") as outfile:
-        json.dump(content, outfile, indent=4)
+def save_output(outdir: Path, filename: str | Path, obj: BaseModel):
+    path = outdir / filename
+    path.write_text(obj.model_dump_json(indent=2), encoding="utf-8")
 
 
 def normalize_text(text):

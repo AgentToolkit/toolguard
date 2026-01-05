@@ -4,7 +4,7 @@ import logging
 import os
 from pathlib import Path
 from pydantic import BaseModel, Field
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -79,14 +79,15 @@ class FileTwin(BaseModel):
 class ToolGuardSpecItem(BaseModel):
     name: str = Field(..., description="Policy item name")
     description: str = Field(..., description="Policy item description")
-    references: List[str] = Field(..., description="original texts")
-    compliance_examples: Optional[List[str]] = Field(
-        ..., description="Example of cases that comply with the policy"
+    references: List[str] = Field(default_factory=list, description="original texts")
+    compliance_examples: List[str] = Field(
+        default_factory=list, description="Example of cases that comply with the policy"
     )
-    violation_examples: Optional[List[str]] = Field(
-        ..., description="Example of cases that violate the policy"
+    violation_examples: List[str] = Field(
+        default_factory=list, description="Example of cases that violate the policy"
     )
     skip: bool = False
+    _debug: Dict = {}
 
     def to_md_bulltets(self, items: List[str]) -> str:
         s = ""
@@ -110,6 +111,7 @@ class ToolGuardSpec(BaseModel):
         ...,
         description="Policy items. All (And logic) policy items must hold whehn invoking the tool.",
     )
+    _debug: Dict = {}
 
 
 def load_tool_policy(file_path: str, tool_name: str) -> ToolGuardSpec:
