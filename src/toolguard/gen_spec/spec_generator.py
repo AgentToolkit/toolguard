@@ -2,7 +2,7 @@ import asyncio
 import json
 import os
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from ..data_types import ToolGuardSpecItem, ToolInfo, ToolGuardSpec
 from ..llm.i_tg_llm import I_TG_LLM
@@ -31,9 +31,7 @@ class ToolGuardSpecGenerator:
 
     async def generate_policy(self, tool_name: str) -> ToolGuardSpec:
         spec = await self.create_spec(tool_name)
-        await asyncio.gather(*[
-            self.add_items(tool_name, spec, i) for i in range(3)
-        ])
+        await asyncio.gather(*[self.add_items(tool_name, spec, i) for i in range(3)])
         await self.split(tool_name, spec)
         await self.merge(tool_name, spec)
         await self.review_policy(tool_name, spec)
@@ -41,9 +39,7 @@ class ToolGuardSpecGenerator:
         # await self.reference_correctness(tool_name, spec)
 
         await self.example_creator(tool_name, spec)
-        await asyncio.gather(*[
-            self.add_examples(tool_name, spec, i) for i in range(5)
-        ])
+        await asyncio.gather(*[self.add_examples(tool_name, spec, i) for i in range(5)])
         await self.merge_examples(tool_name, spec)
         # spec = self.fix_examples(tool_name, spec)
         await self.review_examples(tool_name, spec)
@@ -58,14 +54,14 @@ class ToolGuardSpecGenerator:
 Tools Descriptions: {json.dumps(self.tools_descriptions)}
 Target Tool: {tool.model_dump_json(indent=2)}
 """
-        spec_dict = await self.llm.chat_json(generate_messages(system_prompt, user_content))
+        spec_dict = await self.llm.chat_json(
+            generate_messages(system_prompt, user_content)
+        )
         spec = ToolGuardSpec(tool_name=tool_name, **spec_dict)
         save_output(self.out_dir, f"{tool_name}.json", spec)
         return spec
 
-    async def add_items(
-        self, tool_name: str, spec: ToolGuardSpec, iteration: int = 0
-    ):
+    async def add_items(self, tool_name: str, spec: ToolGuardSpec, iteration: int = 0):
         print(f"add_policy({tool_name})")
         system_prompt = read_prompt_file("add_policies")
         tool = self.tools_details[tool_name]
@@ -73,7 +69,7 @@ Target Tool: {tool.model_dump_json(indent=2)}
 Tools Descriptions: {json.dumps(self.tools_descriptions)}
 Target Tool: {tool.model_dump_json(indent=2)}
 spec: {spec.model_dump_json(indent=2)}"""
-        
+
         response = await self.llm.chat_json(
             generate_messages(system_prompt, user_content)
         )
@@ -84,7 +80,7 @@ spec: {spec.model_dump_json(indent=2)}"""
             else response["policy_items"]
         )
 
-        spec._debug['iteration'] = iteration
+        spec._debug["iteration"] = iteration
         for item_d in item_ds:
             spec.policy_items.append(ToolGuardSpecItem.model_validate(item_d))
 
@@ -99,8 +95,13 @@ spec: {spec.model_dump_json(indent=2)}"""
 Tools Descriptions: {json.dumps(self.tools_descriptions)}
 Target Tool: {tool.model_dump_json(indent=2)}
 spec: {spec.model_dump_json(indent=2)}"""
-        spec_d = await self.llm.chat_json(generate_messages(system_prompt, user_content))
-        spec.policy_items = [ToolGuardSpecItem.model_validate(item_d) for item_d in spec_d['policy_items']]
+        spec_d = await self.llm.chat_json(
+            generate_messages(system_prompt, user_content)
+        )
+        spec.policy_items = [
+            ToolGuardSpecItem.model_validate(item_d)
+            for item_d in spec_d["policy_items"]
+        ]
         save_output(self.out_dir, f"{tool_name}_split.json", spec)
 
     async def merge(self, tool_name: str, spec: ToolGuardSpec):
@@ -112,15 +113,20 @@ spec: {spec.model_dump_json(indent=2)}"""
 Tools Descriptions: {json.dumps(self.tools_descriptions)}
 Target Tool: {tool.model_dump_json(indent=2)}
 spec: {spec.model_dump_json(indent=2)}"""
-        spec_d = await self.llm.chat_json(generate_messages(system_prompt, user_content))
-        spec.policy_items = [ToolGuardSpecItem.model_validate(item_d) for item_d in spec_d["policy_items"]]
+        spec_d = await self.llm.chat_json(
+            generate_messages(system_prompt, user_content)
+        )
+        spec.policy_items = [
+            ToolGuardSpecItem.model_validate(item_d)
+            for item_d in spec_d["policy_items"]
+        ]
         save_output(self.out_dir, f"{tool_name}_merge.json", spec)
 
-    def move2archive(self, reviews) -> (bool, str):
+    def move2archive(self, reviews) -> Tuple[bool, str]:
         comments = ""
         num = len(reviews)
         if num == 0:
-            return False
+            return False, ""
         counts = {
             "is_relevant": 0,
             "is_tool_specific": 0,
@@ -160,13 +166,13 @@ spec: {spec.model_dump_json(indent=2)}"""
 
         return not (all(float(counts[key]) / num > 0.5 for key in counts)), comments
 
-    async def review_policy(self, tool_name: str, spec:ToolGuardSpec):
+    async def review_policy(self, tool_name: str, spec: ToolGuardSpec):
         print(f"review_policy({tool_name})")
         system_prompt = read_prompt_file("policy_reviewer")
         all_tool_descs = json.dumps(self.tools_descriptions)
         tool_desc = self.tools_descriptions[tool_name]
 
-        async def review_item(item:ToolGuardSpecItem):
+        async def review_item(item: ToolGuardSpecItem):
             user_content = f"""Policy Document: {self.policy_document}
 Tools Descriptions: {all_tool_descs}
 Target Tool: {tool_desc}
@@ -186,7 +192,7 @@ policy: {item.model_dump_json(indent=2)}"""
             else:
                 print("Error: review did not provide is_self_contained.")
             return response
-        
+
         async def analyze_item(item: ToolGuardSpecItem):
             reviews = await asyncio.gather(*[review_item(item) for i in range(5)])
             archive, comments = self.move2archive(reviews)
@@ -194,7 +200,7 @@ policy: {item.model_dump_json(indent=2)}"""
             if archive:
                 if "archive" not in spec._debug:
                     spec._debug["archive"] = []
-                spec._debug['archive'].append(item)
+                spec._debug["archive"].append(item)
                 spec.policy_items.remove(item)
 
         await asyncio.gather(*[analyze_item(item) for item in spec.policy_items])
@@ -259,7 +265,9 @@ Policy: {item.model_dump_json(indent=2)}"""
             if "compliance_examples" in response:
                 item.compliance_examples = response["compliance_examples"]
 
-        await asyncio.gather(*[create_item_examples(item) for item in spec.policy_items])
+        await asyncio.gather(
+            *[create_item_examples(item) for item in spec.policy_items]
+        )
         save_output(self.out_dir, f"{tool_name}_examples.json", spec)
 
     async def add_examples(self, tool_name: str, spec: ToolGuardSpec, iteration: int):
@@ -307,28 +315,28 @@ Policy Description: {item.description}"""
         await asyncio.gather(*[merge_item_examples(item) for item in spec.policy_items])
         save_output(self.out_dir, f"{tool_name}_merge_examples.json", spec)
 
-#     async def fix_item_examples(self, tool_name: str, spec: ToolGuardSpec, item: ToolGuardSpecItem):
-#         orig_prompt = read_prompt_file("fix_example")
-#         tool = self.tools_details[tool_name]
+    #     async def fix_item_examples(self, tool_name: str, spec: ToolGuardSpec, item: ToolGuardSpecItem):
+    #         orig_prompt = read_prompt_file("fix_example")
+    #         tool = self.tools_details[tool_name]
 
-#         for etype in ["violation", "compliance"]:
-#             fixed_examples = []
-#             for example in item[etype + "_examples"]:
-#                 system_prompt = orig_prompt.replace("ToolX", tool_name)
-#                 system_prompt = system_prompt.replace("__EXAMPLE_TYPE__", "")
-#                 # user_content = f"Policy Document: {state['policy_text']}\nTools Descriptions: {json.dumps(state['tools'])}\nTarget Tool: {json.dumps(state['target_tool_description'])}\nPolicy Name: {policy['name']}\nPolicy Description: {policy['description']}\nExample: {example}"
-#                 user_content = f"""Tools Descriptions: {json.dumps(self.tools_descriptions)}
-# Target Tool: {tool.model_dump_json(indent=2)}
-# Policy Name: {item.name}
-# Policy Description: {item.description}
-# Example: {example}"""
+    #         for etype in ["violation", "compliance"]:
+    #             fixed_examples = []
+    #             for example in item[etype + "_examples"]:
+    #                 system_prompt = orig_prompt.replace("ToolX", tool_name)
+    #                 system_prompt = system_prompt.replace("__EXAMPLE_TYPE__", "")
+    #                 # user_content = f"Policy Document: {state['policy_text']}\nTools Descriptions: {json.dumps(state['tools'])}\nTarget Tool: {json.dumps(state['target_tool_description'])}\nPolicy Name: {policy['name']}\nPolicy Description: {policy['description']}\nExample: {example}"
+    #                 user_content = f"""Tools Descriptions: {json.dumps(self.tools_descriptions)}
+    # Target Tool: {tool.model_dump_json(indent=2)}
+    # Policy Name: {item.name}
+    # Policy Description: {item.description}
+    # Example: {example}"""
 
-#                 response = await self.llm.chat_json(
-#                     generate_messages(system_prompt, user_content)
-#                 )
-#                 fixed_examples.append(response["revised_example"])
-#             item[etype + "_examples"] = fixed_examples
-#         return fixed_examples
+    #                 response = await self.llm.chat_json(
+    #                     generate_messages(system_prompt, user_content)
+    #                 )
+    #                 fixed_examples.append(response["revised_example"])
+    #             item[etype + "_examples"] = fixed_examples
+    #         return fixed_examples
 
     async def fix_spec_examples(self, tool_name: str, spec: ToolGuardSpec):
         print(f"fix_examples({tool_name})")
@@ -337,7 +345,7 @@ Policy Description: {item.description}"""
         tool = self.tools_details[tool_name]
 
         async def fix_item_examples(item: ToolGuardSpecItem):
-            async def fix_example(example:str):
+            async def fix_example(example: str):
                 system_prompt = orig_prompt.replace("ToolX", tool_name)
                 system_prompt = system_prompt.replace("__EXAMPLE_TYPE__", "")
                 user_content = f"""Tools Descriptions: {json.dumps(self.tools_descriptions)}
@@ -350,13 +358,13 @@ Example: {example}"""
                     generate_messages(system_prompt, user_content)
                 )
                 return response["revised_example"]
-            
-            item.compliance_examples = await asyncio.gather(*[
-                fix_example(ex) for ex in item.compliance_examples
-            ])
-            item.violation_examples = await asyncio.gather(*[
-                fix_example(ex) for ex in item.violation_examples
-            ])
+
+            item.compliance_examples = await asyncio.gather(
+                *[fix_example(ex) for ex in item.compliance_examples]
+            )
+            item.violation_examples = await asyncio.gather(
+                *[fix_example(ex) for ex in item.violation_examples]
+            )
 
         await asyncio.gather(*[fix_item_examples(item) for item in spec.policy_items])
 
@@ -372,11 +380,13 @@ Example: {example}"""
         async def review_item_examples(item: ToolGuardSpecItem):
             print(item.name)
 
-            async def keep_example(example:str):
-                reviews = await asyncio.gather(*[review_example(example) for time in range(5)])
+            async def keep_example(example: str):
+                reviews = await asyncio.gather(
+                    *[review_example(example) for time in range(5)]
+                )
                 return self.keep_example(reviews)
 
-            async def review_example(example:str):
+            async def review_example(example: str):
                 user_content = f"""Tools Descriptions: {json.dumps(self.tools_descriptions)}
 Target Tool: {tool.model_dump_json(indent=2)}
 Policy Name: {item.name}
@@ -386,13 +396,23 @@ Example: {example}"""
                     generate_messages(system_prompt, user_content)
                 )
 
-            keeps = await asyncio.gather(*[keep_example(ex) for ex in item.compliance_examples])
-            item.compliance_examples = [ex for ex, keep in zip(item.compliance_examples, keeps) if keep]
+            keeps = await asyncio.gather(
+                *[keep_example(ex) for ex in item.compliance_examples]
+            )
+            item.compliance_examples = [
+                ex for ex, keep in zip(item.compliance_examples, keeps) if keep
+            ]
 
-            keeps = await asyncio.gather(*[keep_example(ex) for ex in item.violation_examples])
-            item.violation_examples = [ex for ex, keep in zip(item.violation_examples, keeps) if keep]
+            keeps = await asyncio.gather(
+                *[keep_example(ex) for ex in item.violation_examples]
+            )
+            item.violation_examples = [
+                ex for ex, keep in zip(item.violation_examples, keeps) if keep
+            ]
 
-        await asyncio.gather(*[review_item_examples(item) for item in spec.policy_items])
+        await asyncio.gather(
+            *[review_item_examples(item) for item in spec.policy_items]
+        )
         save_output(self.out_dir, f"{tool_name}_example_rev.json", spec)
 
     def keep_example(self, reviews) -> bool:
