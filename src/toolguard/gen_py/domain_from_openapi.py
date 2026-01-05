@@ -103,10 +103,11 @@ def _get_oas_methods(oas: OpenAPI):
             params = (path_item.parameters or []) + (op.parameters or [])
             params = [oas.resolve_ref(p, Parameter) for p in params]
             args, ret = _make_signature(op, params, oas)  # type: ignore
-            args_str = ", ".join(["self"] + [f"{arg}:{type}" for arg, type in args])
+            args_str = ", ".join(["self"] + [f"{arg}:{typ}" for arg, typ in args])
             sig = f"({args_str})->{ret}"
 
-            body = f"return self._delegate.invoke('{to_snake_case(op.operationId)}', {ARGS}.model_dump(), {ret})"
+            fn_name = to_snake_case(op.operationId or "func")
+            body = f"return self._delegate.invoke('{fn_name}', {ARGS}.model_dump(), {ret})"
             # if orign_funcs:
             #     func = find(orign_funcs or [], lambda fn: fn.__name__ == op.operationId) # type: ignore
             #     if func:
@@ -177,12 +178,13 @@ def _generate_api_impl(
 
 def _make_signature(
     op: Operation, params: List[Parameter], oas: OpenAPI
-) -> Tuple[Tuple[str, str], str]:
-    fn_name = to_camel_case(op.operationId)
+) -> Tuple[List[Tuple[str, str]], str]:
+    fn_name = to_camel_case(op.operationId or "operationId")
     args = []
+    rsp_type = "Any"
 
     for param in params:
-        if param.in_ == ParameterIn.path:
+        if param.in_ == ParameterIn.path and param.schema_:
             args.append((param.name, _oas_to_py_type(param.schema_, oas) or "Any"))
 
     if find(params, lambda p: p.in_ == ParameterIn.query):
@@ -190,23 +192,24 @@ def _make_signature(
         args.append((ARGS, query_type))
 
     req_body = oas.resolve_ref(op.requestBody, RequestBody)
-    if req_body:
+    if req_body and req_body.content_json:
         scm_or_ref = req_body.content_json.schema_
-        body_type = _oas_to_py_type(scm_or_ref, oas)
-        if body_type is None:
-            body_type = f"{fn_name}Request"
-        args.append((ARGS, body_type))
-
-    rsp_or_ref = op.responses.get("200")
-    rsp = oas.resolve_ref(rsp_or_ref, Response)
-    if rsp:
-        scm_or_ref = rsp.content_json.schema_
         if scm_or_ref:
-            rsp_type = _oas_to_py_type(scm_or_ref, oas)
-            if rsp_type is None:
-                rsp_type = f"{fn_name}Response"
-        else:
-            rsp_type = "Any"
+            body_type = _oas_to_py_type(scm_or_ref, oas)
+            if body_type is None:
+                body_type = f"{fn_name}Request"
+            args.append((ARGS, body_type))
+
+    if op.responses:
+        rsp_or_ref = op.responses.get("200")
+        rsp = oas.resolve_ref(rsp_or_ref, Response)
+        if rsp:
+            scm_or_ref = rsp.content_json.schema_
+            if scm_or_ref:
+                rsp_type = _oas_to_py_type(scm_or_ref, oas)
+                if rsp_type is None:
+                    rsp_type = f"{fn_name}Response"
+
     return args, rsp_type
 
 
@@ -222,7 +225,7 @@ def _oas_to_py_type(scm_or_ref: Union[Reference, JSchema], oas: OpenAPI) -> str 
             return py_type
         # if scm.type == JSONSchemaTypes.array and scm.items:
         #     return f"List[{oas_to_py_type(scm.items, oas) or 'Any'}]"
-
+    return None
 
 def _primitive_jschema_types_to_py(
     type: Optional[str], format: Optional[str]

@@ -64,7 +64,7 @@ class ToolGuardsCodeGenerationResult(BaseModel):
     ) -> "ToolGuardsCodeGenerationResult":
         full_path = directory / filename
         with open(full_path, "w", encoding="utf-8") as f:
-            json.dump(self.model_dump(), f, indent=2)
+            json.dump(self.model_dump(), f, indent=2, default=str)
         return self
 
 
