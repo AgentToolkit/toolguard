@@ -7,6 +7,7 @@ from .ref import DocumentWithRef, Reference
 
 class StrEnum(str, Enum):
     """An abstract base class for string-based enums."""
+
     pass
 
 

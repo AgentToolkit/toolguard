@@ -15,11 +15,11 @@ def {{ method.name }}(api: {{ domain.app_api_class_name }}, {{ method.signature}
 
     Args:
         api ({{ domain.app_api_class_name }}): api to access other tools.
-{{method.args_doc_str}} 
+{{method.args_doc_str}}
 
     Raises:
         PolicyViolationException: If the tool call does not comply to the policy.
     """
-    
+
 {% for item in items %}    {{ item.guard_fn }}(api, {{method.args_call}})
 {% endfor %}

@@ -2,6 +2,7 @@ from dataclasses import is_dataclass
 from enum import Enum
 import inspect
 import os
+from pathlib import Path
 import textwrap
 from types import FunctionType, UnionType
 import types
@@ -26,8 +27,9 @@ from ..data_types import FileTwin
 
 Dependencies = DefaultDict[type, Set[type]]
 
+
 class APIExtractor:
-    def __init__(self, py_path:str, include_module_roots:List[str] = []):
+    def __init__(self, py_path: Path, include_module_roots: List[str] = []):
         self.py_path = py_path
         self.include_module_roots = include_module_roots
 

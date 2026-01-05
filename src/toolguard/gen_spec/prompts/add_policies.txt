@@ -55,4 +55,3 @@ If no additional relevant policies exist, return:
 {
   "policy_items": []
 }
-

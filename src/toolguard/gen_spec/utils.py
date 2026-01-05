@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Dict, Any
 import os
 
@@ -19,8 +20,8 @@ def generate_messages(system_prompt: str, user_content: str) -> List[Dict[str, s
     ]
 
 
-def save_output(outdir: str, filename: str, content: Any):
-    with open(os.path.join(outdir, filename), "w") as outfile:
+def save_output(outdir: Path, filename: str | Path, content: Any):
+    with open(outdir / filename, "w") as outfile:
         json.dump(content, outfile, indent=4)
 
 

@@ -2,6 +2,7 @@ import importlib
 import inspect
 import json
 import os
+from pathlib import Path
 import sys
 from types import ModuleType
 from typing import Any, Dict, List, Optional, Type, Callable, TypeVar
@@ -9,7 +10,14 @@ from pydantic import BaseModel
 from langchain_core.tools import BaseTool
 
 import functools
-from .data_types import API_PARAM, ARGS_PARAM, RESULTS_FILENAME, FileTwin, RuntimeDomain, ToolGuardSpec
+from .data_types import (
+    API_PARAM,
+    ARGS_PARAM,
+    RESULTS_FILENAME,
+    FileTwin,
+    RuntimeDomain,
+    ToolGuardSpec,
+)
 
 from abc import ABC, abstractmethod
 
@@ -22,14 +30,21 @@ class IToolInvoker(ABC):
         self, toolname: str, arguments: Dict[str, Any], return_type: Type[T]
     ) -> T: ...
 
-def load_toolguard_code_result(directory: str, filename: str = RESULTS_FILENAME):
-    full_path = os.path.join(directory, filename)
+
+def load_toolguard_code_result(directory: str | Path, filename: str = RESULTS_FILENAME):
+    full_path = Path(directory) / filename
     with open(full_path, "r", encoding="utf-8") as f:
         data = json.load(f)
     return ToolGuardsCodeGenerationResult(**data)
 
-def load_toolguards(directory: str, filename: str = RESULTS_FILENAME) -> "ToolguardRuntime":
-    return ToolguardRuntime(load_toolguard_code_result(directory, filename), directory)
+
+def load_toolguards(
+    directory: str | Path, filename: str = RESULTS_FILENAME
+) -> "ToolguardRuntime":
+    return ToolguardRuntime(
+        load_toolguard_code_result(directory, filename), str(directory)
+    )
+
 
 class ToolGuardCodeResult(BaseModel):
     tool: ToolGuardSpec
@@ -40,32 +55,32 @@ class ToolGuardCodeResult(BaseModel):
 
 
 class ToolGuardsCodeGenerationResult(BaseModel):
-    out_dir: str
+    out_dir: Path
     domain: RuntimeDomain
     tools: Dict[str, ToolGuardCodeResult]
 
     def save(
-        self, directory: str, filename: str = RESULTS_FILENAME
+        self, directory: Path, filename: Path = RESULTS_FILENAME
     ) -> "ToolGuardsCodeGenerationResult":
-        full_path = os.path.join(directory, filename)
+        full_path = directory / filename
         with open(full_path, "w", encoding="utf-8") as f:
             json.dump(self.model_dump(), f, indent=2)
         return self
 
 
 class ToolguardRuntime:
-    _original_pypath:list[str] = []
+    _original_pypath: list[str] = []
 
-    def __init__(self, result: ToolGuardsCodeGenerationResult, ctx_dir: str) -> None:
+    def __init__(self, result: ToolGuardsCodeGenerationResult, ctx_dir: Path) -> None:
         self._ctx_dir = ctx_dir
         self._result = result
 
     def __enter__(self):
-        #add folder to python path
-        self._original_pypath = list(sys.path) #remember old path
+        # add folder to python path
+        self._original_pypath = list(sys.path)  # remember old path
         sys.path.insert(0, os.path.abspath(self._ctx_dir))
 
-        #cache the tool guards
+        # cache the tool guards
         self._guards = {}
         for tool_name, tool_result in self._result.tools.items():
             mod_name = file_to_module_name(tool_result.guard_file.file_name)
@@ -78,26 +93,36 @@ class ToolguardRuntime:
 
     def __exit__(self, exc_type, exc, tb):
         del self._guards
-        #back to original python path
+        # back to original python path
         sys.path[:] = self._original_pypath
         return False
-    
-    def _make_args(self, guard_fn:Callable, args: dict,  delegate: IToolInvoker)->Dict[str, Any]:
+
+    def _make_args(
+        self, guard_fn: Callable, args: dict, delegate: IToolInvoker
+    ) -> Dict[str, Any]:
         sig = inspect.signature(guard_fn)
         guard_args = {}
         for p_name, param in sig.parameters.items():
             if p_name == API_PARAM:
-                mod_name = file_to_module_name(self._result.domain.app_api_impl.file_name)
+                mod_name = file_to_module_name(
+                    self._result.domain.app_api_impl.file_name
+                )
                 module = importlib.import_module(mod_name)
-                clazz = find_class_in_module(module, self._result.domain.app_api_impl_class_name)
-                assert clazz, f"class {self._result.domain.app_api_impl_class_name} not found in {self._result.domain.app_api_impl.file_name}"
+                clazz = find_class_in_module(
+                    module, self._result.domain.app_api_impl_class_name
+                )
+                assert clazz, (
+                    f"class {self._result.domain.app_api_impl_class_name} not found in {self._result.domain.app_api_impl.file_name}"
+                )
                 guard_args[p_name] = clazz(delegate)
             else:
                 arg_val = args.get(p_name)
                 if arg_val is None and p_name == ARGS_PARAM:
                     arg_val = args
-                
-                if inspect.isclass(param.annotation) and issubclass(param.annotation, BaseModel):
+
+                if inspect.isclass(param.annotation) and issubclass(
+                    param.annotation, BaseModel
+                ):
                     guard_args[p_name] = param.annotation.model_construct(**arg_val)
                 else:
                     guard_args[p_name] = arg_val
@@ -109,8 +134,10 @@ class ToolguardRuntime:
             return
         guard_fn(**self._make_args(guard_fn, args, delegate))
 
-def file_to_module_name(file_path:str):
-    return file_path.removesuffix('.py').replace('/', '.')
+
+def file_to_module_name(file_path: str | Path):
+    return str(file_path).removesuffix(".py").replace("/", ".")
+
 
 def find_function_in_module(module: ModuleType, function_name: str):
     func = getattr(module, function_name, None)
@@ -147,7 +174,9 @@ class ToolMethodsInvoker(IToolInvoker):
     def __init__(self, object: object) -> None:
         self._obj = object
 
-    def invoke(self, toolname: str, arguments: Dict[str, Any], return_type: Type[T]) -> T:
+    def invoke(
+        self, toolname: str, arguments: Dict[str, Any], return_type: Type[T]
+    ) -> T:
         mtd = getattr(self._obj, toolname)
         assert callable(mtd), f"Tool {toolname} was not found"
         return mtd(**arguments)
@@ -157,10 +186,13 @@ class ToolFunctionsInvoker(IToolInvoker):
     def __init__(self, funcs: List[Callable]) -> None:
         self._funcs_by_name = {func.__name__: func for func in funcs}
 
-    def invoke(self, toolname: str, arguments: Dict[str, Any], return_type: Type[T]) -> T:
+    def invoke(
+        self, toolname: str, arguments: Dict[str, Any], return_type: Type[T]
+    ) -> T:
         func = self._funcs_by_name.get(toolname)
         assert callable(func), f"Tool {toolname} was not found"
         return func(**arguments)
+
 
 class LangchainToolInvoker(IToolInvoker):
     T = TypeVar("T")
@@ -169,12 +201,15 @@ class LangchainToolInvoker(IToolInvoker):
     def __init__(self, tools: List[BaseTool]) -> None:
         self._tools = {tool.name: tool for tool in tools}
 
-    def invoke(self, toolname: str, arguments: Dict[str, Any], return_type: Type[T])->T:
+    def invoke(
+        self, toolname: str, arguments: Dict[str, Any], return_type: Type[T]
+    ) -> T:
         tool = self._tools.get(toolname)
         if tool:
             return tool.invoke(arguments)
         raise ValueError(f"unknown tool {toolname}")
-    
+
+
 def guard_before_call(guards_folder: str) -> Callable[[Callable], Callable]:
     """Decorator factory that logs function calls to the given logfile."""
     toolguards = load_toolguards(guards_folder)

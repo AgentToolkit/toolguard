@@ -8,11 +8,11 @@ Business policies (or guidelines) are normally detailed in company documents, an
 This component enforces **pre‑tool activation policy constraints**, ensuring that agent decisions comply with business rules **before** modifying system state. This prevents policy violations such as unauthorized tool calls or unsafe parameter values.
 
 
-**Step 1**:  
+**Step 1**:
 
 This component gets a set of tools and a policy document and generated multiple ToolGuard specifications, known as `ToolGuardSpec`s. Each specification is attached to a tool, and it declares a precondition that must apply before invoking the tool. The specification has a `name`, `description`, list of `refernces` to the original policy document, a set of declerative `compliance_examples`, describing test cases that the toolGuard should allow the tool invocation, and `violation_examples`, where the toolGuard should raise an exception.
 
-The specifications are aimed to be used as input into our next component - described below. 
+The specifications are aimed to be used as input into our next component - described below.
 
 The two components are not concatenated by design. As the geneartion involves a non-deterministic language model, the results need to be reviewed by a human. Hence, the output specification files should be reviewed and optionaly edited. For example, removing a wrong compliance example.
 
@@ -22,7 +22,7 @@ The OpenAPI document should describe agent tools and optionally include *read-on
 - Clearly defined input parameters and return types
 - Well-documented data models
 
-**Step 2**:  
+**Step 2**:
 Uses the output from Step 1 and the OpenAPI spec to generate Python code that enforces each tool’s policies.
 
 ---
@@ -43,7 +43,7 @@ Uses the output from Step 1 and the OpenAPI spec to generate Python code that en
 
 4. **Create a `.env` file:**
 
-   Copy the `.env.example` to `src/.env` and fill in your environment variables. 
+   Copy the `.env.example` to `src/.env` and fill in your environment variables.
    Replace `AZURE_OPENAI_API_KEY` with your actual API key. and add in TOOLGUARD_GENPY_ARGS your API_KEY.
 
 ## ▶️ Usage

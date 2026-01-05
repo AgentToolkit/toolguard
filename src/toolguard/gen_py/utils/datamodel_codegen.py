@@ -1,7 +1,8 @@
+from pathlib import Path
 import subprocess
 
 
-def run(oas_file: str):
+def run(oas_file: Path):
     # see https://github.com/koxudaxi/datamodel-code-generator
     res = subprocess.run(
         [

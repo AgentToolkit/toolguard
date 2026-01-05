@@ -24,6 +24,7 @@ dependencies = [
     "pyright",
     "datamodel-code-generator",
     "markdown",
+    "types-Markdown",
     "docstring-parser",
     "pytest-asyncio",
     "mellea",
@@ -31,7 +32,13 @@ dependencies = [
     "langchain-core",
 ]
 
-license = { text = "Apache-2.0" }
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.2.0",
+]
+
+license = ["Apache-2.0"]
 
 classifiers = [
     "Programming Language :: Python :: 3",

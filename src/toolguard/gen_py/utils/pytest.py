@@ -1,16 +1,12 @@
-
 from enum import StrEnum
 import json
-import os
-from os.path import join
+from pathlib import Path
 from typing import Any, List, Dict, Optional
 from pydantic import BaseModel, Field
 
 from ...common.multi_process import run_in_process
 from ...common.safe_py import run_safe_python
 from ...data_types import FileTwin
-
-
 
 
 class TestOutcome(StrEnum):
@@ -113,26 +109,31 @@ class TestReport(BaseModel):
                 errors.add(error)
         return list(errors)
 
-def run(folder:str, test_file:str, report_file:str)->TestReport:
-    run_tests_in_safe_python_separate_process(folder, test_file, report_file)
-    
-    report = read_test_report(os.path.join(folder, report_file))
 
-    #overwrite it with indented version
-    with open(os.path.join(folder, report_file), "w", encoding="utf-8") as f:
+def run(folder: Path, test_file: Path, report_file: Path) -> TestReport:
+    run_tests_in_safe_python_separate_process(folder, test_file, report_file)
+
+    report = read_test_report(folder / report_file)
+
+    # overwrite it with indented version
+    with open(folder / report_file, "w", encoding="utf-8") as f:
         json.dump(report.model_dump(), f, indent=2)
 
     return report
 
+
 # Run the tests in this environment.
 # run the tests in safe mode, so network and os operations are blocked. only specified libraries can be used.
 # run the tests in a separate process. so python modules are isolated. as the code is evolving in the filesystem, we need a way to avoid python module caching. otherwise, it will not see that the code in the file has changed.
-def run_tests_in_safe_python_separate_process(folder:str, test_file:str, report_file:str):
+def run_tests_in_safe_python_separate_process(
+    folder: Path, test_file: Path, report_file: Path
+):
     code = f"""
 import pytest
-pytest.main(["{join(folder, test_file)}", "--quiet", "--json-report", "--json-report-file={join(folder, report_file)}"])
-"""   
+pytest.main(["{folder / test_file}", "--quiet", "--json-report", "--json-report-file={folder / report_file}"])
+"""
     return run_in_process(run_safe_python, code, ["pytest"])
+
 
 # def _run_in_subprocess(folder:str, test_file:str, report_file:str):
 #     subprocess.run([
@@ -140,17 +141,17 @@ pytest.main(["{join(folder, test_file)}", "--quiet", "--json-report", "--json-re
 #             test_file,
 #             # "--verbose",
 #             "--quiet",
-#             "--json-report", 
+#             "--json-report",
 #             f"--json-report-file={report_file}"
-#         ], 
+#         ],
 #         env={
-#             **os.environ, 
+#             **os.environ,
 #             "PYTHONPATH": "."
 #         },
 #         cwd=folder)
 
 
-def configure(folder: str):
+def configure(folder: Path):
     """adds the test function docstring to the output report"""
 
     hook = """
@@ -164,7 +165,7 @@ def pytest_runtest_protocol(item, nextitem):
     FileTwin(file_name="conftest.py", content=hook).save(folder)
 
 
-def read_test_report(file_path: str) -> TestReport:
+def read_test_report(file_path: Path) -> TestReport:
     with open(file_path, "r") as file:
         data = json.load(file)
     return TestReport.model_validate(data, strict=False)

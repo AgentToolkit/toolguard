@@ -1,10 +1,10 @@
 from enum import Enum
+from pathlib import Path
 from pydantic import BaseModel, Field, HttpUrl
 from typing import List, Dict, Optional, Any, TypeVar, Union
 import json
 import yaml
 
-from .array import not_none
 from .dict import find_ref
 from .http import MEDIA_TYPE_APP_JSON
 from .jschema import JSchema
@@ -188,8 +188,8 @@ class OpenAPI(BaseModel):
             return object_type.model_validate(tmp)
         return obj
 
-    def save(self, file_name: str):
-        if file_name.endswith(".json"):
+    def save(self, file_name: str | Path):
+        if Path(file_name).suffix == ".json":
             with open(file_name, "w", encoding="utf-8") as f:
                 f.write(
                     self.model_dump_json(indent=2, by_alias=True, exclude_none=True)
@@ -199,9 +199,9 @@ class OpenAPI(BaseModel):
         raise NotImplementedError()
 
 
-def read_openapi(file_path: str) -> OpenAPI:
+def read_openapi(file_path: str | Path) -> OpenAPI:
     with open(file_path, "r") as file:
-        if file_path.endswith("json"):
+        if Path(file_path).suffix == ".json":
             d = json.load(file)
         else:
             d = yaml.safe_load(file)

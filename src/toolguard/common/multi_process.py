@@ -3,6 +3,7 @@ import importlib
 from pathlib import Path
 import multiprocessing
 
+
 def process_target(queue, func, args, kwargs, extra_paths):
     try:
         # Add dynamic python paths
@@ -33,11 +34,11 @@ def process_target(queue, func, args, kwargs, extra_paths):
     except Exception as e:
         queue.put(("error", e))
 
+
 def run_in_process(func, *args, extra_paths=None, **kwargs):
     queue = multiprocessing.Queue()
     p = multiprocessing.Process(
-        target=process_target,
-        args=(queue, func, args, kwargs, extra_paths)
+        target=process_target, args=(queue, func, args, kwargs, extra_paths)
     )
     p.start()
     p.join()

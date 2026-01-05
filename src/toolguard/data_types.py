@@ -4,68 +4,78 @@ import logging
 import os
 from pathlib import Path
 from pydantic import BaseModel, Field
-from typing import Any, Callable, Dict, List, Literal, Optional, cast
+from typing import Any, Callable, List, Optional
 
 logger = logging.getLogger(__name__)
 
-DEBUG_DIR = "debug"
-TESTS_DIR = "tests"
-RESULTS_FILENAME = "result.json"
+DEBUG_DIR = Path("debug")
+TESTS_DIR = Path("tests")
+RESULTS_FILENAME = Path("result.json")
+
 API_PARAM = "api"
 ARGS_PARAM = "args"
 
-class ToolInfo(BaseModel):
-	name: str
-	description: str
-	parameters: Any
-	signature: str
-	full_description:str
 
-	@classmethod
-	def from_function(cls, fn: Callable) -> "ToolInfo":
-		# Assumes @tool decorator from langchain_core https://python.langchain.com/docs/how_to/custom_tools/
-		# or a plain function with doc string
-		def doc_summary(doc:str): 
-			paragraphs = [p.strip() for p in doc.split("\n\n") if p.strip()]
-			return paragraphs[0] if paragraphs else ""
-		
-		fn_name = fn.name if hasattr(fn, 'name') else fn.__name__ # type: ignore
-		sig =fn_name + str(inspect.signature(fn))
-		full_desc = fn.description if hasattr(fn,'description') else fn.__doc__.strip() if fn.__doc__ else (inspect.getdoc(fn) or "") # type: ignore
-		return cls(
+class ToolInfo(BaseModel):
+    name: str
+    description: str
+    parameters: Any
+    signature: str
+    full_description: str
+
+    @classmethod
+    def from_function(cls, fn: Callable) -> "ToolInfo":
+        # Assumes @tool decorator from langchain_core https://python.langchain.com/docs/how_to/custom_tools/
+        # or a plain function with doc string
+        def doc_summary(doc: str):
+            paragraphs = [p.strip() for p in doc.split("\n\n") if p.strip()]
+            return paragraphs[0] if paragraphs else ""
+
+        fn_name = fn.name if hasattr(fn, "name") else fn.__name__  # type: ignore
+        sig = fn_name + str(inspect.signature(fn))
+        full_desc = (
+            fn.description
+            if hasattr(fn, "description")
+            else fn.__doc__.strip()
+            if fn.__doc__
+            else (inspect.getdoc(fn) or "")
+        )  # type: ignore
+        return cls(
             name=fn_name,
-			description=doc_summary(full_desc),
-			full_description = full_desc,
-            parameters=fn.args_schema.model_json_schema() if hasattr(fn, 'args_schema') else inspect.getdoc(fn), # type: ignore
-			signature=sig,
+            description=doc_summary(full_desc),
+            full_description=full_desc,
+            parameters=fn.args_schema.model_json_schema()
+            if hasattr(fn, "args_schema")
+            else inspect.getdoc(fn),  # type: ignore
+            signature=sig,
         )
-    
+
 
 class FileTwin(BaseModel):
-    file_name: str
+    file_name: Path
     content: str
 
-    def save(self, folder: str) -> "FileTwin":
-        full_path = os.path.join(folder, self.file_name)
-        parent = Path(full_path).parent
+    def save(self, folder: str | Path) -> "FileTwin":
+        full_path = Path(folder) / self.file_name
+        parent = full_path.parent
         os.makedirs(parent, exist_ok=True)
         with open(full_path, "w") as file:
             file.write(self.content)
         return self
 
-    def save_as(self, folder: str, file_name: str) -> "FileTwin":
-        file_path = os.path.join(folder, file_name)
+    def save_as(self, folder: str | Path, file_name: str | Path) -> "FileTwin":
+        file_path = Path(folder) / file_name
         with open(file_path, "w") as file:
             file.write(self.content)
-        return FileTwin(file_name=file_name, content=self.content)
+        return FileTwin(file_name=Path(file_name), content=self.content)
 
     @staticmethod
-    def load_from(folder: str, file_path: str) -> "FileTwin":
-        with open(os.path.join(folder, file_path), "r") as file:
+    def load_from(folder: str | Path, file_path: str | Path) -> "FileTwin":
+        with open(Path(folder) / file_path, "r") as file:
             data = file.read()
-            return FileTwin(file_name=file_path, content=data)
-        
-        
+            return FileTwin(file_name=Path(file_path), content=data)
+
+
 class ToolGuardSpecItem(BaseModel):
     name: str = Field(..., description="Policy item name")
     description: str = Field(..., description="Policy item description")
@@ -106,8 +116,9 @@ def load_tool_policy(file_path: str, tool_name: str) -> ToolGuardSpec:
     with open(file_path, "r") as file:
         d = json.load(file)
     d["tool_name"] = tool_name
-    spec = ToolGuardSpec.model_validate(d) #load deep
+    spec = ToolGuardSpec.model_validate(d)  # load deep
     return spec
+
 
 class Domain(BaseModel):
     app_name: str = Field(..., description="Application name")

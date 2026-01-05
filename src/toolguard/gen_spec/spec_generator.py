@@ -1,26 +1,32 @@
-
 import asyncio
 import json
 import os
 from pathlib import Path
 from typing import List, Optional
 
-from ..data_types import ToolInfo, ToolGuardSpec, load_tool_policy
+from ..data_types import ToolInfo, ToolGuardSpec
 from ..llm.i_tg_llm import I_TG_LLM
-from .utils import read_prompt_file, generate_messages, save_output, find_mismatched_references
+from .utils import (
+    read_prompt_file,
+    generate_messages,
+    save_output,
+    find_mismatched_references,
+)
+
 
 class ToolGuardSpecGenerator:
-    def __init__(self, llm:I_TG_LLM, policy_document:str, tools:List[ToolInfo], out_dir:str) -> None:
+    def __init__(
+        self, llm: I_TG_LLM, policy_document: str, tools: List[ToolInfo], out_dir: Path
+    ) -> None:
         self.llm = llm
         self.policy_document = policy_document
         self.tools_descriptions = {tool.name: tool.description for tool in tools}
         self.tools_details = {tool.name: tool for tool in tools}
         self.out_dir = out_dir
-    
 
     async def generate_minimal_policy(self, tool_name: str) -> dict:
         tptd = await self.create_policy(tool_name)
-        tptd = await self.example_creator(tool_name, tptd,4)
+        tptd = await self.example_creator(tool_name, tptd, 4)
         return tptd
 
     async def generate_policy(self, tool_name: str) -> dict:
@@ -203,12 +209,13 @@ class ToolGuardSpecGenerator:
         save_output(self.out_dir, f"{tool_name}_ref_correction_.json", tptd)
         return tptd
 
-
-    async def example_creator(self, tool_name: str, tptd: dict, fixed_examples:int=None) -> dict:
+    async def example_creator(
+        self, tool_name: str, tptd: dict, fixed_examples: Optional[int] = None
+    ) -> dict:
         print(f"example_creator({tool_name})")
         if fixed_examples:
             system_prompt = read_prompt_file("create_short_examples")
-            system_prompt = system_prompt.replace("EX_FIX_NUM", fixed_examples)
+            system_prompt = system_prompt.replace("EX_FIX_NUM", str(fixed_examples))
         else:
             system_prompt = read_prompt_file("create_examples")
 
@@ -342,29 +349,29 @@ class ToolGuardSpecGenerator:
 async def extract_toolguard_specs(
     policy_text: str,
     tools: List[ToolInfo],
-    step1_output_dir: str,
+    step1_output_dir: Path,
     llm: I_TG_LLM,
-    tools2guard: Optional[List[str]] = None,#None==all tools
+    tools2guard: Optional[List[str]] = None,  # None==all tools
     short=False,
 ) -> List[ToolGuardSpec]:
     if not os.path.isdir(step1_output_dir):
         os.makedirs(step1_output_dir)
 
-    process_dir = os.path.join(step1_output_dir, "process")
+    process_dir = step1_output_dir / "process"
     if not os.path.isdir(process_dir):
         os.makedirs(process_dir)
     tpg = ToolGuardSpecGenerator(llm, policy_text, tools, process_dir)
 
-    async def do_one_tool(tool_name:str)->ToolGuardSpec:
-        spec_dict = await tpg.generate_minimal_policy(tool_name) if short \
+    async def do_one_tool(tool_name: str) -> ToolGuardSpec:
+        spec_dict = (
+            await tpg.generate_minimal_policy(tool_name)
+            if short
             else await tpg.generate_policy(tool_name)
+        )
         spec = ToolGuardSpec(tool_name=tool_name, **spec_dict)
 
         path = Path(step1_output_dir, tool_name + ".json")
-        path.write_text(
-            spec.model_dump_json(indent=2),
-            encoding="utf-8"
-        )
+        path.write_text(spec.model_dump_json(indent=2), encoding="utf-8")
         return spec
 
     specs = await asyncio.gather(

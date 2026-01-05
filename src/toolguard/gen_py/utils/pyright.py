@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 import sys
 import subprocess
 from pydantic import BaseModel
@@ -73,7 +74,7 @@ def get_text_by_range(file_content: str, rng: Range) -> str:
     return "\n".join(selected_lines)
 
 
-def run(folder: str, py_file: str) -> DiagnosticsReport:
+def run(folder: Path, py_file: Path) -> DiagnosticsReport:
     py_path = sys.executable
     res = subprocess.run(
         [
@@ -95,7 +96,7 @@ def run(folder: str, py_file: str) -> DiagnosticsReport:
     return DiagnosticsReport.model_validate(data)
 
 
-def config(folder: str):
+def config(folder: Path):
     cfg = {
         "typeCheckingMode": "basic",
         "reportOptionalIterable": WARNING,

@@ -3,7 +3,7 @@
     "python.testing.pytestArgs": [
         "tests",
         "-s",
-        "--log-cli-level=DEBUG"
+        // "--log-cli-level=INFO"
     ],
     "python.testing.pytestEnabled": true,
 }

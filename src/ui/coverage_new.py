@@ -3,16 +3,14 @@ import os
 import re
 from collections import defaultdict
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request
 import json
 import markdown
-import re
-from difflib import SequenceMatcher
 from bs4 import BeautifulSoup
 from unidecode import unidecode
-from collections import defaultdict
 
 app = Flask(__name__)
+
 
 def normalize(text):
     """Normalize text: lowercase, remove punctuation, accents, quotes, html tags"""
@@ -22,6 +20,7 @@ def normalize(text):
     text = re.sub(r"[^\w\s]", "", text)  # remove punctuation
     text = re.sub(r"\s+", " ", text)  # normalize whitespace
     return text.strip()
+
 
 def find_approximate_matches(original_html, normalized_html, sentence_norm_to_orig):
     """Find approximate locations in original_html for normalized sentences and highlight"""
@@ -45,15 +44,16 @@ def find_approximate_matches(original_html, normalized_html, sentence_norm_to_or
             replacement = f'<span class="highlight">{matched_text}</span>'
 
             highlighted_html = (
-                highlighted_html[:orig_start + offset]
+                highlighted_html[: orig_start + offset]
                 + replacement
-                + highlighted_html[orig_end + offset:]
+                + highlighted_html[orig_end + offset :]
             )
 
             offset += len(replacement) - len(matched_text)
             break  # Highlight only once per sentence
 
     return highlighted_html
+
 
 def find_original_index(normalized_html, original_html, norm_index):
     """Map normalized index to original HTML index"""
@@ -66,6 +66,7 @@ def find_original_index(normalized_html, original_html, norm_index):
             norm_cursor += len(norm_c)
         orig_cursor += 1
     return orig_cursor if norm_cursor >= norm_index else None
+
 
 def highlight_tool_sentences(doc, tools_data, selected_tools):
     """Main function to highlight sentences for selected tools in doc"""
@@ -90,83 +91,91 @@ def highlight_tool_sentences(doc, tools_data, selected_tools):
             sentence_norm_to_orig[norm].add(sentence)
 
     # Step 5: Highlight in HTML
-    highlighted_html = find_approximate_matches(html_doc, normalized_doc, sentence_norm_to_orig)
+    highlighted_html = find_approximate_matches(
+        html_doc, normalized_doc, sentence_norm_to_orig
+    )
     return highlighted_html
 
-			
-@app.route('/')
+
+@app.route("/")
 def index():
-	return render_template('coverage.html', text=policy_text, tools=tools_data)
+    return render_template("coverage.html", text=policy_text, tools=tools_data)
 
 
-@app.route('/highlight', methods=['POST'])
+@app.route("/highlight", methods=["POST"])
 def highlight():
-	selected_tools = request.json.get("tools", [])
-	# highlights = set()
-	# for tool in selected_tools:
-	# 	if tool in normalized_passages:
-	# 		highlights.update(normalized_passages[tool])
-	
-	
-	highlighted_text = highlight_tool_sentences(policy_text, normalized_passages, selected_tools)
-	
-	#return {"highlights": list(highlights), "updated_text": highlighted_text}
-	
-	return {"updated_text": highlighted_text}
+    selected_tools = request.json.get("tools", [])
+    # highlights = set()
+    # for tool in selected_tools:
+    # 	if tool in normalized_passages:
+    # 		highlights.update(normalized_passages[tool])
+
+    highlighted_text = highlight_tool_sentences(
+        policy_text, normalized_passages, selected_tools
+    )
+
+    # return {"highlights": list(highlights), "updated_text": highlighted_text}
+
+    return {"updated_text": highlighted_text}
 
 
-if __name__ == '__main__':
-	parser = argparse.ArgumentParser(description='parser')
-	# parser.add_argument('--policy-path', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-salesforce-policies.md')
-	# parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final with salesforce')
-	# parser.add_argument('--policy-path', type=str, default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-policies-for-non-existing-tools.md')
-	# parser.add_argument('--policy-path', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-salesforce-policies-rev.md')
-	# parser.add_argument('--policy-path', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-policies-for-non-existing-tools-rev.md')
-	# parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final non existing tools')
-	parser.add_argument('--policy-path', type=str,
-						default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki.md')
-	parser.add_argument('--outdir', type=str,
-						default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/GroundTruth')
-	# parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final')
-	# parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final copy 4')
-	# parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final_non-existing-tools-rev')
-	# parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final wiki-with-salesforce-policies-rev')
-	args = parser.parse_args()
-	policy_path = args.policy_path
-	outdir = args.outdir
-	# policy_text = open(policy_path, 'r', encoding='utf-8').read()
-	with open(policy_path, 'r', encoding='utf-8') as f:
-		policy_text = markdown.markdown(f.read())
-	# policy_text = f.read()
-	tools_data = {}
-	for filename in os.listdir(outdir):
-		if filename.endswith(".json"):
-			name = filename.replace(".json", "")
-			print(name)
-			tools_data[name] = []
-			with open(os.path.join(outdir, filename), ) as f:
-				data = json.load(f)
-				if isinstance(data["policy_items"], str):
-					continue
-				for p in data["policy_items"]:
-					for r in p["references"]:
-						tools_data[name].append(r)
-	tools_data = dict(sorted(tools_data.items()))
-	
-	
-	# def normalize_text(text):
-	# 	text = text.replace("“", '""').replace("”", '"')
-	# 	text = text.replace("\'", '"')
-	# 	text = text.replace("‘", "'").replace("’", "'")
-	# 	text = text.replace("<p>", "")
-	# 	text = re.sub(r'\s+', ' ', text).strip()
-	# 	return text.lower()
-	
-	
-	# Preprocess tool passages for better search
-	normalized_passages = {
-		tool: [p for p in passages]
-		for tool, passages in tools_data.items()
-	}
-	
-	app.run(debug=True, port=5002)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="parser")
+    # parser.add_argument('--policy-path', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-salesforce-policies.md')
+    # parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final with salesforce')
+    # parser.add_argument('--policy-path', type=str, default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-policies-for-non-existing-tools.md')
+    # parser.add_argument('--policy-path', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-salesforce-policies-rev.md')
+    # parser.add_argument('--policy-path', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki-with-policies-for-non-existing-tools-rev.md')
+    # parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final non existing tools')
+    parser.add_argument(
+        "--policy-path",
+        type=str,
+        default="/Users/naamazwerdling/Documents/OASB/policy_validation/airline/wiki.md",
+    )
+    parser.add_argument(
+        "--outdir",
+        type=str,
+        default="/Users/naamazwerdling/Documents/OASB/policy_validation/airline/GroundTruth",
+    )
+    # parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final')
+    # parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final copy 4')
+    # parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final_non-existing-tools-rev')
+    # parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final wiki-with-salesforce-policies-rev')
+    args = parser.parse_args()
+    policy_path = args.policy_path
+    outdir = args.outdir
+    # policy_text = open(policy_path, 'r', encoding='utf-8').read()
+    with open(policy_path, "r", encoding="utf-8") as f:
+        policy_text = markdown.markdown(f.read())
+    # policy_text = f.read()
+    tools_data = {}
+    for filename in os.listdir(outdir):
+        if filename.endswith(".json"):
+            name = filename.replace(".json", "")
+            print(name)
+            tools_data[name] = []
+            with open(
+                os.path.join(outdir, filename),
+            ) as f:
+                data = json.load(f)
+                if isinstance(data["policy_items"], str):
+                    continue
+                for p in data["policy_items"]:
+                    for r in p["references"]:
+                        tools_data[name].append(r)
+    tools_data = dict(sorted(tools_data.items()))
+
+    # def normalize_text(text):
+    # 	text = text.replace("“", '""').replace("”", '"')
+    # 	text = text.replace("\'", '"')
+    # 	text = text.replace("‘", "'").replace("’", "'")
+    # 	text = text.replace("<p>", "")
+    # 	text = re.sub(r'\s+', ' ', text).strip()
+    # 	return text.lower()
+
+    # Preprocess tool passages for better search
+    normalized_passages = {
+        tool: [p for p in passages] for tool, passages in tools_data.items()
+    }
+
+    app.run(debug=True, port=5002)

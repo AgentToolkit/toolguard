@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from pathlib import Path
 from typing import Callable, List, Optional
 
 import mellea
@@ -15,10 +16,11 @@ from .utils import pytest, pyright
 
 logger = logging.getLogger(__name__)
 
+
 async def generate_toolguards_from_functions(
     app_name: str,
     tool_policies: List[ToolGuardSpec],
-    py_root: str,
+    py_root: Path,
     funcs: List[Callable],
     llm: I_TG_LLM,
     module_roots: Optional[List[str]] = None,
@@ -28,9 +30,7 @@ async def generate_toolguards_from_functions(
 
     if not module_roots:
         if len(funcs) > 0:
-            module_roots = list(
-                {func.__module__.split(".")[0] for func in funcs}
-            )
+            module_roots = list({func.__module__.split(".")[0] for func in funcs})
     assert module_roots
 
     # Domain from functions
@@ -41,7 +41,11 @@ async def generate_toolguards_from_functions(
 
 
 async def generate_toolguards_from_openapi(
-    app_name: str, tool_policies: List[ToolGuardSpec], py_root: str, openapi_file: str, llm: I_TG_LLM
+    app_name: str,
+    tool_policies: List[ToolGuardSpec],
+    py_root: Path,
+    openapi_file: Path,
+    llm: I_TG_LLM,
 ) -> ToolGuardsCodeGenerationResult:
     logger.debug(f"Starting... will save into {py_root}")
 
@@ -51,9 +55,13 @@ async def generate_toolguards_from_openapi(
         app_name, tool_policies, py_root, domain, llm
     )
 
+
 async def generate_toolguards_from_domain(
-    app_name: str, specs: List[ToolGuardSpec], py_root: str, domain: RuntimeDomain,
-    llm: I_TG_LLM
+    app_name: str,
+    specs: List[ToolGuardSpec],
+    py_root: Path,
+    domain: RuntimeDomain,
+    llm: I_TG_LLM,
 ) -> ToolGuardsCodeGenerationResult:
     # Setup env
     pyright.config(py_root)
@@ -61,14 +69,19 @@ async def generate_toolguards_from_domain(
 
     for tool_policy in specs:
         for policy in tool_policy.policy_items:
-            policy.name = policy.name.replace(".","_")
+            policy.name = policy.name.replace(".", "_")
 
-    not_empty_specs = [spec for spec in [
-        ToolGuardSpec( #a copy
-            tool_name=spec.tool_name, 
-            policy_items=[i for i in spec.policy_items if not i.skip])
-        for spec in specs
-    ] if len(spec.policy_items) > 0]
+    not_empty_specs = [
+        spec
+        for spec in [
+            ToolGuardSpec(  # a copy
+                tool_name=spec.tool_name,
+                policy_items=[i for i in spec.policy_items if not i.skip],
+            )
+            for spec in specs
+        ]
+        if len(spec.policy_items) > 0
+    ]
 
     # mellea_workaround = {"model_options": {"reasoning_effort": "medium"}}#FIXME https://github.com/generative-computing/mellea/issues/270
     # kw_args = llm.kw_args
@@ -77,9 +90,7 @@ async def generate_toolguards_from_domain(
     m = mellea.MelleaSession(mellea_backend)
     tool_results = await asyncio.gather(
         *[
-            ToolGuardGenerator(
-                app_name, tool_policy, py_root, domain, m
-            ).generate()
+            ToolGuardGenerator(app_name, tool_policy, py_root, domain, m).generate()
             for tool_policy in not_empty_specs
         ]
     )
@@ -88,7 +99,5 @@ async def generate_toolguards_from_domain(
         tool.tool_name: res for tool, res in zip(not_empty_specs, tool_results)
     }
     return ToolGuardsCodeGenerationResult(
-        out_dir=py_root, 
-        domain=domain, 
-        tools=tools_result
+        out_dir=py_root, domain=domain, tools=tools_result
     ).save(py_root)

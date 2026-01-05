@@ -3,7 +3,7 @@ import inspect
 import os
 import asyncio
 import logging
-from os.path import join
+from pathlib import Path
 import re
 from typing import Callable, List, Tuple
 
@@ -41,9 +41,10 @@ logger = logging.getLogger(__name__)
 MAX_TOOL_IMPROVEMENTS = 5
 MAX_TEST_GEN_TRIALS = 3
 
+
 class ToolGuardGenerator:
     app_name: str
-    py_path: str
+    py_path: Path
     tool_policy: ToolGuardSpec
     domain: RuntimeDomain
     common: FileTwin
@@ -52,9 +53,9 @@ class ToolGuardGenerator:
         self,
         app_name: str,
         tool_policy: ToolGuardSpec,
-        py_path: str,
+        py_path: Path,
         domain: RuntimeDomain,
-        m: MelleaSession
+        m: MelleaSession,
     ) -> None:
         self.py_path = py_path
         self.app_name = app_name
@@ -63,43 +64,35 @@ class ToolGuardGenerator:
         self.m = m
 
     def start(self):
-        app_path = join(self.py_path, to_snake_case(self.app_name))
+        app_path = self.py_path / to_snake_case(self.app_name)
         os.makedirs(app_path, exist_ok=True)
-        os.makedirs(
-            join(app_path, to_snake_case(self.tool_policy.tool_name)), exist_ok=True
-        )
-        os.makedirs(join(self.py_path, to_snake_case(DEBUG_DIR)), exist_ok=True)
-        os.makedirs(
-            join(
-                self.py_path,
-                to_snake_case(DEBUG_DIR),
-                to_snake_case(self.tool_policy.tool_name),
-            ),
-            exist_ok=True,
-        )
+        os.makedirs(app_path / to_snake_case(self.tool_policy.tool_name), exist_ok=True)
+        debug_path = self.py_path / DEBUG_DIR
+        os.makedirs(debug_path, exist_ok=True)
+        debug_tool_path = debug_path / to_snake_case(self.tool_policy.tool_name)
+        os.makedirs(debug_tool_path, exist_ok=True)
         for item in self.tool_policy.policy_items:
-            os.makedirs(
-                join(
-                    self.py_path,
-                    to_snake_case(DEBUG_DIR),
-                    to_snake_case(self.tool_policy.tool_name),
-                    to_snake_case(item.name),
-                ),
-                exist_ok=True,
-            )
-        os.makedirs(join(self.py_path, to_snake_case(TESTS_DIR)), exist_ok=True)
+            debug_tool_item_path = debug_tool_path / to_snake_case(item.name)
+            os.makedirs(debug_tool_item_path, exist_ok=True)
+
+        tests_path = self.py_path / TESTS_DIR
+        os.makedirs(tests_path, exist_ok=True)
 
     async def generate(self) -> ToolGuardCodeResult:
         self.start()
-        
+
         with py.temp_python_path(self.py_path):
             tool_guard, init_item_guards = self._create_initial_tool_guards()
-    
+
             # Generate guards for all tool items
-            tests_and_guards = await asyncio.gather(* [
-                self._generate_item_tests_and_guard(item, item_guard)
-                    for item, item_guard in zip(self.tool_policy.policy_items, init_item_guards)
-            ])
+            tests_and_guards = await asyncio.gather(
+                *[
+                    self._generate_item_tests_and_guard(item, item_guard)
+                    for item, item_guard in zip(
+                        self.tool_policy.policy_items, init_item_guards
+                    )
+                ]
+            )
 
         item_tests, item_guards = zip(*tests_and_guards)
         return ToolGuardCodeResult(
@@ -164,8 +157,8 @@ class ToolGuardGenerator:
     async def _generate_tests(
         self, item: ToolGuardSpecItem, guard: FileTwin, dep_tools: List[str]
     ) -> FileTwin:
-        test_file_name = join(
-            TESTS_DIR, self.tool_policy.tool_name, f"{test_fn_module_name(item)}.py"
+        test_file_name = (
+            TESTS_DIR / self.tool_policy.tool_name / f"{test_fn_module_name(item)}.py"
         )
         errors = []
         test_file = None
@@ -198,16 +191,20 @@ class ToolGuardGenerator:
             test_file = FileTwin(
                 file_name=test_file_name, content=get_code_content(res)
             ).save(self.py_path)
-            test_file.save_as(self.py_path, self.debug_dir(item, f"test_{trial_no}.py"))
+            test_file.save_as(
+                self.py_path, self.debug_file(item, f"test_{trial_no}.py")
+            )
 
             syntax_report = pyright.run(self.py_path, test_file.file_name)
             FileTwin(
-                    file_name= self.debug_dir(item, f"test_{trial_no}_pyright.json"),
-                    content=syntax_report.model_dump_json(indent=2)
-                ).save(self.py_path)
-            
-            if syntax_report.summary.errorCount>0:
-                logger.warning(f"{syntax_report.summary.errorCount} syntax errors in tests iteration '{trial_no}' in item '{item.name}'.")
+                file_name=self.debug_file(item, f"test_{trial_no}_pyright.json"),
+                content=syntax_report.model_dump_json(indent=2),
+            ).save(self.py_path)
+
+            if syntax_report.summary.errorCount > 0:
+                logger.warning(
+                    f"{syntax_report.summary.errorCount} syntax errors in tests iteration '{trial_no}' in item '{item.name}'."
+                )
                 errors = syntax_report.list_error_messages(test_file.content)
                 continue
 
@@ -241,7 +238,7 @@ class ToolGuardGenerator:
     ) -> FileTwin:
         trial_no = 0
         while trial_no < MAX_TOOL_IMPROVEMENTS:
-            pytest_report_file = self.debug_dir(item, f"guard_{trial_no}_pytest.json")
+            pytest_report_file = self.debug_file(item, f"guard_{trial_no}_pytest.json")
             errors = pytest.run(
                 self.py_path, tests.file_name, pytest_report_file
             ).list_errors()
@@ -274,7 +271,7 @@ class ToolGuardGenerator:
         round: int = 0,
     ) -> FileTwin:
         module_name = guard_item_fn_module_name(item)
-        errors = []
+        errors: list[str] = []
         trials = "a b c".split()
         for trial in trials:
             logger.debug(
@@ -295,12 +292,12 @@ class ToolGuardGenerator:
                 file_name=prev_guard.file_name, content=get_code_content(res)
             ).save(self.py_path)
             guard.save_as(
-                self.py_path, self.debug_dir(item, f"guard_{round}_{trial}.py")
+                self.py_path, self.debug_file(item, f"guard_{round}_{trial}.py")
             )
 
             syntax_report = pyright.run(self.py_path, guard.file_name)
             FileTwin(
-                file_name=self.debug_dir(item, f"guard_{round}_{trial}.pyright.json"),
+                file_name=self.debug_file(item, f"guard_{round}_{trial}.pyright.json"),
                 content=syntax_report.model_dump_json(indent=2),
             ).save(self.py_path)
             logger.info(
@@ -312,7 +309,9 @@ class ToolGuardGenerator:
                 errors = syntax_report.list_error_messages(guard.content)
                 continue
 
-            guard.save_as(self.py_path, self.debug_dir(item, f"guard_{round}_final.py"))
+            guard.save_as(
+                self.py_path, self.debug_file(item, f"guard_{round}_final.py")
+            )
             return (
                 guard  # Happy path. improved vesion of the guard with no syntax errors
             )
@@ -332,7 +331,7 @@ class ToolGuardGenerator:
         assert tool_fn, f"Function not found, {tool_fn_name}"
 
         # __init__.py
-        path = join(to_snake_case(self.app_name), tool_fn_name, "__init__.py")
+        path = Path(to_snake_case(self.app_name)) / tool_fn_name / "__init__.py"
         FileTwin(file_name=path, content="").save(self.py_path)
 
         # item guards files
@@ -347,18 +346,19 @@ class ToolGuardGenerator:
         for item_guard_fn, policy_item in zip(
             item_files, self.tool_policy.policy_items
         ):
-            item_guard_fn.save_as(self.py_path, self.debug_dir(policy_item, "g0.py"))
+            item_guard_fn.save_as(self.py_path, self.debug_file(policy_item, "g0.py"))
 
         return (tool_file, item_files)
 
     def _create_tool_module(
         self, tool_fn: Callable, item_files: List[FileTwin]
     ) -> FileTwin:
-        file_name = join(
-            to_snake_case(self.app_name),
-            to_snake_case(self.tool_policy.tool_name),
-            py.py_extension(guard_fn_module_name(self.tool_policy)),
+        file_path = (
+            Path(to_snake_case(self.app_name))
+            / to_snake_case(self.tool_policy.tool_name)
+            / py.py_extension(guard_fn_module_name(self.tool_policy))
         )
+
         items = [
             {"guard_fn": guard_item_fn_name(item), "file_name": file.file_name}
             for (item, file) in zip(self.tool_policy.policy_items, item_files)
@@ -372,7 +372,7 @@ class ToolGuardGenerator:
             extra_imports.append("from decimal import Decimal")
 
         return FileTwin(
-            file_name=file_name,
+            file_name=file_path,
             content=load_template("tool_guard.j2").render(
                 domain=self.domain,
                 method={
@@ -398,11 +398,12 @@ class ToolGuardGenerator:
     def _create_item_module(
         self, tool_item: ToolGuardSpecItem, tool_fn: Callable
     ) -> FileTwin:
-        file_name = join(
-            to_snake_case(self.app_name),
-            to_snake_case(self.tool_policy.tool_name),
-            py.py_extension(guard_item_fn_module_name(tool_item)),
+        file_name = (
+            Path(to_snake_case(self.app_name))
+            / to_snake_case(self.tool_policy.tool_name)
+            / py.py_extension(guard_item_fn_module_name(tool_item))
         )
+
         sig_str = self._signature_str(inspect.signature(tool_fn))
         args_doc_str = extract_docstr_args(tool_fn)
         extra_imports = []
@@ -422,10 +423,10 @@ class ToolGuardGenerator:
             ),
         ).save(self.py_path)
 
-    def debug_dir(self, policy_item: ToolGuardSpecItem, dir: str):
-        return join(
-            DEBUG_DIR,
-            to_snake_case(self.tool_policy.tool_name),
-            to_snake_case(policy_item.name),
-            dir,
+    def debug_file(self, policy_item: ToolGuardSpecItem, file: str | Path):
+        return (
+            DEBUG_DIR
+            / to_snake_case(self.tool_policy.tool_name)
+            / to_snake_case(policy_item.name)
+            / file
         )

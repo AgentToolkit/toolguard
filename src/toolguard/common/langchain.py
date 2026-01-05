@@ -1,22 +1,23 @@
-
-
 from typing import List
 from langchain_core.tools import BaseTool
 
 from .open_api import OpenAPI
 
+
 def langchain_tools_to_openapi(
     tools: List[BaseTool],
     title: str = "LangChain Tools API",
     version: str = "1.0.0",
-)->OpenAPI:
+) -> OpenAPI:
     paths = {}
     components = {"schemas": {}}
 
     for tool in tools:
         # Get JSON schema from the args model
         if tool.get_input_schema():
-            components["schemas"][tool.name + "Args"] = tool.get_input_schema().model_json_schema()
+            components["schemas"][tool.name + "Args"] = (
+                tool.get_input_schema().model_json_schema()
+            )
 
             request_body = {
                 "description": tool.description,
@@ -32,7 +33,9 @@ def langchain_tools_to_openapi(
             request_body = None
 
         out_schema = tool.get_output_jsonschema()
-        if tool.metadata and tool.metadata.get("output_schema"): #metadata.output_schema overrides 
+        if tool.metadata and tool.metadata.get(
+            "output_schema"
+        ):  # metadata.output_schema overrides
             out_schema = tool.metadata.get("output_schema")
 
         paths[f"/tools/{tool.name}"] = {
@@ -43,17 +46,17 @@ def langchain_tools_to_openapi(
                 "responses": {
                     "200": {
                         "description": "Tool result",
-                        "content": {
-                            "application/json": {"schema": out_schema}
-                        },
+                        "content": {"application/json": {"schema": out_schema}},
                     }
                 },
             }
         }
 
-    return OpenAPI.model_validate({
-        "openapi": "3.1.0",
-        "info": {"title": title, "version": version},
-        "paths": paths,
-        "components": components,
-    })
+    return OpenAPI.model_validate(
+        {
+            "openapi": "3.1.0",
+            "info": {"title": title, "version": version},
+            "paths": paths,
+            "components": components,
+        }
+    )

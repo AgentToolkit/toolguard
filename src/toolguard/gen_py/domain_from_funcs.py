@@ -10,10 +10,10 @@ from . import consts
 
 
 def generate_domain_from_functions(
-    py_path: str, app_name: str, funcs: List[Callable], include_module_roots: List[str]
+    py_path: Path, app_name: str, funcs: List[Callable], include_module_roots: List[str]
 ) -> RuntimeDomain:
     # ToolGuard Runtime
-    os.makedirs(join(py_path, consts.RUNTIME_PACKAGE_NAME), exist_ok=True)
+    os.makedirs(py_path / consts.RUNTIME_PACKAGE_NAME, exist_ok=True)
 
     root = str(Path(__file__).parent.parent)
     common = FileTwin.load_from(root, "data_types.py").save_as(

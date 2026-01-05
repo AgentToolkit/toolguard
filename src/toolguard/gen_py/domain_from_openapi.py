@@ -27,13 +27,14 @@ from ..data_types import FileTwin, RuntimeDomain
 
 ARGS = "args"
 
+
 def generate_domain_from_openapi(
-    py_path: str, app_name: str, openapi_file: str
+    py_path: Path, app_name: str, openapi_file: Path
 ) -> RuntimeDomain:
     # ToolGuard Runtime
-    os.makedirs(join(py_path, consts.RUNTIME_PACKAGE_NAME), exist_ok=True)
+    os.makedirs(py_path / consts.RUNTIME_PACKAGE_NAME, exist_ok=True)
 
-    root = str(Path(__file__).parent.parent)
+    root = Path(__file__).parent.parent
     common = FileTwin.load_from(root, "data_types.py").save_as(
         py_path, join(consts.RUNTIME_PACKAGE_NAME, consts.RUNTIME_TYPES_PY)
     )
@@ -55,7 +56,7 @@ def generate_domain_from_openapi(
 
     # APP Init
     FileTwin(
-        file_name=join(to_snake_case(app_name), "__init__.py"),
+        file_name=Path(to_snake_case(app_name)) / "__init__.py",
         content=f"from . import {types_name}",
     ).save(py_path)
 
