@@ -208,7 +208,7 @@ class ToolGuardSpecGenerator:
         print("example_creator")
         if fixed_examples:
             system_prompt = read_prompt_file("create_short_examples")
-            system_prompt = system_prompt.replace("EX_FIX_NUM", fixed_examples)
+            system_prompt = system_prompt.replace("EX_FIX_NUM", str(fixed_examples))
         else:
             system_prompt = read_prompt_file("create_examples")
 
