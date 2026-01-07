@@ -5,7 +5,7 @@ from os.path import join
 from pathlib import Path
 from typing import Callable, List
 from importlib import import_module
-import markdown
+import markdown  # type: ignore[import]
 import logging
 import argparse
 

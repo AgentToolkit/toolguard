@@ -3,7 +3,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field, HttpUrl
 from typing import List, Dict, Optional, Any, TypeVar, Union
 import json
-import yaml
+import yaml  # type: ignore[import]
 
 from .dict import find_ref
 from .http import MEDIA_TYPE_APP_JSON
@@ -179,6 +179,7 @@ class OpenAPI(BaseModel):
             for op in path_item.operations.values():
                 if op.operationId == operationId:
                     return op
+        return None
 
     def resolve_ref(
         self, obj: Reference | BaseModelT | None, object_type: type[BaseModelT]

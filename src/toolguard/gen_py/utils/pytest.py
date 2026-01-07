@@ -104,7 +104,7 @@ class TestReport(BaseModel):
                     error = test.call.crash.message
                 if test.user_properties:
                     case_desc = test.user_properties[0].get("docstring")
-                    if case_desc:
+                    if case_desc and test.call.crash:
                         error = f"""Test case {case_desc} failed with the following message:\n {test.call.crash.message}"""
                 if error:
                     errors.add(error)

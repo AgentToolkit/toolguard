@@ -30,6 +30,7 @@ dependencies = [
     "mellea",
     "smolagents",
     "langchain-core",
+    "types-PyYAML"
 ]
 
 classifiers = [
@@ -37,13 +38,13 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
 ]
+license = { file = "LICENSE" }
 
 [dependency-groups]
 dev = [
     "pre-commit>=4.2.0",
 ]
 
-license = ["Apache-2.0"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/toolguard"]

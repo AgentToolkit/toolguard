@@ -1,6 +1,8 @@
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
+from pydantic import Field
+
 
 from .ref import DocumentWithRef, Reference
 
@@ -37,6 +39,7 @@ class JSchema(DocumentWithRef):
     nullable: Optional[bool] = (
         None  # in OPenAPISpec https://swagger.io/docs/specification/v3_0/data-models/data-types/#null
     )
+    defs: Optional[Dict[str, "JSchema"]] = Field(default=None, alias="$defs")
 
     def __str__(self) -> str:
         return self.model_dump_json(exclude_none=True, indent=2)

@@ -179,9 +179,8 @@ class OASSummarizer:
             if "example" in app_json:
                 example_data = app_json["example"]
             elif "examples" in app_json:
-                example_data = next(iter(app_json["examples"].values()), {}).get(
-                    "value"
-                )
+                examples_d: Dict[str, Any] = next(iter(app_json["examples"].values()))
+                example_data = examples_d.get("value")
             else:
                 example_data = self._construct_example_from_schema(schema)
 

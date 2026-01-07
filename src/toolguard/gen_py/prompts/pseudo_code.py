@@ -1,3 +1,6 @@
+# mypy: ignore-errors
+
+
 from ...data_types import Domain, ToolGuardSpecItem
 from mellea import generative
 

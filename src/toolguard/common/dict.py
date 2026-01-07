@@ -104,5 +104,5 @@ def find_ref(doc: dict, ref: str):
         else:
             return None
     if "$ref" in cur:
-        return find_ref(doc, cur.get("$ref"))  # recursive. infinte loops?
+        return find_ref(doc, cur["$ref"])  # recursive. infinte loops?
     return cur

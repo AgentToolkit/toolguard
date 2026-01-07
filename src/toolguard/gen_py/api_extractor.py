@@ -4,9 +4,10 @@ import inspect
 import os
 from pathlib import Path
 import textwrap
-from types import FunctionType, UnionType
+from types import UnionType
 import types
 from typing import (
+    Any,
     Callable,
     DefaultDict,
     Dict,
@@ -247,7 +248,7 @@ class APIExtractor:
         ]
 
     def _get_function_with_docstring(
-        self, func: FunctionType, func_name: str
+        self, func: Callable[..., Any], func_name: str
     ) -> List[str]:
         """Extract method signature with type hints and docstring."""
         lines = []
@@ -436,7 +437,7 @@ class APIExtractor:
 
         return descriptions
 
-    def _get_method_signature(self, method: FunctionType, method_name: str):
+    def _get_method_signature(self, method: Callable[..., Any], method_name: str):
         """Extract method signature with type hints."""
         try:
             sig = inspect.signature(method)
@@ -488,9 +489,9 @@ class APIExtractor:
     def _collect_all_types_from_functions(
         self, funcs: List[Callable]
     ) -> Tuple[Set[type], Dependencies]:
-        processed_types = set()
-        collected = set()
-        dependencies = defaultdict(set)
+        processed_types: Set[type] = set()
+        collected: Set[type] = set()
+        dependencies: Dependencies = defaultdict(set)
 
         for func in funcs:
             for param, hint in get_type_hints(func).items():  # noqa: B007
@@ -504,9 +505,9 @@ class APIExtractor:
         self, typ: type
     ) -> Tuple[Set[type], Dependencies]:
         """Collect all types used in the class recursively."""
-        visited = set()
-        collected = set()
-        dependencies = defaultdict(set)
+        visited: Set[type] = set()
+        collected: Set[type] = set()
+        dependencies: Dependencies = defaultdict(set)
 
         # Field types
         try:

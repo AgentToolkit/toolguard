@@ -1,5 +1,5 @@
 import re
-from typing import Set
+from typing import Any, Dict, Set
 from mellea import MelleaSession
 from ..data_types import Domain, ToolGuardSpecItem
 from .prompts.pseudo_code import tool_policy_pseudo_code
@@ -14,7 +14,7 @@ async def tool_dependencies(
     m: MelleaSession,
     trial=0,
 ) -> Set[str]:
-    model_options = {}  # {ModelOption.TEMPERATURE: 0.8}
+    model_options: Dict[str, Any] = {}  # {ModelOption.TEMPERATURE: 0.8}
     pseudo_code = tool_policy_pseudo_code(
         m,
         policy_item=policy_item,

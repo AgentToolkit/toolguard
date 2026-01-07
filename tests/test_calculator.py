@@ -4,7 +4,7 @@ from os.path import join
 import shutil
 from typing import Any, Callable, Dict, List, Type, TypeVar
 
-import markdown
+import markdown  # type: ignore[import]
 
 import pytest
 from toolguard import (
@@ -47,7 +47,7 @@ async def _build_toolguards(
         tools=tools,
         work_dir=step1_out_dir,
         llm=llm,
-        short=False,
+        short=True,
     )
     guards = await generate_guards_from_specs(
         tool_specs=specs,
@@ -112,6 +112,7 @@ def assert_toolgurards_run(
                 "multiply_tool", make_args({"a": 22, "b": 2}), tool_invoker
             )
 
+
 @pytest.mark.asyncio
 async def test_tool_functions():
     work_dir = "examples/calculator/outputs/tool_functions"
@@ -143,7 +144,6 @@ async def test_tool_methods():
     gen_result = await _build_toolguards(model, work_dir, mtds, "_mtds")
     gen_result = load_toolguard_code_result(join(work_dir, model, STEP2))
     assert_toolgurards_run(gen_result, ToolMethodsInvoker(CalculatorTools()))
-
 
 
 @pytest.mark.asyncio

@@ -2,7 +2,7 @@ import asyncio
 import json
 import os
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from ..data_types import ToolInfo, ToolGuardSpec
 from ..llm.i_tg_llm import I_TG_LLM
@@ -98,11 +98,11 @@ class ToolGuardSpecGenerator:
         save_output(self.out_dir, f"{tool_name}_merge.json", tptd)
         return tptd
 
-    def move2archive(self, reviews) -> (bool, str):
+    def move2archive(self, reviews) -> Tuple[bool, str]:
         comments = ""
         num = len(reviews)
         if num == 0:
-            return False
+            return False, ""
         counts = {
             "is_relevant": 0,
             "is_tool_specific": 0,
@@ -145,7 +145,7 @@ class ToolGuardSpecGenerator:
     async def review_policy(self, tool_name: str, tptd) -> dict:
         print(f"review_policy({tool_name})")
         system_prompt = read_prompt_file("policy_reviewer")
-        newTPTD = {"policy_items": []}
+        newTPTD: Dict[str, Any] = {"policy_items": []}
 
         if "policy_items" not in tptd:
             tptd["policy_items"] = []
