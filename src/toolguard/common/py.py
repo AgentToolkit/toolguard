@@ -1,5 +1,6 @@
+import ast
 import inspect
-from typing import Callable
+from typing import Callable, Set, cast
 import sys
 from pathlib import Path
 from contextlib import contextmanager
@@ -83,17 +84,14 @@ def extract_docstr_args(func: Callable) -> str:
     return "\n".join(args_lines)
 
 
-def get_func_signature(obj) -> str:
-    if inspect.isfunction(obj):
-        return inspect.signature(obj)
-    if hasattr(obj, "func") and inspect.isfunction(obj.func):  # a @tool
-        return inspect.signature(obj.func)
-    if hasattr(obj, "args_schema"):
-        schema = obj.args_schema
-        fields = schema.model_fields
-        params = ", ".join(
-            f"{name}: {field.annotation.__name__ if hasattr(field.annotation, '__name__') else field.annotation}"
-            for name, field in fields.items()
-        )
-        return f"({params})"
-    return None
+def top_level_types(path: str | Path) -> Set[str]:
+    nodes = ast.parse(Path(path).read_text()).body
+    res = set()
+    for node in nodes:
+        if isinstance(node, ast.ClassDef):
+            res.add(node.name)
+        elif isinstance(node, ast.Assign):
+            target = cast(ast.Name, node.targets[0])
+            res.add(target.id)
+
+    return res

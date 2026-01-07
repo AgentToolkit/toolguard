@@ -10,7 +10,7 @@ from langchain_core.tools import BaseTool
 
 from .llm.i_tg_llm import I_TG_LLM
 from .runtime import ToolGuardsCodeGenerationResult
-from .data_types import ToolGuardSpec, load_tool_policy, ToolInfo
+from .data_types import ToolGuardSpec, load_tool_spec, ToolInfo
 from .gen_py.gen_toolguards import (
     generate_toolguards_from_functions,
     generate_toolguards_from_openapi,
@@ -107,19 +107,18 @@ async def generate_guards_from_specs(
 
 
 # load step1 results
-def load_policies_in_folder(folder: str | Path) -> List[ToolGuardSpec]:
+def load_specs_in_folder(folder: str | Path) -> List[ToolGuardSpec]:
     files = [
         f
         for f in os.listdir(folder)
         if os.path.isfile(join(folder, f)) and f.endswith(".json")
     ]
-    tool_policies = []
+    specs = []
     for file in files:
-        tool_name = file[: -len(".json")]
-        policy = load_tool_policy(join(folder, file), tool_name)
-        if policy.policy_items:
-            tool_policies.append(policy)
-    return tool_policies
+        spec = load_tool_spec(join(folder, file))
+        if spec.policy_items:
+            specs.append(spec)
+    return specs
 
 
 # #Step1 and immediatly step2

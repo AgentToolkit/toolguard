@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "toolguard"
-version = "0.1.16"
+version = "0.1.17"
 description = "Policy adherence code generation for guarding AI agent tools"
 readme = "README.md"
 
@@ -30,21 +30,21 @@ dependencies = [
     "mellea",
     "smolagents",
     "langchain-core",
+    "types-PyYAML"
 ]
-
-
-[dependency-groups]
-dev = [
-    "pre-commit>=4.2.0",
-]
-
-license = ["Apache-2.0"]
 
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
 ]
+license = { file = "LICENSE" }
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.2.0",
+]
+
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/toolguard"]

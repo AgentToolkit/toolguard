@@ -1,10 +1,10 @@
 import os
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Set, Tuple
 from os.path import join
 
 from ..common.array import find
-from ..common.py import module_to_path
+from ..common.py import top_level_types, module_to_path
 from ..common.str import to_camel_case, to_pascal_case, to_snake_case
 from . import consts
 from .templates import load_template
@@ -53,6 +53,7 @@ def generate_domain_from_openapi(
     types = FileTwin(
         file_name=module_to_path(types_module_name), content=dm_codegen(openapi_file)
     ).save(py_path)
+    type_names = top_level_types(py_path / types.file_name)
 
     # APP Init
     FileTwin(
@@ -62,7 +63,7 @@ def generate_domain_from_openapi(
 
     # APP API
     api_cls_name = to_camel_case("I " + app_name)
-    methods = _get_oas_methods(oas)
+    methods = _get_oas_methods(oas, type_names)
     api_module_name = to_snake_case(f"{app_name}.i_{app_name}")
     api = FileTwin(
         file_name=module_to_path(api_module_name),
@@ -91,10 +92,10 @@ def generate_domain_from_openapi(
     )
 
 
-def _get_oas_methods(oas: OpenAPI):
+def _get_oas_methods(oas: OpenAPI, type_names: Set[str]):
     methods = []
-    for path, path_item in oas.paths.items():  # noqa: B007
-        path_item = oas.resolve_ref(path_item, PathItem)
+    for path, p_item in oas.paths.items():  # noqa: B007
+        path_item = oas.resolve_ref(p_item, PathItem)
         assert path_item
         for mtd, op in path_item.operations.items():  # noqa: B007
             op = oas.resolve_ref(op, Operation)
@@ -102,11 +103,14 @@ def _get_oas_methods(oas: OpenAPI):
                 continue
             params = (path_item.parameters or []) + (op.parameters or [])
             params = [oas.resolve_ref(p, Parameter) for p in params]
-            args, ret = _make_signature(op, params, oas)  # type: ignore
-            args_str = ", ".join(["self"] + [f"{arg}:{type}" for arg, type in args])
+            args, ret = _make_signature(op, params, oas, type_names)  # type: ignore
+            args_str = ", ".join(["self"] + [f"{arg}:{typ}" for arg, typ in args])
             sig = f"({args_str})->{ret}"
 
-            body = f"return self._delegate.invoke('{to_snake_case(op.operationId)}', {ARGS}.model_dump(), {ret})"
+            fn_name = to_snake_case(op.operationId or "func")
+            body = (
+                f"return self._delegate.invoke('{fn_name}', {ARGS}.model_dump(), {ret})"
+            )
             # if orign_funcs:
             #     func = find(orign_funcs or [], lambda fn: fn.__name__ == op.operationId) # type: ignore
             #     if func:
@@ -120,41 +124,6 @@ def _get_oas_methods(oas: OpenAPI):
                 }
             )
     return methods
-
-
-# def _call_fn_body(func:Callable):
-#     module = inspect.getmodule(func)
-#     if module is None or not hasattr(module, '__file__'):
-#         raise ValueError("Function must be from an importable module")
-
-#     module_name = module.__name__
-#     qualname = func.__qualname__
-#     func_name = func.__name__
-#     parts = qualname.split('.')
-
-#     if len(parts) == 1: # Regular function
-#         return f"""
-#     mod = importlib.import_module("{module_name}")
-#     func = getattr(mod, "{func_name}")
-#     return func(locals())"""
-
-#     if len(parts) == 2:  # Classmethod or staticmethod
-#         class_name = parts[0]
-#         return f"""
-#     mod = importlib.import_module("{module_name}")
-#     cls = getattr(mod, "{class_name}")
-#     func = getattr(cls, "{func_name}")
-#     return func(locals())"""
-
-#     if len(parts) > 2: # Instance method
-#         class_name = parts[-2]
-#         return f"""
-#     mod = importlib.import_module("{module_name}")
-#     cls = getattr(mod, "{class_name}")
-#     instance = cls()
-#     func = getattr(instance, "{func_name}")
-#     return func(locals())"""
-#     raise NotImplementedError("Unsupported function type or nested depth")
 
 
 def _generate_api(methods: List, cls_name: str, types_module: str) -> str:
@@ -176,52 +145,68 @@ def _generate_api_impl(
 
 
 def _make_signature(
-    op: Operation, params: List[Parameter], oas: OpenAPI
-) -> Tuple[Tuple[str, str], str]:
-    fn_name = to_camel_case(op.operationId)
+    op: Operation, params: List[Parameter], oas: OpenAPI, type_names: Set[str]
+) -> Tuple[List[Tuple[str, str]], str]:
+    fn_name = to_camel_case(op.operationId or "operationId")
     args = []
+    rsp_type = "Any"
 
     for param in params:
-        if param.in_ == ParameterIn.path:
-            args.append((param.name, _oas_to_py_type(param.schema_, oas) or "Any"))
+        if param.in_ == ParameterIn.path and param.schema_:
+            param_type = _oas_to_py_type(param.schema_, oas, type_names)
+            args.append((param.name, param_type))
 
     if find(params, lambda p: p.in_ == ParameterIn.query):
-        query_type = f"{fn_name}ParametersQuery"
-        args.append((ARGS, query_type))
+        param_type = _oas_to_py_type(
+            param.schema_, oas, type_names, f"{fn_name}ParametersQuery"
+        )
+        args.append((ARGS, param_type))
 
     req_body = oas.resolve_ref(op.requestBody, RequestBody)
-    if req_body:
+    if req_body and req_body.content_json:
         scm_or_ref = req_body.content_json.schema_
-        body_type = _oas_to_py_type(scm_or_ref, oas)
-        if body_type is None:
-            body_type = f"{fn_name}Request"
-        args.append((ARGS, body_type))
-
-    rsp_or_ref = op.responses.get("200")
-    rsp = oas.resolve_ref(rsp_or_ref, Response)
-    if rsp:
-        scm_or_ref = rsp.content_json.schema_
         if scm_or_ref:
-            rsp_type = _oas_to_py_type(scm_or_ref, oas)
-            if rsp_type is None:
-                rsp_type = f"{fn_name}Response"
-        else:
-            rsp_type = "Any"
+            body_type = _oas_to_py_type(scm_or_ref, oas, type_names, f"{fn_name}Args")
+            args.append((ARGS, body_type))
+
+    if op.responses:
+        rsp_or_ref = op.responses.get("200")
+        rsp = oas.resolve_ref(rsp_or_ref, Response)
+        if rsp:
+            scm_or_ref = rsp.content_json.schema_
+            if scm_or_ref:
+                rsp_type = _oas_to_py_type(
+                    scm_or_ref, oas, type_names, f"{fn_name}Response"
+                )
+
     return args, rsp_type
 
 
-def _oas_to_py_type(scm_or_ref: Union[Reference, JSchema], oas: OpenAPI) -> str | None:
+def _oas_to_py_type(
+    scm_or_ref: Reference | JSchema | None,
+    oas: OpenAPI,
+    type_names: Set[str],
+    proposed_type_name: str | None = None,
+) -> str:
+    if proposed_type_name and proposed_type_name in type_names:
+        return proposed_type_name
+
     if isinstance(scm_or_ref, Reference):
         typ = scm_or_ref.ref.split("/")[-1]
-        return to_pascal_case(typ)
+        typ = to_pascal_case(typ)
+        if typ in type_names:
+            return typ
 
     scm = oas.resolve_ref(scm_or_ref, JSchema)
     if scm:
-        py_type = _primitive_jschema_types_to_py(scm.type, scm.format)
-        if py_type:
-            return py_type
+        if scm.type:
+            py_type = _primitive_jschema_types_to_py(scm.type, scm.format)
+            if py_type:
+                return py_type
         # if scm.type == JSONSchemaTypes.array and scm.items:
         #     return f"List[{oas_to_py_type(scm.items, oas) or 'Any'}]"
+
+    return "Any"
 
 
 def _primitive_jschema_types_to_py(

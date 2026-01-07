@@ -114,12 +114,10 @@ class ToolGuardSpec(BaseModel):
     _debug: Dict = {}
 
 
-def load_tool_policy(file_path: str, tool_name: str) -> ToolGuardSpec:
+def load_tool_spec(file_path: str) -> ToolGuardSpec:
     with open(file_path, "r") as file:
         d = json.load(file)
-    d["tool_name"] = tool_name
-    spec = ToolGuardSpec.model_validate(d)  # load deep
-    return spec
+    return ToolGuardSpec.model_validate(d)  # load deep
 
 
 class Domain(BaseModel):

@@ -1,6 +1,7 @@
-from typing import List
+from typing import Any, Dict, List
 from langchain_core.tools import BaseTool
 
+from .dict import substitute_refs
 from .open_api import OpenAPI
 
 
@@ -10,7 +11,7 @@ def langchain_tools_to_openapi(
     version: str = "1.0.0",
 ) -> OpenAPI:
     paths = {}
-    components = {"schemas": {}}
+    components: Dict[str, Dict[str, Any]] = {"schemas": {}}
 
     for tool in tools:
         # Get JSON schema from the args model
@@ -32,11 +33,15 @@ def langchain_tools_to_openapi(
             # Tools without args → empty schema
             request_body = None
 
-        out_schema = tool.get_output_jsonschema()
+        out_schema: Dict = tool.get_output_jsonschema()
         if tool.metadata and tool.metadata.get(
             "output_schema"
-        ):  # metadata.output_schema overrides
-            out_schema = tool.metadata.get("output_schema")
+        ):  # Langflow metadata.output_schema overrides
+            out_schema = tool.metadata.get("output_schema", {})
+        out_schema = substitute_refs(out_schema)
+
+        if out_schema.get("x-fastmcp-wrap-result"):  # a 'result' MCP wrapper
+            out_schema = out_schema.get("properties", {}).get("result", {})
 
         paths[f"/tools/{tool.name}"] = {
             "post": {

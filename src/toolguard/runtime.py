@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Optional, Type, Callable, TypeVar
 from pydantic import BaseModel
 from langchain_core.tools import BaseTool
 
-import functools
 from .data_types import (
     API_PARAM,
     ARGS_PARAM,
@@ -31,7 +30,9 @@ class IToolInvoker(ABC):
     ) -> T: ...
 
 
-def load_toolguard_code_result(directory: str | Path, filename: str = RESULTS_FILENAME):
+def load_toolguard_code_result(
+    directory: str | Path, filename: str | Path = RESULTS_FILENAME
+):
     full_path = Path(directory) / filename
     with open(full_path, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -39,10 +40,10 @@ def load_toolguard_code_result(directory: str | Path, filename: str = RESULTS_FI
 
 
 def load_toolguards(
-    directory: str | Path, filename: str = RESULTS_FILENAME
+    directory: str | Path, filename: str | Path = RESULTS_FILENAME
 ) -> "ToolguardRuntime":
     return ToolguardRuntime(
-        load_toolguard_code_result(directory, filename), str(directory)
+        load_toolguard_code_result(directory, filename), Path(directory)
     )
 
 
@@ -64,7 +65,7 @@ class ToolGuardsCodeGenerationResult(BaseModel):
     ) -> "ToolGuardsCodeGenerationResult":
         full_path = directory / filename
         with open(full_path, "w", encoding="utf-8") as f:
-            json.dump(self.model_dump(), f, indent=2)
+            json.dump(self.model_dump(), f, indent=2, default=str)
         return self
 
 
@@ -158,18 +159,6 @@ def find_class_in_module(module: ModuleType, class_name: str) -> Optional[Type]:
 T = TypeVar("T")
 
 
-def guard_methods(obj: T, guards_folder: str) -> T:
-    """Wraps all public bound methods of the given instance using the given wrapper."""
-    for attr_name in dir(obj):
-        if attr_name.startswith("_"):
-            continue
-        attr = getattr(obj, attr_name)
-        if callable(attr):
-            wrapped = guard_before_call(guards_folder)(attr)
-            setattr(obj, attr_name, wrapped)
-    return obj
-
-
 class ToolMethodsInvoker(IToolInvoker):
     def __init__(self, object: object) -> None:
         self._obj = object
@@ -208,20 +197,3 @@ class LangchainToolInvoker(IToolInvoker):
         if tool:
             return tool.invoke(arguments)
         raise ValueError(f"unknown tool {toolname}")
-
-
-def guard_before_call(guards_folder: str) -> Callable[[Callable], Callable]:
-    """Decorator factory that logs function calls to the given logfile."""
-    toolguards = load_toolguards(guards_folder)
-
-    def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            toolguards.check_toolcall(
-                func.__name__, kwargs, ToolMethodsInvoker(func.__self__)
-            )
-            return func(*args, **kwargs)
-
-        return wrapper  # type: ignore
-
-    return decorator

@@ -1,0 +1,899 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "LangChain Tools API",
+    "version": "1.0.0"
+  },
+  "jsonSchemaDialect": "https://spec.openapis.org/oas/3.1/dialect/WORK-IN-PROGRESS",
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/tools/add_payment_method": {
+      "post": {
+        "summary": "Adds a new payment method for a user in the clinic database.\n\nArgs:\n    user_id (int): ID of the user to associate with the payment method.\n    card_last_4 (int): Last four digits of the credit card.\n    card_brand (str): Credit card brand (e.g., \"Visa\", \"MasterCard\").\n    card_exp (str): Expiration date in MM/YY format.\n    card_id (str): Unique identifier for the card (e.g., from a payment processor).\n\nReturns:\n    int: ID of the newly added payment method.",
+        "operationId": "add_payment_method",
+        "requestBody": {
+          "description": "Adds a new payment method for a user in the clinic database.\n\nArgs:\n    user_id (int): ID of the user to associate with the payment method.\n    card_last_4 (int): Last four digits of the credit card.\n    card_brand (str): Credit card brand (e.g., \"Visa\", \"MasterCard\").\n    card_exp (str): Expiration date in MM/YY format.\n    card_id (str): Unique identifier for the card (e.g., from a payment processor).\n\nReturns:\n    int: ID of the newly added payment method.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/add_payment_methodArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/add_user": {
+      "post": {
+        "summary": "Registers a new user at the clinic, adds their payment method, and charges an initial amount.\n\nThis function performs the following:\n1. Creates a user with the provided personal and contact information.\n2. Associates a payment method using credit card details.\n3. Charges the user the specified amount.\n\nArgs:\n    social_security_number (int): User's social security number\n    first_name (str): User's first name.\n    last_name (str): User's last name.\n    address (str): User's physical address.\n    email (str): User's email address.\n    phone_number (str): User's phone number.\n    card_last_4 (int): Last four digits of the credit card.\n    card_brand (str): Credit card brand (e.g., \"Visa\", \"MasterCard\").\n    card_exp (str): Card expiration date in MM/YY format.\n    card_id (str): Unique identifier for the stored card.\n    amount (float): Amount to charge upon registration.\n    membership_type (str, optional): Type of membership (\"regular\", \"silver\", or \"gold\"). Defaults to \"regular\".\n\nReturns:\n    int: The ID of the newly created user.",
+        "operationId": "add_user",
+        "requestBody": {
+          "description": "Registers a new user at the clinic, adds their payment method, and charges an initial amount.\n\nThis function performs the following:\n1. Creates a user with the provided personal and contact information.\n2. Associates a payment method using credit card details.\n3. Charges the user the specified amount.\n\nArgs:\n    social_security_number (int): User's social security number\n    first_name (str): User's first name.\n    last_name (str): User's last name.\n    address (str): User's physical address.\n    email (str): User's email address.\n    phone_number (str): User's phone number.\n    card_last_4 (int): Last four digits of the credit card.\n    card_brand (str): Credit card brand (e.g., \"Visa\", \"MasterCard\").\n    card_exp (str): Card expiration date in MM/YY format.\n    card_id (str): Unique identifier for the stored card.\n    amount (float): Amount to charge upon registration.\n    membership_type (str, optional): Type of membership (\"regular\", \"silver\", or \"gold\"). Defaults to \"regular\".\n\nReturns:\n    int: The ID of the newly created user.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/add_userArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/{app}/get_user_id": {
+      "post": {
+        "summary": "Retrieves the user id for a given social security number.\n\nArgs:\n    social_security_number (int): social security number of the user.\n\nReturns:\n    int: The user ID corresponding to the given social security number.",
+        "operationId": "get_user_id",
+        "parameters": [
+          {
+            "name": "app",
+            "in": "path",
+            "required": true,
+            "description": "Application identifier",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Retrieves the user id for a given social security number.\n\nArgs:\n    social_security_number (int): social security number of the user.\n\nReturns:\n    int: The user ID corresponding to the given social security number.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/get_user_idArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/get_user": {
+      "post": {
+        "summary": "Retrieves the user by id.\n\nArgs:\n    user_id (int): User id\n\nReturns:\n    User object",
+        "operationId": "get_user",
+        "requestBody": {
+          "description": "Retrieves the user by id.\n\nArgs:\n    user_id (int): User id\n\nReturns:\n    User object",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/get_userArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "user_id": {
+                          "type": "string"
+                        },
+                        "ssn": {
+                          "type": "integer"
+                        },
+                        "first_name": {
+                          "type": "string"
+                        },
+                        "last_name": {
+                          "type": "string"
+                        },
+                        "address": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "phone": {
+                          "type": "string"
+                        },
+                        "enter_date": {
+                          "type": "string"
+                        },
+                        "membership_type": {
+                          "type": "string",
+                          "enum": [
+                            "regular",
+                            "gold",
+                            "silver"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "user_id",
+                        "ssn",
+                        "first_name",
+                        "last_name",
+                        "address",
+                        "email",
+                        "phone",
+                        "enter_date",
+                        "membership_type"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/get_user_payment_methods": {
+      "post": {
+        "summary": "Retrieves all registered payment methods for a specific user.\n\nThis function returns a list of credit or debit cards associated with the given user ID.\nEach payment method includes the card's last four digits, brand, expiration date, and stored card ID.\n\nArgs:\n    user_id (int): The unique ID of the user whose payment methods are being retrieved.\n\nReturns:\n    List[PaymentMethod]: A list of registered payment methods, where each item includes:\n        - pay_id (int): Internal ID of the payment method.\n        - card_last_4 (int): Last 4 digits of the card number.\n        - card_brand (str): Brand of the card (e.g., \"Visa\", \"MasterCard\").\n        - card_exp (str): Expiration date in MM/YY format.\n        - card_id (str): Unique identifier used to store the card securely.",
+        "operationId": "get_user_payment_methods",
+        "requestBody": {
+          "description": "Retrieves all registered payment methods for a specific user.\n\nThis function returns a list of credit or debit cards associated with the given user ID.\nEach payment method includes the card's last four digits, brand, expiration date, and stored card ID.\n\nArgs:\n    user_id (int): The unique ID of the user whose payment methods are being retrieved.\n\nReturns:\n    List[PaymentMethod]: A list of registered payment methods, where each item includes:\n        - pay_id (int): Internal ID of the payment method.\n        - card_last_4 (int): Last 4 digits of the card number.\n        - card_brand (str): Brand of the card (e.g., \"Visa\", \"MasterCard\").\n        - card_exp (str): Expiration date in MM/YY format.\n        - card_id (str): Unique identifier used to store the card securely.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/get_user_payment_methodsArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "pay_id": {
+                        "type": "integer",
+                        "description": "Internal ID of the payment method."
+                      },
+                      "card_last_4": {
+                        "type": "integer",
+                        "description": "Last 4 digits of the card number."
+                      },
+                      "card_brand": {
+                        "type": "string",
+                        "description": "Brand of the card (e.g., \"Visa\", \"MasterCard\")."
+                      },
+                      "card_exp": {
+                        "type": "string",
+                        "description": "Expiration date in MM/YY format."
+                      },
+                      "card_id": {
+                        "type": "string",
+                        "description": "Unique identifier used to store the card securely."
+                      }
+                    },
+                    "required": [
+                      "pay_id",
+                      "card_last_4",
+                      "card_brand",
+                      "card_exp",
+                      "card_id"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/get_user_appointments": {
+      "post": {
+        "summary": "Retrieves all upcoming appointments booked by a specific user.\n\nArgs:\n    user_id (int): ID of the user whose appointments are to be fetched.\n\nReturns:\n    List[AppointmentSlot]: A list of the user's booked appointment slots.\n\nNotes:\n    Appointments are returned in chronological order.",
+        "operationId": "get_user_appointments",
+        "requestBody": {
+          "description": "Retrieves all upcoming appointments booked by a specific user.\n\nArgs:\n    user_id (int): ID of the user whose appointments are to be fetched.\n\nReturns:\n    List[AppointmentSlot]: A list of the user's booked appointment slots.\n\nNotes:\n    Appointments are returned in chronological order.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/get_user_appointmentsArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "slot_id": {
+                        "type": "integer",
+                        "description": "Unique identifier of the slot."
+                      },
+                      "dr_name": {
+                        "type": "string",
+                        "description": "Doctor's name."
+                      },
+                      "specialty": {
+                        "type": "string",
+                        "description": "Doctor's specialty."
+                      },
+                      "date": {
+                        "type": "string",
+                        "description": "Date of the appointment (YYYY-MM-DD)."
+                      },
+                      "start_time": {
+                        "type": "string",
+                        "description": "Start time of the appointment (HH:MM format)."
+                      },
+                      "end_time": {
+                        "type": "string",
+                        "description": "End time of the appointment (HH:MM format)."
+                      },
+                      "visit_fee": {
+                        "type": "number",
+                        "description": "Cost of the visit."
+                      },
+                      "rating": {
+                        "type": "number",
+                        "description": "Doctor's average rating."
+                      }
+                    },
+                    "required": [
+                      "slot_id",
+                      "dr_name",
+                      "specialty",
+                      "date",
+                      "start_time",
+                      "end_time",
+                      "visit_fee",
+                      "rating"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/get_available_dr_specialties": {
+      "post": {
+        "summary": "Retrieves all unique medical specialties available in the clinic.\n\nThis function queries the doctors database and returns a list of distinct, non-null\nspecialties offered by currently registered doctors.\n\nReturns:\n    List[str]: A list of medical specialty names (e.g., \"family\", \"pediatrics\", \"dermatology\").",
+        "operationId": "get_available_dr_specialties",
+        "requestBody": {
+          "description": "Retrieves all unique medical specialties available in the clinic.\n\nThis function queries the doctors database and returns a list of distinct, non-null\nspecialties offered by currently registered doctors.\n\nReturns:\n    List[str]: A list of medical specialty names (e.g., \"family\", \"pediatrics\", \"dermatology\").",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/get_available_dr_specialtiesArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/get_appointment_slot": {
+      "post": {
+        "summary": "",
+        "operationId": "get_appointment_slot",
+        "requestBody": {
+          "description": "",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/get_appointment_slotArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "slot_id": {
+                          "type": "integer",
+                          "description": "Unique identifier of the slot."
+                        },
+                        "dr_name": {
+                          "type": "string",
+                          "description": "Doctor's name."
+                        },
+                        "specialty": {
+                          "type": "string",
+                          "description": "Doctor's specialty."
+                        },
+                        "date": {
+                          "type": "string",
+                          "description": "Date of the appointment (YYYY-MM-DD)."
+                        },
+                        "start_time": {
+                          "type": "string",
+                          "description": "Start time of the appointment (HH:MM format)."
+                        },
+                        "end_time": {
+                          "type": "string",
+                          "description": "End time of the appointment (HH:MM format)."
+                        },
+                        "visit_fee": {
+                          "type": "number",
+                          "description": "Cost of the visit."
+                        },
+                        "rating": {
+                          "type": "number",
+                          "description": "Doctor's average rating."
+                        }
+                      },
+                      "required": [
+                        "slot_id",
+                        "dr_name",
+                        "specialty",
+                        "date",
+                        "start_time",
+                        "end_time",
+                        "visit_fee",
+                        "rating"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/search_doctors": {
+      "post": {
+        "summary": "Searches for doctors in the clinic database using optional filters such as specialty, minimum rating, and maximum visit fee.\n\nReturns a list of doctors that match the criteria, along with their next available appointment.\n\nArgs:\n    specialty (str, optional): Filter by medical specialty (e.g., \"cardiology\", \"dermatology\").\n    min_rank (float, optional): Minimum acceptable doctor rating (e.g., 4.0).\n    max_fee (float, optional): Maximum acceptable visit fee in local currency.\n\nReturns:\n    List[DoctorSearchResult]: A list of matching doctors.",
+        "operationId": "search_doctors",
+        "requestBody": {
+          "description": "Searches for doctors in the clinic database using optional filters such as specialty, minimum rating, and maximum visit fee.\n\nReturns a list of doctors that match the criteria, along with their next available appointment.\n\nArgs:\n    specialty (str, optional): Filter by medical specialty (e.g., \"cardiology\", \"dermatology\").\n    min_rank (float, optional): Minimum acceptable doctor rating (e.g., 4.0).\n    max_fee (float, optional): Maximum acceptable visit fee in local currency.\n\nReturns:\n    List[DoctorSearchResult]: A list of matching doctors.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/search_doctorsArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "dr_id": {
+                        "type": "integer",
+                        "description": "Doctor's unique ID."
+                      },
+                      "dr_name": {
+                        "type": "string",
+                        "description": "Doctor's full name."
+                      },
+                      "specialty": {
+                        "type": "string",
+                        "description": "Medical specialty."
+                      },
+                      "rating": {
+                        "type": "number",
+                        "description": "Average patient rating."
+                      },
+                      "visit_fee": {
+                        "type": "number",
+                        "description": "Consultation fee."
+                      },
+                      "next_available_appointment": {
+                        "description": "Next available appointment date and time, or None if unavailable.",
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "dr_id",
+                      "dr_name",
+                      "specialty",
+                      "rating",
+                      "visit_fee"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/search_available_appointments": {
+      "post": {
+        "summary": "Searches for available appointment slots by specialty, with optional filters for doctor name and date range.\n\nReturns up to 10 available appointment slots, ordered by date and time.\n\nArgs:\n    specialty (str): Medical specialty to filter by (e.g., \"pediatrics\", \"orthopedics\").\n    doctor_name (str, optional): Full or partial name of the doctor to narrow the search.\n    start_date (str, optional): Earliest appointment date to include (YYYY-MM-DD). Defaults to today if not provided.\n    end_date (str, optional): Latest appointment date to include (YYYY-MM-DD).\n\nReturns:\n    List[AppointmentSlot]: A list of available appointment slots.",
+        "operationId": "search_available_appointments",
+        "requestBody": {
+          "description": "Searches for available appointment slots by specialty, with optional filters for doctor name and date range.\n\nReturns up to 10 available appointment slots, ordered by date and time.\n\nArgs:\n    specialty (str): Medical specialty to filter by (e.g., \"pediatrics\", \"orthopedics\").\n    doctor_name (str, optional): Full or partial name of the doctor to narrow the search.\n    start_date (str, optional): Earliest appointment date to include (YYYY-MM-DD). Defaults to today if not provided.\n    end_date (str, optional): Latest appointment date to include (YYYY-MM-DD).\n\nReturns:\n    List[AppointmentSlot]: A list of available appointment slots.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/search_available_appointmentsArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "slot_id": {
+                        "type": "integer",
+                        "description": "Unique identifier of the slot."
+                      },
+                      "dr_name": {
+                        "type": "string",
+                        "description": "Doctor's name."
+                      },
+                      "specialty": {
+                        "type": "string",
+                        "description": "Doctor's specialty."
+                      },
+                      "date": {
+                        "type": "string",
+                        "description": "Date of the appointment (YYYY-MM-DD)."
+                      },
+                      "start_time": {
+                        "type": "string",
+                        "description": "Start time of the appointment (HH:MM format)."
+                      },
+                      "end_time": {
+                        "type": "string",
+                        "description": "End time of the appointment (HH:MM format)."
+                      },
+                      "visit_fee": {
+                        "type": "number",
+                        "description": "Cost of the visit."
+                      },
+                      "rating": {
+                        "type": "number",
+                        "description": "Doctor's average rating."
+                      }
+                    },
+                    "required": [
+                      "slot_id",
+                      "dr_name",
+                      "specialty",
+                      "date",
+                      "start_time",
+                      "end_time",
+                      "visit_fee",
+                      "rating"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/schedule_appointment": {
+      "post": {
+        "summary": "schedules an appointment for a user and charges the specified visit fee.\n\nThis function:\n1. Reserves the given appointment slot for the user.\n2. Charges the visit fee using the specified payment method.\n\nArgs:\n    user_id (int): ID of the user booking the appointment.\n    pay_id (int): ID of the user's payment method to charge.\n    slot_id (int): ID of the appointment slot to book.\n    visit_fee (float): Fee to charge for the visit.\n\nReturns:\n    int: The ID of the booked appointment slot.",
+        "operationId": "schedule_appointment",
+        "requestBody": {
+          "description": "schedules an appointment for a user and charges the specified visit fee.\n\nThis function:\n1. Reserves the given appointment slot for the user.\n2. Charges the visit fee using the specified payment method.\n\nArgs:\n    user_id (int): ID of the user booking the appointment.\n    pay_id (int): ID of the user's payment method to charge.\n    slot_id (int): ID of the appointment slot to book.\n    visit_fee (float): Fee to charge for the visit.\n\nReturns:\n    int: The ID of the booked appointment slot.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/schedule_appointmentArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/remove_appointment": {
+      "post": {
+        "summary": "Cancels an existing appointment by unassigning the user from the specified slot.\n\nThis marks the appointment slot as available by setting its `user_id` to NULL.\nIf the slot is already unassigned, no error is raised.\n\nArgs:\n    slot_id (int): ID of the appointment slot to cancel.\n\nReturns:\n    None",
+        "operationId": "remove_appointment",
+        "requestBody": {
+          "description": "Cancels an existing appointment by unassigning the user from the specified slot.\n\nThis marks the appointment slot as available by setting its `user_id` to NULL.\nIf the slot is already unassigned, no error is raised.\n\nArgs:\n    slot_id (int): ID of the appointment slot to cancel.\n\nReturns:\n    None",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/remove_appointmentArgs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tool result",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "add_payment_methodArgs": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "integer"
+          },
+          "card_last_4": {
+            "type": "integer"
+          },
+          "card_brand": {
+            "type": "string"
+          },
+          "card_exp": {
+            "type": "string"
+          },
+          "card_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "card_last_4",
+          "card_brand",
+          "card_exp",
+          "card_id"
+        ]
+      },
+      "add_userArgs": {
+        "type": "object",
+        "properties": {
+          "social_security_number": {
+            "type": "integer"
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone_number": {
+            "type": "string"
+          },
+          "card_last_4": {
+            "type": "integer"
+          },
+          "card_brand": {
+            "type": "string"
+          },
+          "card_exp": {
+            "type": "string"
+          },
+          "card_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "membership_type": {
+            "default": "regular",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "social_security_number",
+          "first_name",
+          "last_name",
+          "address",
+          "email",
+          "phone_number",
+          "card_last_4",
+          "card_brand",
+          "card_exp",
+          "card_id",
+          "amount"
+        ]
+      },
+      "get_user_idArgs": {
+        "type": "object",
+        "properties": {
+          "social_security_number": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "social_security_number"
+        ]
+      },
+      "get_userArgs": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      },
+      "get_user_payment_methodsArgs": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      },
+      "get_user_appointmentsArgs": {
+        "type": "object",
+        "properties": {
+          "user_id": {}
+        },
+        "required": [
+          "user_id"
+        ]
+      },
+      "get_available_dr_specialtiesArgs": {
+        "type": "object",
+        "properties": {}
+      },
+      "get_appointment_slotArgs": {
+        "type": "object",
+        "properties": {
+          "slot_id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "slot_id"
+        ]
+      },
+      "search_doctorsArgs": {
+        "type": "object",
+        "properties": {
+          "specialty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "min_rank": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "max_fee": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "search_available_appointmentsArgs": {
+        "type": "object",
+        "properties": {
+          "specialty": {},
+          "doctor_name": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "start_date": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "end_date": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "specialty"
+        ]
+      },
+      "schedule_appointmentArgs": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "integer"
+          },
+          "pay_id": {
+            "type": "integer"
+          },
+          "slot_id": {
+            "type": "integer"
+          },
+          "visit_fee": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "user_id",
+          "pay_id",
+          "slot_id",
+          "visit_fee"
+        ]
+      },
+      "remove_appointmentArgs": {
+        "type": "object",
+        "properties": {
+          "slot_id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "slot_id"
+        ]
+      }
+    }
+  }
+}

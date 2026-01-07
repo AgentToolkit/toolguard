@@ -2,10 +2,11 @@ import argparse
 import os
 import re
 from collections import defaultdict
+from typing import Dict, List
 
 from flask import Flask, render_template, request
 import json
-import markdown
+import markdown  # type: ignore[import]
 from bs4 import BeautifulSoup
 from unidecode import unidecode
 
@@ -135,7 +136,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--outdir",
         type=str,
-        default="/Users/naamazwerdling/Documents/OASB/policy_validation/airline/GroundTruth",
+        default="/Users/naamazwerdling/Documents/OASB/policy_validation/airline/GroundTruth",  # pragma: allowlist secret
     )
     # parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final')
     # parser.add_argument('--outdir', type=str,default='/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final copy 4')
@@ -148,12 +149,11 @@ if __name__ == "__main__":
     with open(policy_path, "r", encoding="utf-8") as f:
         policy_text = markdown.markdown(f.read())
     # policy_text = f.read()
-    tools_data = {}
+    tools_data: Dict[str, List] = defaultdict(list)
     for filename in os.listdir(outdir):
         if filename.endswith(".json"):
             name = filename.replace(".json", "")
             print(name)
-            tools_data[name] = []
             with open(
                 os.path.join(outdir, filename),
             ) as f:

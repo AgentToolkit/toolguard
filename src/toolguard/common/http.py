@@ -44,7 +44,7 @@ PARAM_API_KEY = "api_key"
 
 AUTH_HEADER = "Authorization"
 
-SECURITY_COMPONENT_TYPE_API_KEY = "apiKey"
+SECURITY_COMPONENT_TYPE_API_KEY = "apiKey"  # pragma: allowlist secret
 SECURITY_COMPONENT_SCHEME_BEARER = "bearer"
 SECURITY_COMPONENT_SCHEME_BASIC = "basic"
 
