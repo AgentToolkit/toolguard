@@ -3,9 +3,8 @@ from pathlib import Path
 from typing import Dict
 import os
 
-import json
 from typing import List
-
+from ..data_types import ToolGuardSpec
 from pydantic import BaseModel
 
 RETURN_JSON_SUFFIX = """
@@ -71,19 +70,15 @@ def split_reference_if_both_parts_exist(reference, policy_text):
     return None
 
 
-def find_mismatched_references(policy_text, policy_json):
-    corrections = json.loads(json.dumps(policy_json))
+def find_mismatched_references(policy_text: str, spec: ToolGuardSpec):
     unmatched_policies = []
-    if isinstance(corrections["policy_items"], str):
-        return corrections, unmatched_policies
-
     normalized_policy_text = normalize_text(policy_text)
 
-    for policy in corrections["policy_items"]:
+    for item in spec.policy_items:
         corrected_references = []
         has_unmatched = False
 
-        for reference in policy["references"]:
+        for reference in item.references:
             normalized_ref = normalize_text(reference)
             # if normalized ref in policy doc- just copy the original
             if normalized_ref in normalized_policy_text:
@@ -108,8 +103,8 @@ def find_mismatched_references(policy_text, policy_json):
                     )  # Keep original if no match found
                     has_unmatched = True
 
-        policy["references"] = corrected_references
+        item.references = corrected_references
         if has_unmatched:
-            unmatched_policies.append(policy["name"])
+            unmatched_policies.append(item.name)
 
-    return corrections, unmatched_policies
+    return spec, unmatched_policies

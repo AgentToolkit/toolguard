@@ -120,7 +120,7 @@ def assert_toolgurards_run(
 
 @pytest.mark.asyncio
 async def test_tool_functions_short():
-    work_dir = "examples/calculator/outputs/tool_functions"
+    work_dir = "examples/calculator/outputs/tool_functions_short"
     funcs = [
         fn_tools.divide_tool,
         fn_tools.add_tool,
@@ -136,7 +136,7 @@ async def test_tool_functions_short():
 
 @pytest.mark.asyncio
 async def test_tool_functions_long():
-    work_dir = "examples/calculator/outputs/tool_functions"
+    work_dir = "examples/calculator/outputs/tool_functions_long"
     funcs = [
         fn_tools.divide_tool,
         fn_tools.add_tool,
