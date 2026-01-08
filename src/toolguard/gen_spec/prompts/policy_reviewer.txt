@@ -5,9 +5,9 @@ Verify whether the policy can be validated before invoking ToolX whenever possib
 Identify gaps in the policy and suggest improvements to make it self-contained if necessary.
 
 Input:
-Policy Document: A text outlining policies, rules, or constraints related to tool usage.
+Policy Document: A text outlining policy items, rules, or constraints related to tool usage.
 Tool Descriptions: A list detailing tools, their functionalities, and constraints.
-Target Tool (ToolX): The specific tool for which relevant policies must be identified.
+Target Tool (ToolX): The specific tool for which relevant policy items must be identified.
 Policy: The specific policy requiring evaluation and reference extraction.
 
 Evaluation Criteria:

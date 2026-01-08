@@ -1,3 +1,4 @@
+from functools import cache
 from pathlib import Path
 from typing import Dict
 import os
@@ -7,12 +8,27 @@ from typing import List
 
 from pydantic import BaseModel
 
+RETURN_JSON_SUFFIX = """
+CRITICAL OUTPUT RULES:
+- Output MUST be valid JSON.
+- Output MUST match the schema exactly.
+- Do NOT include explanations, markdown, comments, or extra text.
+- Do NOT wrap the JSON in code fences.
+- The first character of the response must be '{' and the last must be '}'.
+"""
 
-def read_prompt_file(filename: str) -> str:
+
+@cache
+def read_prompt_file(filename: str, return_json: bool = True) -> str:
     with open(
         os.path.join(os.path.dirname(__file__), "prompts", filename + ".txt"), "r"
     ) as f:
-        return f.read()
+        prompt = f.read()
+
+    if return_json:
+        return prompt + RETURN_JSON_SUFFIX
+
+    return prompt
 
 
 def generate_messages(system_prompt: str, user_content: str) -> List[Dict[str, str]]:

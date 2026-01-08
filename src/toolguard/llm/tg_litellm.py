@@ -13,9 +13,6 @@ from ..llm.i_tg_llm import I_TG_LLM
 
 
 class LanguageModelBase(I_TG_LLM, ABC):
-    def __init__(self, model_name: str) -> None:
-        self.model_name = model_name
-
     async def chat_json(
         self, messages: List[Dict], max_retries: int = 5, backoff_factor: float = 1.5
     ) -> Dict:
@@ -300,7 +297,7 @@ RITS = "RITS"
 
 class LitellmModel(LanguageModelBase):
     def __init__(self, model_name: str, provider: str, kw_args: Dict[str, Any] = {}):
-        super().__init__(model_name)
+        self.model_name = model_name
         self.provider = provider
         self.kw_args = kw_args
 

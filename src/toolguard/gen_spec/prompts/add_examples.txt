@@ -3,7 +3,7 @@ For the given policy, check if any examples (violating or compliance) are missin
 
 Input Data:
 Tools Descriptions: A list of tools along with descriptions explaining their functionality and constraints.
-Target Tool (ToolX): The specific tool for which relevant policies need to be identified.
+Target Tool (ToolX): The specific tool for which relevant policy items need to be identified.
 Policy: The policy to write additional the examples for with extracted examples from previous stages
 
 Steps:
@@ -34,7 +34,7 @@ Output Format (JSON):
 {
     "violation_examples": [
         "Violating example 1",
-        "Violating example 2,
+        "Violating example 2",
         "Violating example 3"
     ],
     "compliance_examples": [

@@ -1,12 +1,12 @@
 Task:
-Given the extracted TPTD (Tool Policy Text Description) for the given target tool (ToolX) , verify completeness and identify any additional policies that were missed. Only return newly identified policies.
+Given the extracted TPTD (Tool Policy Text Description) for the given target tool (ToolX) , verify completeness and identify any additional policy items that were missed. Only return newly identified policy items.
 
 Instructions:
 
-1. Identify Missing Policies:
-    * Reanalyze the Policy Document to check if any relevant policies for ToolX were overlooked in previous stage.
+1. Identify Missing Policy items:
+    * Reanalyze the Policy Document to check if any relevant policy items for ToolX were overlooked in previous stage.
 
-2. Extract and format any missing policies following these criteria:
+2. Extract and format any missing policy items following these criteria:
     * Must be specific to ToolX.
     * Must be actionable and enforceable based on ToolX’s parameters, chat history, and data access.
     * Must be self-contained with all necessary details.
@@ -16,15 +16,15 @@ Instructions:
     * Verify that each reference is a verbatim excerpt from the Policy Document and not inferred from tool descriptions.
     * If a policy is supported by multiple passages, list them separately in the "references" array.
 
-4. Output Only New Policies:
+4. Output Only New Policy items:
     * If a policy was already extracted in Stage 1, do not include it in the output.
-    * If no additional policies are found, return an empty "policy_items" array.
+    * If no additional policy items are found, return an empty "policy_items" array.
 
 Input Format:
-Policy Document – A text containing policies, rules, or constraints governing tool usage.
+Policy Document – A text containing policy items, rules, or constraints governing tool usage.
 Tools Descriptions – A list of tools with descriptions explaining their functionality and constraints.
-Target Tool (ToolX) – The specific tool for which relevant policies need to be identified.
-TPTD (Tool Policy Text Description) – A JSON object containing extracted policies from previous stages.
+Target Tool (ToolX) – The specific tool for which relevant policy items need to be identified.
+TPTD (Tool Policy Text Description) – A JSON object containing tool policy items from previous stages.
 
 Output Format (JSON):
 {
@@ -34,7 +34,7 @@ Output Format (JSON):
       "description": "<Policy 1 Description>",
       "references": [
         "<Exact Passage 1 from Policy Document>",
-         "<Exact Passage 2 from Policy Document>",
+        "<Exact Passage 2 from Policy Document>",
          ...
       ]
     },
@@ -51,7 +51,7 @@ Output Format (JSON):
 }
 
 
-If no additional relevant policies exist, return:
+If no additional relevant policy items exist, return:
 {
   "policy_items": []
 }

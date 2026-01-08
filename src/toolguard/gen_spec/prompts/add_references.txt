@@ -18,9 +18,9 @@ Instructions:
     * If no supporting references are found, return an empty list.
 
 Input Format:
-Policy Document: A text containing policies, rules, or constraints governing tool usage.
+Policy Document: A text containing policy items, rules, or constraints governing tool usage.
 Tools Descriptions: A list of tools with descriptions explaining their functionality and constraints.
-Target Tool (ToolX): The specific tool for which relevant policies need to be identified.
+Target Tool (ToolX): The specific tool for which relevant policy items need to be identified.
 Policy: The policy for which supporting references need to be extracted.
 
 Output Format (JSON):

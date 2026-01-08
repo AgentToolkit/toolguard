@@ -13,7 +13,7 @@ class SimpleBackend(Backend):
 
     def __init__(self, llm: I_TG_LLM):
         self.llm = llm
-        self.formatter = TemplateFormatter(model_id=llm.model_name)
+        self.formatter = TemplateFormatter(model_id="")
 
     async def generate_from_context(
         self,

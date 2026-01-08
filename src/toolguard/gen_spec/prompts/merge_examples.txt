@@ -1,7 +1,7 @@
 Task: Deduplicate Examples in Policy Evaluation Context
 
 You are given the following inputs:
-* Policy Document: A text outlining rules, constraints, or usage policies for various tools.
+* Policy Document: A text outlining rules, constraints, or usage policy items for various tools.
 * Tools Descriptions: A list of tools along with explanations of their capabilities and constraints.
 * Target Tool (ToolX): The specific tool for which the policy is being analyzed.
 * Policy Name: The name of the policy

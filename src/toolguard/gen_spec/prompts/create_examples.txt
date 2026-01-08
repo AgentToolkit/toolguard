@@ -3,7 +3,7 @@ Your task is to generate in natural text, examples for the given policy. This po
 
 Input Data:
 Tools Descriptions: A list of tools along with descriptions explaining their functionality and constraints.
-Target Tool (ToolX): The specific tool for which relevant policies need to be identified.
+Target Tool (ToolX): The specific tool for which relevant policy items need to be identified.
 Policy: The policy to write the examples for
 
 Objective:
@@ -32,7 +32,7 @@ Output Format (JSON):
 {
     "violation_examples": [
         "Violating example 1",
-        "Violating example 2,
+        "Violating example 2",
         "Violating example 3"
     ],
     "compliance_examples": [
