@@ -4,7 +4,21 @@ from pathlib import Path
 import multiprocessing
 
 
-def process_target(queue, func, args, kwargs, extra_paths):
+def run_in_process(func, *args, extra_paths=None, **kwargs):
+    queue = multiprocessing.Queue()
+    p = multiprocessing.Process(
+        target=_process_target, args=(queue, func, args, kwargs, extra_paths)
+    )
+    p.start()
+    p.join()
+
+    status, value = queue.get()
+    if status == "error":
+        raise value
+    return value
+
+
+def _process_target(queue, func, args, kwargs, extra_paths):
     try:
         # Add dynamic python paths
         if extra_paths:
@@ -33,17 +47,3 @@ def process_target(queue, func, args, kwargs, extra_paths):
         queue.put(("ok", result))
     except Exception as e:
         queue.put(("error", e))
-
-
-def run_in_process(func, *args, extra_paths=None, **kwargs):
-    queue = multiprocessing.Queue()
-    p = multiprocessing.Process(
-        target=process_target, args=(queue, func, args, kwargs, extra_paths)
-    )
-    p.start()
-    p.join()
-
-    status, value = queue.get()
-    if status == "error":
-        raise value
-    return value
