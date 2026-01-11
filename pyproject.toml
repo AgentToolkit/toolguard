@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "toolguard"
-version = "0.1.18"
+version = "0.1.19"
 description = "Policy adherence code generation for guarding AI agent tools"
 readme = "README.md"
 
@@ -16,21 +16,16 @@ authors = [
 requires-python = ">=3.10,<3.14"
 
 dependencies = [
-    "dotenv",
-    "pydantic",
-    "litellm",
-    "pytest",
-    "pytest-json-report",
-    "pyright",
-    "datamodel-code-generator",
-    "markdown",
-    "types-Markdown",
-    "docstring-parser",
-    "pytest-asyncio",
-    "mellea",
-    "smolagents",
-    "langchain-core",
-    "types-PyYAML"
+    "datamodel-code-generator>=0.52.2",
+    "langchain-core>=0.3.72",
+    "litellm<2.0.0",
+    "markdown>=3.10",
+    "mellea>=0.2.4",
+    "pydantic>=2.12.5",
+    "pytest>=9.0.2",
+    "pytest-json-report>=1.5.0",
+    "pyright>=1.1.408",
+    "smolagents>=1.21.3",
 ]
 
 classifiers = [
@@ -40,8 +35,14 @@ classifiers = [
 ]
 license = { file = "LICENSE" }
 
+[project.optional-dependencies]
+dev = [
+    "pytest-asyncio>=1.3.0",
+]
+
 [dependency-groups]
 dev = [
+    "dotenv",
     "pre-commit>=4.2.0",
 ]
 

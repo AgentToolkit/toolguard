@@ -1,0 +1,82 @@
+import importlib
+import inspect
+from pathlib import Path
+import sys
+from typing import Dict
+from toolguard.buildtime.utils import py
+from toolguard.buildtime.gen_py.domain_from_openapi import generate_domain_from_openapi
+from toolguard.buildtime.utils import pyright
+
+
+def load_class(
+    project_root: Path,
+    module_name: str,
+    class_name: str,
+):
+    sys.path.insert(0, str(project_root))
+    try:
+        module = importlib.import_module(module_name)
+        return getattr(module, class_name)
+    finally:
+        sys.path.pop(0)
+
+
+def test_generate_domain_from_appointment_oas():
+    oas_path = Path("tests/resources/appointments_oas.json")
+    trg_path = Path("tests/tmp/appointments")
+    pyright.config(trg_path)
+
+    domain = generate_domain_from_openapi(
+        py_path=trg_path, app_name="appo", openapi_file=oas_path
+    )
+
+    report = pyright.run(trg_path, domain.app_api.file_name)
+    assert report.summary.errorCount == 0  # no syntax errors
+
+    api = load_class(
+        trg_path,
+        py.path_to_module(domain.app_api.file_name),
+        domain.app_api_class_name,
+    )
+
+    expected_signatures = {
+        "get_user_id": "(self, app:str, args:appo.appo_types.GetUserIdArgs)->int",
+        "add_payment_method": "(self, args:appo.appo_types.AddPaymentMethodArgs)->int",
+        "get_user": "(self, args:appo.appo_types.GetUserArgs)->appo.appo_types.GetUserResponse",
+        "remove_appointment": "(self, args:appo.appo_types.RemoveAppointmentArgs)->Any",
+    }
+    assert_method_signature(api, expected_signatures)
+
+
+def assert_method_signature(actual_api, expected_signatures: Dict[str, str]):
+    for method_name, expected in expected_signatures.items():
+        method = getattr(actual_api, method_name)
+        signature = str(inspect.signature(method)).replace(" ", "")
+        assert signature == expected.replace(" ", ""), (
+            f"{method_name}: {signature} != {expected}"
+        )
+
+
+def test_generate_domain_from_calculator_oas():
+    oas_path = Path("examples/calculator/inputs/oas.json")
+    trg_path = Path("tests/tmp/calc")
+    pyright.config(trg_path)
+
+    domain = generate_domain_from_openapi(
+        py_path=trg_path, app_name="calc", openapi_file=oas_path
+    )
+
+    report = pyright.run(trg_path, domain.app_api.file_name)
+    assert report.summary.errorCount == 0  # no syntax errors
+
+    api = load_class(
+        trg_path,
+        py.path_to_module(domain.app_api.file_name),
+        domain.app_api_class_name,
+    )
+
+    expected_signatures = {
+        "add_tool": "(self, args:calc.calc_types.AddToolRequest)->float",
+        "map_kdi_number": "(self, args:calc.calc_types.MapKdiNumberRequest)->float",
+    }
+    assert_method_signature(api, expected_signatures)

@@ -75,3 +75,6 @@ PYTHONPATH=src python -m policy_adherence \
   --force-step1 \
   --tools create_user delete_user
 ```
+
+## Development
+`uv pip install .[dev]`
