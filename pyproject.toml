@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "toolguard"
-version = "0.1.19"
+version = "0.1.20"
 description = "Policy adherence code generation for guarding AI agent tools"
 readme = "README.md"
 
@@ -19,7 +19,7 @@ dependencies = [
     "datamodel-code-generator>=0.52.2",
     "langchain-core>=0.3.72",
     "litellm<2.0.0",
-    "markdown>=3.10",
+    "markdown>=3.7",
     "mellea>=0.2.4",
     "pydantic>=2.12.5",
     "pytest>=9.0.2",
