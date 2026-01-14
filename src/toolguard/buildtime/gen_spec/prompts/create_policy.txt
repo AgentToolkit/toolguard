@@ -45,7 +45,7 @@ A **policy item** is eligible for extraction only if it is:
 • **Tool-scoped** – it applies to ToolX’s operation, not to other tools
 • **Pre-call enforceable** – it can be evaluated before calling ToolX
 
-**Permissive, descriptive, or benefit-granting rules (e.g., “gold members may…”) MUST NOT be extracted unless they also impose a restriction or condition.**
+**Permissive, descriptive, or benefit-granting rules MUST NOT be extracted unless they also impose a restriction or condition.**
 
 Input Format:
 Policy Document – A text containing policy items, rules, or constraints governing tool usage.
