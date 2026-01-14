@@ -10,21 +10,13 @@ Instructions:
     * Can be validated **before calling ToolX** using ToolX parameters, chat history, or other tools.
     * Are **actionable**, meaning failing the rule would prevent or alter the ToolX invocation.
     * Are **self-contained** and do not rely on unstated context.
-3. Tool Scope Filtering (Rewritten)
-    * A policy statement applies to ToolX ONLY if it governs whether ToolX’s API call itself is allowed to execute.
-    * A policy MUST be ignored for ToolX if it only governs:
-        * whether a different tool may be called,
-        * whether a future or downstream action is allowed,
-        * or a customer’s eligibility for some other operation.
-    * The model must ask:
-        * “If this policy is violated, would calling ToolX right now be incorrect, forbidden, or meaningless?”
-        * If the answer is no, the policy MUST NOT be attached to ToolX.
-    * A restriction on an action tool MUST NOT propagate to diagnostic or lookup tools, even when:
-        * the lookup result is used to decide the action,
-        * or the policy references attributes returned by that lookup.
-        * If ToolX only retrieves information, then: “No customer is ever too restricted to be looked up.”
-            * Example (Binding by Action, not Topic)- This policy applies only to a tool whose action is submitting a support ticket, because violating the rule would make that submission invalid.
-                * It must not be attached to tools that merely retrieve account status or user data, since those lookups remain valid even when the account is inactive.
+3. Tool Scope Filtering
+A policy statement applies to ToolX ONLY if violating the policy would make invoking ToolX invalid or incorrect.
+If a policy governs:
+• another tool,
+• a post-tool outcome,
+• or general customer benefits,
+it MUST be ignored for ToolX.
 4. Split policy items into the smallest reasonable parts so that:
     * Each extracted policy contains only one condition.
     * If a policy includes multiple conditions, split it into separate policy items whenever possible.
@@ -35,7 +27,6 @@ Instructions:
     * Each reference must be a verbatim excerpt that appears exactly as written in the Policy Document.
     * Each supporting passage should be listed separately within the "references" array.
     * Make sure to extract only from the Policy Document and not from other input information like the tool description
-
 
 ### Definitions
 

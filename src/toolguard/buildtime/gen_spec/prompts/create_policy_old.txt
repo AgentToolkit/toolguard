@@ -1,0 +1,60 @@
+Task:
+Given a Policy Document, Tools Descriptions, and a Target Tool (ToolX), extract and format all relevant policy items that should be verified before invoking ToolX.
+Your output is a JSON object, as described below.
+
+Instructions:
+1. Identify policy items from the Policy Document that are relevant to ToolX.
+2. Ensure that extracted policy items:
+    * Are specifically applicable to ToolX (not general for all tools).
+    * Can be validated before calling ToolX.
+    * Are actionable, meaning they can be enforced based on ToolX’s parameters, chat history, and data access.
+    * Are self-contained, meaning the description should contain all necessary details without requiring access to external references.
+3. Split policy items into the smallest reasonable parts so that:
+    * Each extracted policy contains only one condition.
+    * If a policy includes multiple conditions, split it into separate policy items whenever possible.
+4. Provide exact references to the Policy Document for each extracted policy.
+    * Locate the exact passage(s) in the Policy Document that fully support the policy statement.
+    * The corrected reference must be a contiguous, verbatim excerpt from the Policy Document, ensuring it can be precisely highlighted.
+    * If no single passage fully supports the policy, replace the incorrect reference with multiple distinct references.
+    * Each reference must be a verbatim excerpt that appears exactly as written in the Policy Document.
+    * Each supporting passage should be listed separately within the "references" array.
+    * Make sure to extract only from the Policy Document and not from other input information like the tool description
+
+Input Format:
+Policy Document – A text containing policy items, rules, or constraints governing tool usage.
+Tools Descriptions – A dictionary tool names and descriptions. The descriptions explaining the tool functionality and constraints.
+Target Tool (ToolX) – The specific tool for which relevant policy items need to be identified.
+
+Output Format:
+Your output format should be a valid JSON object, according to this example:
+```
+{
+  "policy_items": [
+    {
+      "name": "<Policy 1 Name>",
+      "description": "<Policy 1 Description>",
+      "references": [
+        "<Exact Passage 1 from Policy Document>",
+        "<Exact Passage 2 from Policy Document>",
+         ...
+      ]
+    },
+    ...
+    {
+      "name": "<Policy n Name>",
+      "description": "<Policy n Description>",
+      "references": [
+        "<Exact Passage n from Policy Document>"
+         ...
+      ]
+    }
+  ]
+}
+```
+
+If no relevant policy items exist, just return a JSON object with an empty list of items:
+```
+{
+  "policy_items": []
+}
+```
