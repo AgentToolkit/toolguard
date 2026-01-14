@@ -1,12 +1,12 @@
 from toolguard.buildtime.utils.py import to_py_class_name
 
 
-def test_basic_snake_case():
-    assert to_py_class_name("hello_world") == "HelloWorld"
+def test_single_word():
+    assert to_py_class_name("hello") == "Hello"
 
 
-def test_multiple_underscores():
-    assert to_py_class_name("many_words_here") == "ManyWordsHere"
+def test_multiple_words():
+    assert to_py_class_name("many words here") == "ManyWordsHere"
 
 
 def test_hyphen_replaced_with_underscore():

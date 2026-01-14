@@ -4,6 +4,8 @@ import sys
 from pathlib import Path
 from contextlib import contextmanager
 
+from toolguard.buildtime.utils.str import to_camel_case, to_snake_case
+
 
 def py_extension(filename: str) -> str:
     return filename if filename.endswith(".py") else filename + ".py"
@@ -41,30 +43,11 @@ def temp_python_path(path: str | Path):
 
 
 def to_py_class_name(txt: str) -> str:
-    return (
-        txt.replace("_", " ")
-        .title()
-        .replace(" ", "")
-        .replace("-", "_")
-        .replace("'", "_")
-        .replace(",", "_")
-        .replace("’", "_")
-        .replace("%", "_")
-        .replace("$", "_")
-    )
+    return to_camel_case(txt)
 
 
 def to_py_func_name(txt: str) -> str:
-    return (
-        txt.lower()
-        .replace(" ", "_")
-        .replace("-", "_")
-        .replace("'", "_")
-        .replace(",", "_")
-        .replace("’", "_")
-        .replace("%", "_")
-        .replace("$", "_")
-    )
+    return to_snake_case(txt)
 
 
 def to_py_module_name(txt: str) -> str:

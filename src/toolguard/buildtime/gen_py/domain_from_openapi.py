@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import List, Optional, Set, Tuple
 from os.path import join
 
+from toolguard.buildtime.utils.str import to_camel_case, to_pascal_case
 from toolguard.runtime.data_types import FileTwin, RuntimeDomain, ARGS_PARAM
 from toolguard.buildtime.utils.array import find
 from toolguard.buildtime.utils import py
@@ -128,7 +129,7 @@ ANY = "Any"
 def _make_signature(
     op: Operation, params: List[Parameter], oas: OpenAPI, type_names: Set[str]
 ) -> Tuple[List[Tuple[str, str]], str]:
-    fn_name = py.to_py_func_name(op.operationId or "operationId")
+    fn_name = to_camel_case(op.operationId or "operationId")
 
     args = []
     for param in params:
@@ -181,7 +182,7 @@ def _oas_to_py_type(
 
     if isinstance(scm_or_ref, Reference):
         typ = scm_or_ref.ref.split("/")[-1]
-        typ = py.to_py_class_name(typ)
+        typ = to_pascal_case(typ)
         if typ in type_names:
             return typ
 

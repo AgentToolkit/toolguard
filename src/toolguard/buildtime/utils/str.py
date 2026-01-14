@@ -1,6 +1,37 @@
 import re
 
 
+def to_camel_case(txt: str) -> str:
+    return (
+        txt.replace("_", " ")
+        .title()
+        .replace(" ", "")
+        .replace("-", "_")
+        .replace("'", "_")
+        .replace(",", "_")
+        .replace("’", "_")
+        .replace("%", "_")
+        .replace("$", "_")
+        .replace("#", "_")
+        .replace("#@", "_")
+    )
+
+
+def to_snake_case(txt: str) -> str:
+    return (
+        txt.lower()
+        .replace(" ", "_")
+        .replace("-", "_")
+        .replace("'", "_")
+        .replace(",", "_")
+        .replace("’", "_")
+        .replace("%", "_")
+        .replace("$", "_")
+        .replace("#", "_")
+        .replace("#@", "_")
+    )
+
+
 def to_pascal_case(name: str) -> str:
     # Split by underscores first
     parts = name.split("_")
