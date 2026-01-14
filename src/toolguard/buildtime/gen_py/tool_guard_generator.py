@@ -20,7 +20,6 @@ from toolguard.runtime.data_types import (
 from toolguard.buildtime.utils import py
 from toolguard.buildtime.utils.llm_py import get_code_content
 from toolguard.buildtime.utils.py_doc_str import extract_docstr_args
-from toolguard.buildtime.utils.str import to_snake_case
 from toolguard.buildtime.gen_py.naming_conv import (
     guard_fn_module_name,
     guard_fn_name,
@@ -29,11 +28,7 @@ from toolguard.buildtime.gen_py.naming_conv import (
     test_fn_module_name,
 )
 from toolguard.buildtime.gen_py.tool_dependencies import tool_dependencies
-from toolguard.buildtime.gen_py.prompts.gen_tests import (
-    generate_init_tests,
-    improve_tests,
-)
-from toolguard.buildtime.gen_py.prompts.improve_guard import improve_tool_guard
+from toolguard.buildtime.gen_py import prompts
 from toolguard.buildtime.gen_py.templates import load_template
 from toolguard.buildtime.utils import pytest
 from toolguard.buildtime.utils import pyright
@@ -69,15 +64,17 @@ class ToolGuardGenerator:
         self.m = m
 
     def start(self):
-        app_path = self.py_path / to_snake_case(self.app_name)
+        app_path = self.py_path / py.to_py_module_name(self.app_name)
         os.makedirs(app_path, exist_ok=True)
-        os.makedirs(app_path / to_snake_case(self.tool_policy.tool_name), exist_ok=True)
+        os.makedirs(
+            app_path / py.to_py_module_name(self.tool_policy.tool_name), exist_ok=True
+        )
         debug_path = self.py_path / DEBUG_DIR
         os.makedirs(debug_path, exist_ok=True)
-        debug_tool_path = debug_path / to_snake_case(self.tool_policy.tool_name)
+        debug_tool_path = debug_path / py.to_py_module_name(self.tool_policy.tool_name)
         os.makedirs(debug_tool_path, exist_ok=True)
         for item in self.tool_policy.policy_items:
-            debug_tool_item_path = debug_tool_path / to_snake_case(item.name)
+            debug_tool_item_path = debug_tool_path / py.to_py_module_name(item.name)
             os.makedirs(debug_tool_item_path, exist_ok=True)
 
         tests_path = self.py_path / TESTS_DIR
@@ -112,7 +109,7 @@ class ToolGuardGenerator:
         self, item: ToolGuardSpecItem, init_guard: FileTwin
     ) -> Tuple[FileTwin | None, FileTwin]:
         # Dependencies of this tool
-        tool_fn_name = to_snake_case(self.tool_policy.tool_name)
+        tool_fn_name = py.to_py_func_name(self.tool_policy.tool_name)
         tool_fn = self._find_api_function(tool_fn_name)
         sig_str = f"{tool_fn_name}{str(inspect.signature(tool_fn))}"
         dep_tools = []
@@ -169,7 +166,7 @@ class ToolGuardGenerator:
             domain = self.domain.get_definitions_only()  # remove runtime fields
             first_time = trial_no == "a"
             if first_time:
-                res = generate_init_tests(
+                res = prompts.generate_init_tests(
                     self.m,
                     fn_src=guard,
                     policy_item=item,
@@ -178,7 +175,7 @@ class ToolGuardGenerator:
                 )
             else:
                 assert test_file
-                res = improve_tests(
+                res = prompts.improve_tests(
                     self.m,
                     prev_impl=test_file.content,  # noqa: B023
                     domain=domain,  # noqa: B023
@@ -222,30 +219,30 @@ class ToolGuardGenerator:
         tests: FileTwin,
         dep_tools: List[str],
     ) -> FileTwin:
-        trial_no = 0
-        while trial_no < MAX_TOOL_IMPROVEMENTS:
-            pytest_report_file = self.debug_file(item, f"guard_{trial_no}_pytest.json")
-            errors = pytest.run(
-                self.py_path, tests.file_name, pytest_report_file
-            ).list_errors()
-            if errors:
-                logger.debug(f"'{item.name}' guard function tests failed. Retrying...")
-
-                trial_no += 1
+        errors: List[str] = []
+        for trial_no in range(MAX_TOOL_IMPROVEMENTS):
+            if trial_no > 0:
                 try:
                     guard = await self._improve_guard(
                         item, guard, errors, dep_tools, trial_no
                     )
                 except Exception:
                     continue  # probably a syntax error in the generated code. lets retry...
-            else:
+
+            pytest_report_file = self.debug_file(item, f"guard_{trial_no}_pytest.json")
+            test_result = pytest.run(self.py_path, tests.file_name, pytest_report_file)
+            errors = test_result.list_errors()
+            if guard and not errors:
                 logger.debug(
                     f"'{item.name}' guard function generated succefully and is Green 😄🎉. "
                 )
                 return guard  # Green
+            else:
+                logger.debug(f"'{item.name}' guard function tests failed. Retrying...")
+                continue
 
         raise Exception(
-            f"Failed {MAX_TOOL_IMPROVEMENTS} times to generate guard function for tool {to_snake_case(self.tool_policy.tool_name)} policy: {item.name}"
+            f"Failed {MAX_TOOL_IMPROVEMENTS} times to generate guard function for tool {py.to_py_func_name(self.tool_policy.tool_name)} policy: {item.name}"
         )
 
     async def _improve_guard(
@@ -265,7 +262,7 @@ class ToolGuardGenerator:
             )
             domain = self.domain.get_definitions_only()  # omit runtime fields
             prev_python = get_code_content(prev_guard.content)
-            res = improve_tool_guard(
+            res = prompts.improve_tool_guard(
                 self.m,
                 prev_impl=prev_python,  # noqa: B023
                 domain=domain,  # noqa: B023
@@ -312,12 +309,12 @@ class ToolGuardGenerator:
         return getattr(cls, tool_fn_name)
 
     def _create_initial_tool_guards(self) -> Tuple[FileTwin, List[FileTwin]]:
-        tool_fn_name = to_snake_case(self.tool_policy.tool_name)
+        tool_fn_name = py.to_py_func_name(self.tool_policy.tool_name)
         tool_fn = self._find_api_function(tool_fn_name)
         assert tool_fn, f"Function not found, {tool_fn_name}"
 
         # __init__.py
-        path = Path(to_snake_case(self.app_name)) / tool_fn_name / "__init__.py"
+        path = Path(py.to_py_module_name(self.app_name)) / tool_fn_name / "__init__.py"
         FileTwin(file_name=path, content="").save(self.py_path)
 
         # item guards files
@@ -340,8 +337,8 @@ class ToolGuardGenerator:
         self, tool_fn: Callable, item_files: List[FileTwin]
     ) -> FileTwin:
         file_path = (
-            Path(to_snake_case(self.app_name))
-            / to_snake_case(self.tool_policy.tool_name)
+            Path(py.to_py_module_name(self.app_name))
+            / py.to_py_module_name(self.tool_policy.tool_name)
             / py.py_extension(guard_fn_module_name(self.tool_policy))
         )
 
@@ -385,8 +382,8 @@ class ToolGuardGenerator:
         self, tool_item: ToolGuardSpecItem, tool_fn: Callable
     ) -> FileTwin:
         file_name = (
-            Path(to_snake_case(self.app_name))
-            / to_snake_case(self.tool_policy.tool_name)
+            Path(py.to_py_module_name(self.app_name))
+            / py.to_py_module_name(self.tool_policy.tool_name)
             / py.py_extension(guard_item_fn_module_name(tool_item))
         )
 
@@ -412,8 +409,8 @@ class ToolGuardGenerator:
     def debug_file(self, policy_item: ToolGuardSpecItem, file: str | Path):
         return (
             DEBUG_DIR
-            / to_snake_case(self.tool_policy.tool_name)
-            / to_snake_case(policy_item.name)
+            / py.to_py_module_name(self.tool_policy.tool_name)
+            / py.to_py_module_name(policy_item.name)
             / file
         )
 

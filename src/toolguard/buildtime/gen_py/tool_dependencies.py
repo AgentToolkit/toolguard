@@ -2,7 +2,7 @@ import re
 from typing import Any, Dict, Set
 from mellea import MelleaSession
 from toolguard.runtime.data_types import Domain, ToolGuardSpecItem
-from toolguard.buildtime.gen_py.prompts.pseudo_code import tool_policy_pseudo_code
+from toolguard.buildtime.gen_py import prompts
 
 MAX_TRIALS = 3
 
@@ -15,7 +15,7 @@ async def tool_dependencies(
     trial=0,
 ) -> Set[str]:
     model_options: Dict[str, Any] = {}  # {ModelOption.TEMPERATURE: 0.8}
-    pseudo_code = tool_policy_pseudo_code(
+    pseudo_code = prompts.tool_policy_pseudo_code(
         m,
         policy_item=policy_item,
         fn_to_analyze=tool_signature,

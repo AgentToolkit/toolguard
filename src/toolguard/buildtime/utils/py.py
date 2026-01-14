@@ -1,11 +1,8 @@
 import ast
-import inspect
-from typing import Callable, Set, cast
+from typing import Set, cast
 import sys
 from pathlib import Path
 from contextlib import contextmanager
-
-from .str import to_snake_case
 
 
 def py_extension(filename: str) -> str:
@@ -21,7 +18,7 @@ def path_to_module(file_path: Path) -> str:
     parts = list(file_path.parts)
     if parts[-1].endswith(".py"):
         parts[-1] = un_py_extension(parts[-1])
-    return ".".join([to_snake_case(part) for part in parts])
+    return ".".join([to_py_func_name(part) for part in parts])
 
 
 def module_to_path(module: str) -> Path:
@@ -43,45 +40,35 @@ def temp_python_path(path: str | Path):
         yield
 
 
-def extract_docstr_args(func: Callable) -> str:
-    doc = inspect.getdoc(func)
-    if not doc:
-        return ""
+def to_py_class_name(txt: str) -> str:
+    return (
+        txt.replace("_", " ")
+        .title()
+        .replace(" ", "")
+        .replace("-", "_")
+        .replace("'", "_")
+        .replace(",", "_")
+        .replace("’", "_")
+        .replace("%", "_")
+        .replace("$", "_")
+    )
 
-    lines = doc.splitlines()
-    args_start = None
-    for i, line in enumerate(lines):
-        if line.strip().lower() == "args:":
-            args_start = i
-            break
 
-    if args_start is None:
-        return ""
+def to_py_func_name(txt: str) -> str:
+    return (
+        txt.lower()
+        .replace(" ", "_")
+        .replace("-", "_")
+        .replace("'", "_")
+        .replace(",", "_")
+        .replace("’", "_")
+        .replace("%", "_")
+        .replace("$", "_")
+    )
 
-    # List of known docstring section headers
-    next_sections = {
-        "returns:",
-        "raises:",
-        "examples:",
-        "notes:",
-        "attributes:",
-        "yields:",
-    }
 
-    # Capture lines after "Args:" that are indented
-    args_lines = []
-    for line in lines[args_start + 1 :]:
-        # Stop if we hit a new section (like "Returns:", "Raises:", etc.)
-        stripped = line.strip().lower()
-        if stripped in next_sections:
-            break
-        args_lines.append(" " * 8 + line.strip())
-
-    # Join all lines into a single string
-    if not args_lines:
-        return ""
-
-    return "\n".join(args_lines)
+def to_py_module_name(txt: str) -> str:
+    return to_py_func_name(txt)
 
 
 def top_level_types(path: str | Path) -> Set[str]:

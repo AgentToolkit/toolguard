@@ -5,8 +5,7 @@ from os.path import join
 
 from toolguard.runtime.data_types import FileTwin, RuntimeDomain, ARGS_PARAM
 from toolguard.buildtime.utils.array import find
-from toolguard.buildtime.utils.py import top_level_types, module_to_path
-from toolguard.buildtime.utils.str import to_camel_case, to_pascal_case, to_snake_case
+from toolguard.buildtime.utils import py
 from toolguard.buildtime.gen_py.templates import load_template
 from toolguard.buildtime.utils.datamodel_codegen import run as dm_codegen
 from toolguard.buildtime.utils.open_api import (
@@ -28,38 +27,38 @@ def generate_domain_from_openapi(
 ) -> RuntimeDomain:
     # APP Types
     oas = read_openapi(openapi_file)
-    os.makedirs(join(py_path, to_snake_case(app_name)), exist_ok=True)
+    os.makedirs(join(py_path, py.to_py_module_name(app_name)), exist_ok=True)
 
     types_name = f"{app_name}_types"
     types_module_name = f"{app_name}.{types_name}"
     types = FileTwin(
-        file_name=module_to_path(types_module_name), content=dm_codegen(openapi_file)
+        file_name=py.module_to_path(types_module_name), content=dm_codegen(openapi_file)
     ).save(py_path)
-    type_names = top_level_types(py_path / types.file_name)
+    type_names = py.top_level_types(py_path / types.file_name)
 
     # APP Init
     FileTwin(
-        file_name=Path(to_snake_case(app_name)) / "__init__.py",
+        file_name=Path(py.to_py_module_name(app_name)) / "__init__.py",
         content=f"from . import {types_name}",
     ).save(py_path)
 
     # APP API
-    api_cls_name = to_camel_case("I " + app_name)
+    api_cls_name = py.to_py_class_name("I " + app_name)
     methods = _get_oas_methods(oas, type_names)
-    api_module_name = to_snake_case(f"{app_name}.i_{app_name}")
+    api_module_name = py.to_py_module_name(f"{app_name}.i_{app_name}")
     api = FileTwin(
-        file_name=module_to_path(api_module_name),
+        file_name=py.module_to_path(api_module_name),
         content=_generate_api(methods, api_cls_name, types_module_name),
     ).save(py_path)
 
     # APP API Impl
-    impl_cls_name = to_camel_case(app_name + " impl")
-    impl_module_name = to_snake_case(f"{app_name}.{app_name}_impl")
+    impl_cls_name = py.to_py_class_name(app_name + " impl")
+    impl_module_name = py.to_py_module_name(f"{app_name}.{app_name}_impl")
     cls_str = _generate_api_impl(
         methods, api_module_name, types_module_name, api_cls_name, impl_cls_name
     )
     api_impl = FileTwin(
-        file_name=module_to_path(impl_module_name), content=cls_str
+        file_name=py.module_to_path(impl_module_name), content=cls_str
     ).save(py_path)
 
     return RuntimeDomain(
@@ -88,7 +87,7 @@ def _get_oas_methods(oas: OpenAPI, type_names: Set[str]):
             args_str = ", ".join(["self"] + [f"{arg}:{typ}" for arg, typ in args])
             sig = f"({args_str})->{ret}"
 
-            fn_name = to_snake_case(op.operationId or "func")
+            fn_name = py.to_py_func_name(op.operationId or "func")
             body = f"return self._delegate.invoke('{fn_name}', {ARGS_PARAM}.model_dump(), {ret})"
             # if orign_funcs:
             #     func = find(orign_funcs or [], lambda fn: fn.__name__ == op.operationId) # type: ignore
@@ -96,7 +95,7 @@ def _get_oas_methods(oas: OpenAPI, type_names: Set[str]):
             #         body = _call_fn_body(func)
             methods.append(
                 {
-                    "name": to_snake_case(op.operationId),  # type: ignore
+                    "name": py.to_py_func_name(op.operationId),  # type: ignore
                     "signature": sig,
                     "doc": op.description,
                     "body": body,
@@ -129,7 +128,7 @@ ANY = "Any"
 def _make_signature(
     op: Operation, params: List[Parameter], oas: OpenAPI, type_names: Set[str]
 ) -> Tuple[List[Tuple[str, str]], str]:
-    fn_name = to_camel_case(op.operationId or "operationId")
+    fn_name = py.to_py_func_name(op.operationId or "operationId")
 
     args = []
     for param in params:
@@ -182,7 +181,7 @@ def _oas_to_py_type(
 
     if isinstance(scm_or_ref, Reference):
         typ = scm_or_ref.ref.split("/")[-1]
-        typ = to_pascal_case(typ)
+        typ = py.to_py_class_name(typ)
         if typ in type_names:
             return typ
 
