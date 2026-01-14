@@ -1,0 +1,107 @@
+# Policy Extraction
+
+## Task
+Given a **Policy Document**, **Tool Descriptions**, and a **Target Tool (ToolX)**, extract, validate, and normalize **all policy items that must be satisfied before ToolX may be invoked**.
+
+Your goal is to produce a **complete, precise, enforceable, and self-contained Tool Policy Text Description (TPTD)** for ToolX.
+
+Your output must be a **fully refined JSON policy set**, requiring no later correction or cleanup.
+
+---
+
+## What Counts as a Valid Policy Item
+
+A policy item **must** satisfy **all** of the following:
+
+It must be:
+
+- **Tool-specific** — It must apply to **ToolX**, not to tools in general.
+- **Pre-invocation enforceable** — It must be checkable **before** ToolX is called.
+- **Actionable** — It must be verifiable using only:
+  - ToolX parameters
+  - Chat history
+  - Data available to the agent
+- **Self-contained** — Its description must stand on its own, without requiring:
+  - The policy document
+  - Other policy items
+  - External context
+- **Policy-grounded** — It must be directly supported by **verbatim text** from the Policy Document.
+
+If any of the above cannot be satisfied, **do not extract the policy**.
+
+---
+
+## Extraction Rules
+
+### 1. Find All Relevant Policies
+Scan the entire Policy Document and extract **every** policy that applies to ToolX.
+
+Do **not** rely on Tool Descriptions to infer rules — Tool Descriptions are used **only** to determine whether a policy applies to ToolX.
+
+---
+
+### 2. Enforce Single-Condition Structure
+Each policy item must express **exactly one enforceable condition**.
+
+- If a policy contains **A AND B** → split into **two policy items**
+- If a policy contains **A OR B** → keep as **one policy**
+- If two extracted policies are **identical** → merge them
+- If two policies express **OR logic** → merge them into one
+
+---
+
+### 3. Normalize and Improve Descriptions
+Each policy’s **description must be rewritten** (if needed) so that it is:
+
+- Clear
+- Explicit
+- Enforceable
+- Self-contained
+- Expressed as a **machine-checkable rule**
+
+Do **not** weaken or generalize the policy.
+Do **not** add new rules.
+You may only clarify and normalize what the Policy Document already states.
+
+---
+
+### 4. Validate Every Policy
+Before including a policy, verify that it is:
+
+- Relevant to ToolX
+- Tool-specific
+- Enforceable before invocation
+- Actionable
+- Self-contained
+
+If a policy fails any of these checks, **exclude it**.
+
+---
+
+### 5. Reference Integrity
+Every policy must be backed by **exact verbatim quotes** from the Policy Document.
+
+Rules:
+
+- Each reference must be a **contiguous** excerpt copied exactly from the Policy Document.
+- If a policy requires multiple passages to be supported, list each passage separately.
+- Never quote or infer from Tool Descriptions.
+- If no exact supporting text exists, **do not extract the policy**.
+
+---
+
+## Output Format (JSON)
+
+```json
+{
+  "policy_items": [
+    {
+      "name": "<Concise policy name>",
+      "description": "<Single-condition, self-contained, enforceable policy>",
+      "references": [
+        "<Exact verbatim passage from Policy Document>",
+        "<Optional additional supporting passage>"
+      ]
+    }
+  ]
+}
