@@ -115,7 +115,9 @@ class ToolGuardGenerator:
         dep_tools = []
         if self.domain.app_api_size > 1:
             domain = self.domain.get_definitions_only()  # remove runtime fields
-            dep_tools = list(await tool_dependencies(item, sig_str, domain, self.m))
+            dep_tools = list(
+                await tool_dependencies(item.description, sig_str, domain, self.m)
+            )
         logger.debug(f"Dependencies of '{item.name}': {dep_tools}")
 
         # Generate tests

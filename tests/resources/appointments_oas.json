@@ -872,7 +872,7 @@
           "slot_id": {
             "type": "integer"
           },
-          "visit_fee": {
+          "payment_amount": {
             "type": "number"
           }
         },

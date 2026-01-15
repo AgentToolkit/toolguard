@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "toolguard"
-version = "0.1.21.dev2"
+version = "0.1.21.dev3"
 description = "Policy adherence code generation for guarding AI agent tools"
 readme = "README.md"
 
@@ -35,9 +35,13 @@ classifiers = [
 ]
 license = { file = "LICENSE" }
 
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [project.optional-dependencies]
 dev = [
     "pytest-asyncio>=1.3.0",
+    "tau2 @ git+https://github.com/sierra-research/tau2-bench.git@main"
 ]
 
 [dependency-groups]
