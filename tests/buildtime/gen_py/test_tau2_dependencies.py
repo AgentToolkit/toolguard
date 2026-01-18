@@ -9,6 +9,8 @@ from toolguard.buildtime.gen_py.domain_from_funcs import generate_domain_from_fu
 from toolguard.buildtime.gen_py.mellea_simple import SimpleBackend
 from toolguard.buildtime.llm.tg_litellm import LitellmModel
 from tau2.domains.airline.tools import AirlineTools
+from tau2.environment.toolkit import ToolType, is_tool
+from tau2.domains.airline.data_model import FlightBase
 
 load_dotenv()
 
@@ -26,13 +28,23 @@ update_flights_signature = """
 """
 
 
+# The Tau2 API is missing this method, which is required to check the last test: test_indirect_api()
+class ExtendedAirline(AirlineTools):
+    @is_tool(ToolType.READ)
+    def get_scheduled_flight(self, flight_id: str) -> FlightBase:  # type: ignore
+        """
+        Returns details on a scheduled flights, such as origin and destination.
+        """
+        ...
+
+
 class TestToolsDependencies:
     @classmethod
     def setup_class(cls):
         funcs = [
             member
             for name, member in inspect.getmembers(
-                AirlineTools, predicate=inspect.isfunction
+                ExtendedAirline, predicate=inspect.isfunction
             )
             if getattr(member, "__tool__", None)
         ]  # only @is_tool]
@@ -48,7 +60,7 @@ class TestToolsDependencies:
 
     @pytest.fixture(autouse=True)
     def session(self):
-        model = "gpt-4o-2024-08-06"
+        model = "o1-2024-12-17"  # "gpt-4o-2024-08-06"
         llm_provider = "azure"
         llm = LitellmModel(model, llm_provider)
         mellea_backend = SimpleBackend(llm)
@@ -107,6 +119,7 @@ class TestToolsDependencies:
             policy, update_flights_signature, self.domain, session
         ) == {"get_reservation_details"}
 
+    # This test succeeds only with advanced models (eg, o1. but not gpt-4o)
     @pytest.mark.asyncio
     async def test_indirect_api(self, session):
         policy = "When changing flights in a reservation, the agent must ensure that the origin, destination, and trip type remain unchanged."
