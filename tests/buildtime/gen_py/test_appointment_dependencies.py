@@ -22,9 +22,9 @@ async def test_appointment_slot_fee_dependency():
     llm_provider = "azure"
     llm = LitellmModel(model, llm_provider)
     mellea_backend = SimpleBackend(llm)
-    mella_session = mellea.MelleaSession(mellea_backend)
+    mellea_session = mellea.MelleaSession(mellea_backend)
 
-    deps = await tool_dependencies(policy_txt, tool_signature, domain, mella_session)
+    deps = await tool_dependencies(policy_txt, tool_signature, domain, mellea_session)
 
     assert len(deps) == 2
     assert "get_user" in deps

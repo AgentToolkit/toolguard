@@ -10,84 +10,84 @@ def tool_policy_pseudo_code(
     policy_txt: str, fn_to_analyze: str, data_types: FileTwin, api: FileTwin
 ) -> str:
     """
-        Returns a pseudo code to check business constraints on a tool cool using an API
+            Returns a pseudo code to check business constraints on `fn_to_analyze` calls using an API.
 
-        Args:
-            policy_txt (str): Business policy, in natural language, specifying a constraint on a process involving the tool under analysis.
-            fn_to_analyze (str): The function signature of the tool under analysis.
-            domain (Domain): Python code defining available data types and APIs for invoking other tools.
+            Args:
+                policy_txt (str): Business policy, in natural language, specifying a constraint on a process involving the tool under analysis.
+                fn_to_analyze (str): The function signature of the tool under analysis.
+                data_types (FileTwin): Python code defining available data types.
+                api (FileTwin): Python code defining available APIs.
 
-        Returns:
-            str: A pseudo code descibing how to use the API function to validate that the tool call complies with the policy.
+            Returns:
+                str: A pseudo code descibing how to validate `fn_to_analyze` calls complies with the policy.
 
-        * Available API functions are listed in `domain.app_api.content`. Data types are defined in `domain.app_types.content`.
-        * You cannot assume other API functions.
-        * For parameters and returned value data objects, you can access only the declared fields. Otherwise a syntax error occur.
-            * Do not assume the presence of any additional fields.
-            * Do not assume any implicit logic or relationships between field values (e.g., naming conventions).
-        * List all the required API calls to check the business policy.
-        * If some information is missing, you should call another api function passing a reference to the missing information.
+            * Use the API methods, or Python builtin function to enforce the policy, when calling `fn_to_analyze`.
+            * Do not assume other API functions.
+            * If the policy references information that is not explicitly provided as a `fn_to_analyze` parameter, use the available API functions to retrieve the missing data (for example, by fetching resources by ID).
+            * Use the type hints (in `data_types`) to determine parameters and returned value data types.
+                * You can access only the fields declared in the types. Otherwise a syntax error occur.
+                * Do not assume the presence of any additional fields.
+                * Do not assume any implicit logic or relationships between field values (e.g., do not assume naming conventions).
 
-        Examples:
-    ```python
-        domain = {
-            "app_types": {
-                "file_name": "car_types.py",
-                "content": '''
-                    class CarType(Enum):
-                        SEDAN = "sedan"
-                        SUV = "suv"
-                        VAN = "van"
-                    class Car:
-                        plate_num: str
-                        car_type: CarType
-                    class PaymentMethod:
-                        id: str
-                    class Cash(PaymentMethod):
-                        pass
-                    class CreditCard(PaymentMethod):
-                        active: bool
-                    class Person:
-                        id: str
-                        driving_licence: str
-                        payment_methods: Dict[str, PaymentMethod]
-                    class Insurance:
-                        doc_id: str
-                        valid: bool
-                    class CarOwnership:
-                        owenr_id: str
-                        start_date: str
-                        end_date: str
-                    class Payment:
-                        payment_method_id: str
-                        amount: float
-                '''
-            },
-            "app_api": {
-                "file_name": "cars_api.py",
-                "content": '''
-                    class CarAPI(ABC):
-                        def buy_car(self, plate_num: str, owner_id: str, insurance_id: str, payments: List[Payment]): pass
-                        def get_person(self, id: str) -> Person: pass
-                        def get_insurance(self, id: str) -> Insurance: pass
-                        def get_car(self, plate_num: str) -> Car: pass
-                        def car_ownership_history(self, plate_num: str) -> List[CarOwnership]: pass
-                        def delete_car(self, plate_num: str): pass
-                        def list_all_cars_owned_by(self, id: str) -> List[Car]: pass
-                        def are_relatives(self, person1_id: str, person2_id: str) -> bool: pass
-                '''
-            }
-        }
+            Examples:
+        ```python
+    data_types = {
+        "file_name": "car_types.py",
+        "content": '''
+            class CarType(Enum):
+                SEDAN = "sedan"
+                SUV = "suv"
+                VAN = "van"
+            class Car:
+                plate_num: str
+                car_type: CarType
+            class PaymentMethod:
+                id: str
+            class Cash(PaymentMethod):
+                pass
+            class CreditCard(PaymentMethod):
+                active: bool
+            class Person:
+                id: str
+                driving_licence: str
+                payment_methods: Dict[str, PaymentMethod]
+            class Insurance:
+                doc_id: str
+                valid: bool
+            class CarOwnership:
+                owenr_id: str
+                start_date: str
+                end_date: str
+            class Payment:
+                payment_method_id: str
+                amount: float
+        '''
+    },
+    "api": {
+        "file_name": "cars_api.py",
+        "content": '''
+            class CarAPI(ABC):
+                def buy_car(self, plate_num: str, owner_id: str, insurance_id: str, payments: List[Payment]): pass
+                def get_person(self, id: str) -> Person: pass
+                def get_insurance(self, id: str) -> Insurance: pass
+                def get_car(self, plate_num: str) -> Car: pass
+                def car_ownership_history(self, plate_num: str) -> List[CarOwnership]: pass
+                def delete_car(self, plate_num: str): pass
+                def list_all_cars_owned_by(self, id: str) -> List[Car]: pass
+                def are_relatives(self, person1_id: str, person2_id: str) -> bool: pass
+        '''
+    }
     ```
-    * Example 1: Look for information by reference
+    * Example 1: retrieve data by ID
     ```
         tool_policy_pseudo_code(
             policy_txt = "when buying a car, check that the car owner has a driving licence and that the insurance is valid.",
             fn_to_analyze = "buy_car(plate_num: str, owner_id: str, insurance_id: str, payments: List[Payment])",
-            domain = domain
+            data_types = data_types,
+            api = api
         )
     ```
-    may return:
+    returns:
     ```
         user = api.get_person(owner_id)
         assert user.driving_licence
@@ -95,47 +95,51 @@ def tool_policy_pseudo_code(
         assert insurance.valid
     ```
 
-    * Example 2: No relevant tool in the API
+    * Example 2: Empty response when there are no relevant API to check the policy
     ```
         tool_policy_pseudo_code(
             policy_txt = "when buying a car, check that it is not a holiday today",
             fn_to_analyze = "buy_car(plate_num: str, owner_id: str, insurance_id: str, payments: List[Payment])",
-            domain = domain
+            data_types = data_types,
+            api = api
         )
     ```
-        should return an empty string.
+    returns: ""
 
-    * Example 3: Conditional and API in loop
+    * Example 3: Policy with condition and API in loop
     ```
         tool_policy_pseudo_code(
             policy_txt = "when buying a van, check that the van was never owned by someone from the buyer's family.",
             fn_to_analyze = "buy_car(plate_num: str, owner_id: str, insurance_id: str, payments: List[Payment])",
-            domain = domain
+            data_types = data_types,
+            api = api
         )
     ```
-        should return:
+    returns:
     ```
         user = api.get_car(plate_num)
         if car.car_type == CarType.VAN:
             history = api.car_ownership_history(plate_num)
             for each ownership in history:
-                assert(not api.are_relatives(ownership.owenr_id, owner_id))
+                relatives = api.are_relatives(ownership.owenr_id, owner_id)
+                assert not relatives
     ```
 
-    * Example 4: Last item
+    * Example 4: Policy on the last item in a collection
     ```
         tool_policy_pseudo_code(
-            policy_txt = "when buying a van, check that the last payment method is using an active credit card.",
+            policy_txt = "when buying a van, check that the last payment is using an active credit card.",
             fn_to_analyze = "buy_car(plate_num: str, owner_id: str, insurance_id: str, payments: List[Payment])",
-            domain = domain
+            data_types = data_types,
+            api = api
         )
     ```
-        should return:
+    returns:
     ```
         user = api.get_person(owner_id)
         payment_method = user.payment_methods[payments[-1].payment_method_id]
-        assert payment_method.active
         assert instanceof(payment_method, CreditCard)
+        assert payment_method.active
     ```
 
     * Example 5: Refences in loop, and using instanceof
@@ -143,10 +147,11 @@ def tool_policy_pseudo_code(
         tool_policy_pseudo_code(
             policy_txt = "when buying a van, check that the payments include exactly one cash and one credit card.",
             fn_to_analyze = "buy_car(plate_num: str, owner_id: str, insurance_id: str, payments: List[Payment])",
-            domain = domain
+            data_types = data_types,
+            api = api
         )
     ```
-        should return:
+    returns:
     ```
         user = api.get_person(owner_id)
         cash_count = 0

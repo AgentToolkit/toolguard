@@ -36,9 +36,8 @@ class TestToolsDependencies:
             )
             if getattr(member, "__tool__", None)
         ]  # only @is_tool]
-        domain = generate_domain_from_functions(
-            Path("temp"), "airline", funcs, ["tau2"]
-        )
+        py_root = Path("tests/tmp")
+        domain = generate_domain_from_functions(py_root, "airline", funcs, ["tau2"])
 
         cls.domain = domain.get_definitions_only()
 
