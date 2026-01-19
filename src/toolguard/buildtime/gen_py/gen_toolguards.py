@@ -11,7 +11,7 @@ from toolguard.runtime.data_types import (
     ToolGuardsCodeGenerationResult,
 )
 from toolguard.buildtime.llm.i_tg_llm import I_TG_LLM
-from toolguard.buildtime.utils import pytest, pyright
+from toolguard.buildtime.utils import py, pytest, pyright
 from toolguard.buildtime.gen_py.mellea_simple import SimpleBackend
 from toolguard.buildtime.gen_py.domain_from_funcs import generate_domain_from_functions
 from toolguard.buildtime.gen_py.domain_from_openapi import generate_domain_from_openapi
@@ -91,12 +91,14 @@ async def generate_toolguards_from_domain(
     # kw_args.update(mellea_workaround)
     mellea_backend = SimpleBackend(llm)
     m = mellea.MelleaSession(mellea_backend)
-    tool_results = await asyncio.gather(
-        *[
-            ToolGuardGenerator(app_name, tool_policy, py_root, domain, m).generate()
-            for tool_policy in not_empty_specs
-        ]
-    )
+    tools_generator = [
+        ToolGuardGenerator(app_name, tool_policy, py_root, domain, m)
+        for tool_policy in not_empty_specs
+    ]
+    with py.temp_python_path(py_root):
+        tool_results = await asyncio.gather(
+            *[generator.generate() for generator in tools_generator]
+        )
 
     tools_result = {
         tool.tool_name: res for tool, res in zip(not_empty_specs, tool_results)

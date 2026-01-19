@@ -1,3 +1,4 @@
+import asyncio
 import json
 from pathlib import Path
 import sys
@@ -74,20 +75,22 @@ def get_text_by_range(file_content: str, rng: Range) -> str:
     return "\n".join(selected_lines)
 
 
-def run(folder: Path, py_file: Path) -> DiagnosticsReport:
+async def run(folder: Path, py_file: Path) -> DiagnosticsReport:
     py_path = sys.executable
-    res = subprocess.run(
-        [
-            "pyright",
-            # "--venv-path", venv_path,
-            "--pythonpath",
-            py_path,
-            "--outputjson",
-            py_file,
-        ],
-        cwd=folder,
-        capture_output=True,
-        text=True,
+    res = await asyncio.to_thread(
+        lambda: subprocess.run(
+            [
+                "pyright",
+                # "--venv-path", venv_path,
+                "--pythonpath",
+                py_path,
+                "--outputjson",
+                py_file,
+            ],
+            cwd=folder,
+            capture_output=True,
+            text=True,
+        )
     )
     # if res.returncode !=0:
     #     raise Exception(res.stderr)

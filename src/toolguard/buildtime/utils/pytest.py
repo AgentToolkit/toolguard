@@ -1,3 +1,4 @@
+import asyncio
 from enum import StrEnum
 import json
 from pathlib import Path
@@ -111,8 +112,8 @@ class TestReport(BaseModel):
         return list(errors)
 
 
-def run(folder: Path, test_file: Path, report_file: Path) -> TestReport:
-    run_tests_in_safe_python_separate_process(folder, test_file, report_file)
+async def run(folder: Path, test_file: Path, report_file: Path) -> TestReport:
+    await run_tests_in_safe_python_separate_process(folder, test_file, report_file)
 
     report = read_test_report(folder / report_file)
 
@@ -126,14 +127,16 @@ def run(folder: Path, test_file: Path, report_file: Path) -> TestReport:
 # Run the tests in this environment.
 # run the tests in safe mode, so network and os operations are blocked. only specified libraries can be used.
 # run the tests in a separate process. so python modules are isolated. as the code is evolving in the filesystem, we need a way to avoid python module caching. otherwise, it will not see that the code in the file has changed.
-def run_tests_in_safe_python_separate_process(
+async def run_tests_in_safe_python_separate_process(
     folder: Path, test_file: Path, report_file: Path
 ):
     code = f"""
 import pytest
 pytest.main(["{folder / test_file}", "--quiet", "--json-report", "--json-report-file={folder / report_file}"])
 """
-    return run_in_process(run_safe_python, code, ["pytest"])
+    return await asyncio.to_thread(
+        lambda: run_in_process(run_safe_python, code, ["pytest"])
+    )
 
 
 # def _run_in_subprocess(folder:str, test_file:str, report_file:str):

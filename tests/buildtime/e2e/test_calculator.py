@@ -122,7 +122,7 @@ def assert_toolgurards_run(
 
 @pytest.mark.asyncio
 async def test_tool_functions_short():
-    work_dir = Path("examples/calculator/outputs/tool_functions_short")
+    work_dir = Path("tests/tmp/calculator/tool_functions_short")
     funcs = [
         fn_tools.divide_tool,
         fn_tools.add_tool,
@@ -138,7 +138,7 @@ async def test_tool_functions_short():
 
 @pytest.mark.asyncio
 async def test_tool_functions_long():
-    work_dir = Path("examples/calculator/outputs/tool_functions_long")
+    work_dir = Path("tests/tmp/calculator/tool_functions_long")
     funcs = [
         fn_tools.divide_tool,
         fn_tools.add_tool,
@@ -154,7 +154,7 @@ async def test_tool_functions_long():
 
 @pytest.mark.asyncio
 async def test_tool_methods():
-    work_dir = Path("examples/calculator/outputs/tool_methods")
+    work_dir = Path("tests/tmp/calculator/tool_methods")
     from calculator.inputs.tool_methods import CalculatorTools
 
     mtds = [
@@ -171,7 +171,7 @@ async def test_tool_methods():
 
 @pytest.mark.asyncio
 async def test_tools_langchain():
-    work_dir = Path("examples/calculator/outputs/lg_tools")
+    work_dir = Path("tests/tmp/calculator/lg_tools")
     tools = [
         lg_tools.divide_tool,
         lg_tools.add_tool,
@@ -188,7 +188,7 @@ async def test_tools_langchain():
 
 @pytest.mark.asyncio
 async def test_tools_openapi_spec():
-    work_dir = Path("examples/calculator/outputs/oas_tools")
+    work_dir = Path("tests/tmp/calculator/oas_tools")
     oas_path = "examples/calculator/inputs/oas.json"
 
     gen_result = await _build_toolguards(

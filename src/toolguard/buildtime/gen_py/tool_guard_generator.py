@@ -63,7 +63,7 @@ class ToolGuardGenerator:
         self.domain = domain
         self.m = m
 
-    def start(self):
+    def _create_dirs(self):
         app_path = self.py_path / py.to_py_module_name(self.app_name)
         os.makedirs(app_path, exist_ok=True)
         os.makedirs(
@@ -80,21 +80,22 @@ class ToolGuardGenerator:
         tests_path = self.py_path / TESTS_DIR
         os.makedirs(tests_path, exist_ok=True)
 
+    def _setup_files(self):
+        self._create_dirs()
+        return self._create_initial_tool_guards()
+
     async def generate(self) -> ToolGuardCodeResult:
-        self.start()
+        tool_guard, init_item_guards = await asyncio.to_thread(self._setup_files)
 
-        with py.temp_python_path(self.py_path):
-            tool_guard, init_item_guards = self._create_initial_tool_guards()
-
-            # Generate guards for all tool items
-            tests_and_guards = await asyncio.gather(
-                *[
-                    self._generate_item_tests_and_guard(item, item_guard)
-                    for item, item_guard in zip(
-                        self.tool_policy.policy_items, init_item_guards
-                    )
-                ]
-            )
+        # Generate guards for all tool items
+        tests_and_guards = await asyncio.gather(
+            *[
+                self._generate_item_tests_and_guard(item, item_guard)
+                for item, item_guard in zip(
+                    self.tool_policy.policy_items, init_item_guards
+                )
+            ]
+        )
 
         item_tests, item_guards = zip(*tests_and_guards)
         return ToolGuardCodeResult(
@@ -114,9 +115,8 @@ class ToolGuardGenerator:
         sig_str = f"{tool_fn_name}{str(inspect.signature(tool_fn))}"
         dep_tools = []
         if self.domain.app_api_size > 1:
-            domain = self.domain.get_definitions_only()  # remove runtime fields
             dep_tools = list(
-                await tool_dependencies(item.description, sig_str, domain, self.m)
+                await tool_dependencies(item.description, sig_str, self.domain, self.m)
             )
         logger.debug(f"Dependencies of '{item.name}': {dep_tools}")
 
@@ -193,7 +193,7 @@ class ToolGuardGenerator:
                 self.py_path, self.debug_file(item, f"test_{trial_no}.py")
             )
 
-            syntax_report = pyright.run(self.py_path, test_file.file_name)
+            syntax_report = await pyright.run(self.py_path, test_file.file_name)
             FileTwin(
                 file_name=self.debug_file(item, f"test_{trial_no}_pyright.json"),
                 content=syntax_report.model_dump_json(indent=2),
@@ -232,7 +232,9 @@ class ToolGuardGenerator:
                     continue  # probably a syntax error in the generated code. lets retry...
 
             pytest_report_file = self.debug_file(item, f"guard_{trial_no}_pytest.json")
-            test_result = pytest.run(self.py_path, tests.file_name, pytest_report_file)
+            test_result = await pytest.run(
+                self.py_path, tests.file_name, pytest_report_file
+            )
             errors = test_result.list_errors()
             if guard and not errors:
                 logger.debug(
@@ -280,7 +282,7 @@ class ToolGuardGenerator:
                 self.py_path, self.debug_file(item, f"guard_{round}_{trial}.py")
             )
 
-            syntax_report = pyright.run(self.py_path, guard.file_name)
+            syntax_report = await pyright.run(self.py_path, guard.file_name)
             FileTwin(
                 file_name=self.debug_file(item, f"guard_{round}_{trial}.pyright.json"),
                 content=syntax_report.model_dump_json(indent=2),

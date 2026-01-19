@@ -53,7 +53,7 @@ def generate_init_tests(
         Example:
         * fn_src:
     ```python
-    # file: my_app/guard_create_reservation.py
+    # file: my_app/create_reservation/guard_create_reservation.py
     def guard_create_reservation(api: SomeAPI, user_id: str, hotel_id: str, reservation_date: str, persons: int):
         ...
     ```
@@ -82,7 +82,7 @@ def generate_init_tests(
     from unittest.mock import MagicMock
     import pytest
     from toolguard.runtime import PolicyViolationException
-    from my_app.guard_create_reservation import guard_create_reservation
+    from my_app.create_reservation.guard_create_reservation import guard_create_reservation
     from my_app.api import *
 
     def test_violation_book_room_in_the_past():
