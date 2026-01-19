@@ -8,7 +8,7 @@ class ToolFunctionsInvoker(IToolInvoker):
     def __init__(self, funcs: List[Callable]) -> None:
         self._funcs_by_name = {func.__name__: func for func in funcs}
 
-    def invoke(
+    async def invoke(
         self, toolname: str, arguments: Dict[str, Any], return_type: Type[T]
     ) -> T:
         func = self._funcs_by_name.get(toolname)

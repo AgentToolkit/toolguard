@@ -7,7 +7,7 @@ from {{ api_module }} import *
 class IToolInvoker(ABC):
     T = TypeVar("T")
     @abstractmethod
-    def invoke(self, toolname: str, arguments: Dict[str, Any], return_type: Type[T])->T:
+    async def invoke(self, toolname: str, arguments: Dict[str, Any], return_type: Type[T])->T:
         ...
 
 
@@ -17,7 +17,9 @@ class {{ class_name }}({{ api_cls_name }}):
         self._delegate = delegate
 
 {% for method in methods %}
-    def {{ method.name }}{{ method.signature }}:
-        {% if method.doc %}"""{{ method.doc }}"""{% endif %}
+    async def {{ method.name }}{{ method.signature }}:
+    {%- if method.doc %}
+        """{{ method.doc }}"""
+    {%- endif %}
         {{ method.body }}
 {% endfor %}

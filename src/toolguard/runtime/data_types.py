@@ -157,6 +157,6 @@ class IToolInvoker(ABC):
     T = TypeVar("T")
 
     @abstractmethod
-    def invoke(
+    async def invoke(
         self, toolname: str, arguments: Dict[str, Any], return_type: Type[T]
     ) -> T: ...

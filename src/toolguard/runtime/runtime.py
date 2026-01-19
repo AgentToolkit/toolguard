@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import sys
 from types import ModuleType
-from typing import Any, Dict, Optional, Type, Callable
+from typing import Any, Awaitable, Dict, Optional, Type, Callable
 from pydantic import BaseModel
 
 from toolguard.runtime.data_types import (
@@ -37,7 +37,7 @@ class ToolguardRuntime:
         sys.path.insert(0, os.path.abspath(self._ctx_dir))
 
         # cache the tool guards
-        self._guards = {}
+        self._guards: Dict[str, Callable[..., Awaitable[Any]]] = {}
         for tool_name, tool_result in self._result.tools.items():
             mod_name = file_to_module_name(tool_result.guard_file.file_name)
             module = importlib.import_module(mod_name)
@@ -84,11 +84,11 @@ class ToolguardRuntime:
                     guard_args[p_name] = arg_val
         return guard_args
 
-    def check_toolcall(self, tool_name: str, args: dict, delegate: IToolInvoker):
+    async def check_toolcall(self, tool_name: str, args: dict, delegate: IToolInvoker):
         guard_fn = self._guards.get(tool_name)
         if guard_fn is None:  # No guard assigned to this tool
             return
-        guard_fn(**self._make_args(guard_fn, args, delegate))
+        await guard_fn(**self._make_args(guard_fn, args, delegate))
 
 
 def file_to_module_name(file_path: str | Path):

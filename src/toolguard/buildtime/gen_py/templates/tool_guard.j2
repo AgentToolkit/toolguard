@@ -1,4 +1,5 @@
 from typing import *
+import asyncio
 {% for imp in extra_imports %}{{ imp }}
 {% endfor %}
 from toolguard.runtime import PolicyViolationException
@@ -9,7 +10,7 @@ from {{ path_to_module(domain.app_api.file_name) }} import {{ domain.app_api_cla
 {% for item in items %}from {{ path_to_module(item.file_name) }} import {{ item.guard_fn }}
 {% endfor %}
 
-def {{ method.name }}(api: {{ domain.app_api_class_name }}, {{ method.signature}}):
+async def {{ method.name }}(api: {{ domain.app_api_class_name }}, {{ method.signature}}):
     """
     Checks that a tool call complies to the policies.
 
@@ -20,6 +21,8 @@ def {{ method.name }}(api: {{ domain.app_api_class_name }}, {{ method.signature}
     Raises:
         PolicyViolationException: If the tool call does not comply to the policy.
     """
-
-{% for item in items %}    {{ item.guard_fn }}(api, {{method.args_call}})
-{% endfor %}
+    await asyncio.gather( *[
+{%- for item in items %}
+        {{ item.guard_fn }}(api, {{method.args_call}})
+{%- endfor %}
+    ])

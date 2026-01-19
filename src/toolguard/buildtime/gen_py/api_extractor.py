@@ -203,7 +203,7 @@ class APIExtractor:
             """class IToolInvoker(ABC):
     T = TypeVar("T")
     @abstractmethod
-    def invoke(self, toolname: str, arguments: Dict[str, Any], model: Type[T])->T:
+    async def invoke(self, toolname: str, arguments: Dict[str, Any], model: Type[T])->T:
         ...""",
             "",
         ]
@@ -245,7 +245,8 @@ class APIExtractor:
         return [
             indent + "args = locals().copy()",
             indent + "args.pop('self', None)",
-            indent + f"return self._delegate.invoke('{func_name}', args, {ret_name})",
+            indent
+            + f"return await self._delegate.invoke('{func_name}', args, {ret_name})",
         ]
 
     def _get_function_with_docstring(
@@ -481,11 +482,11 @@ class APIExtractor:
                 return_annotation = f" -> {sig.return_annotation}"
 
             params_str = ", ".join(params)
-            return f"def {method_name}({params_str}){return_annotation}"
+            return f"async def {method_name}({params_str}){return_annotation}"
 
         except Exception:
             # Fallback for problematic signatures
-            return f"def {method_name}(self, *args, **kwargs)"
+            return f"async def {method_name}(self, *args, **kwargs)"
 
     def _collect_all_types_from_functions(
         self, funcs: List[Callable]

@@ -68,7 +68,7 @@ async def _build_toolguards(
     return guards
 
 
-def assert_toolgurards_run(
+async def assert_toolgurards_run(
     gen_result: ToolGuardsCodeGenerationResult,
     tool_invoker: IToolInvoker,
     openapi_spec=False,
@@ -80,42 +80,46 @@ def assert_toolgurards_run(
 
     with load_toolguards(gen_result.out_dir) as toolguard:
         # test compliance
-        toolguard.check_toolcall(
+        await toolguard.check_toolcall(
             "divide_tool", make_args({"g": 5, "h": 4}), tool_invoker
         )
-        toolguard.check_toolcall("add_tool", make_args({"a": 5, "b": 4}), tool_invoker)
-        toolguard.check_toolcall(
+        await toolguard.check_toolcall(
+            "add_tool", make_args({"a": 5, "b": 4}), tool_invoker
+        )
+        await toolguard.check_toolcall(
             "subtract_tool", make_args({"a": 5, "b": 4}), tool_invoker
         )
-        toolguard.check_toolcall(
+        await toolguard.check_toolcall(
             "multiply_tool", make_args({"a": 5, "b": 4}), tool_invoker
         )
-        toolguard.check_toolcall("map_kdi_number", make_args({"i": 5}), tool_invoker)
+        await toolguard.check_toolcall(
+            "map_kdi_number", make_args({"i": 5}), tool_invoker
+        )
 
         # test violations
         with pytest.raises(PolicyViolationException):
-            toolguard.check_toolcall(
+            await toolguard.check_toolcall(
                 "divide_tool", make_args({"g": 5, "h": 0}), tool_invoker
             )
 
         with pytest.raises(PolicyViolationException):
-            toolguard.check_toolcall(
+            await toolguard.check_toolcall(
                 "add_tool", make_args({"a": 5, "b": 73}), tool_invoker
             )
 
         with pytest.raises(PolicyViolationException):
-            toolguard.check_toolcall(
+            await toolguard.check_toolcall(
                 "add_tool", make_args({"a": 73, "b": 5}), tool_invoker
             )
 
         # Force to use the kdi_number other tool
         with pytest.raises(PolicyViolationException):
-            toolguard.check_toolcall(
+            await toolguard.check_toolcall(
                 "multiply_tool", make_args({"a": 2, "b": 73}), tool_invoker
             )
 
         with pytest.raises(PolicyViolationException):
-            toolguard.check_toolcall(
+            await toolguard.check_toolcall(
                 "multiply_tool", make_args({"a": 22, "b": 2}), tool_invoker
             )
 
@@ -133,7 +137,7 @@ async def test_tool_functions_short():
 
     gen_result = await _build_toolguards(model, work_dir, funcs, "_fns_short", True)
     gen_result = ToolGuardsCodeGenerationResult.load(work_dir / model / STEP2)
-    assert_toolgurards_run(gen_result, ToolFunctionsInvoker(funcs))
+    await assert_toolgurards_run(gen_result, ToolFunctionsInvoker(funcs))
 
 
 @pytest.mark.asyncio
@@ -149,7 +153,7 @@ async def test_tool_functions_long():
 
     gen_result = await _build_toolguards(model, work_dir, funcs, "_fns_long", False)
     gen_result = ToolGuardsCodeGenerationResult.load(work_dir / model / STEP2)
-    assert_toolgurards_run(gen_result, ToolFunctionsInvoker(funcs))
+    await assert_toolgurards_run(gen_result, ToolFunctionsInvoker(funcs))
 
 
 @pytest.mark.asyncio
@@ -166,7 +170,7 @@ async def test_tool_methods():
 
     gen_result = await _build_toolguards(model, work_dir, mtds, "_mtds", True)
     gen_result = ToolGuardsCodeGenerationResult.load(work_dir / model / STEP2)
-    assert_toolgurards_run(gen_result, ToolMethodsInvoker(CalculatorTools()))
+    await assert_toolgurards_run(gen_result, ToolMethodsInvoker(CalculatorTools()))
 
 
 @pytest.mark.asyncio
@@ -183,7 +187,7 @@ async def test_tools_langchain():
     gen_result = await _build_toolguards(model, work_dir, tools, "_lg", True)
     gen_result = ToolGuardsCodeGenerationResult.load(work_dir / model / STEP2)
 
-    assert_toolgurards_run(gen_result, LangchainToolInvoker(tools), True)
+    await assert_toolgurards_run(gen_result, LangchainToolInvoker(tools), True)
 
 
 @pytest.mark.asyncio
@@ -210,11 +214,11 @@ async def test_tools_openapi_spec():
             ]
             self._funcs_by_name = {func.__name__: func for func in funcs}
 
-        def invoke(
+        async def invoke(
             self, toolname: str, arguments: Dict[str, Any], return_type: Type[T]
         ) -> T:
             func = self._funcs_by_name.get(toolname)
             assert callable(func), f"Tool {toolname} was not found"
             return func(**arguments)
 
-    assert_toolgurards_run(gen_result, DummyInvoker(), True)
+    await assert_toolgurards_run(gen_result, DummyInvoker(), True)

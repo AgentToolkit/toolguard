@@ -6,7 +6,7 @@ import {{to_py_func_name(domain.app_name)}}
 from {{ path_to_module(domain.app_types.file_name) }} import *
 from {{ path_to_module(domain.app_api.file_name) }} import {{ domain.app_api_class_name }}
 
-def {{ method.name }}(api: {{ domain.app_api_class_name }}, {{ method.signature }}):
+async def {{ method.name }}(api: {{ domain.app_api_class_name }}, {{ method.signature }}):
     """
     Policy to check: {{ policy }}
 

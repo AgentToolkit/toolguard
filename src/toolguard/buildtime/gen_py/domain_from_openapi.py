@@ -89,7 +89,7 @@ def _get_oas_methods(oas: OpenAPI, type_names: Set[str]):
             sig = f"({args_str})->{ret}"
 
             fn_name = py.to_py_func_name(op.operationId or "func")
-            body = f"return self._delegate.invoke('{fn_name}', {ARGS_PARAM}.model_dump(), {ret})"
+            body = f"return await self._delegate.invoke('{fn_name}', {ARGS_PARAM}.model_dump(), {ret})"
             # if orign_funcs:
             #     func = find(orign_funcs or [], lambda fn: fn.__name__ == op.operationId) # type: ignore
             #     if func:
@@ -106,7 +106,7 @@ def _get_oas_methods(oas: OpenAPI, type_names: Set[str]):
 
 
 def _generate_api(methods: List, cls_name: str, types_module: str) -> str:
-    return load_template("api.j2").render(
+    return load_template("oas_api.j2").render(
         types_module=types_module, class_name=cls_name, methods=methods
     )
 
@@ -114,7 +114,7 @@ def _generate_api(methods: List, cls_name: str, types_module: str) -> str:
 def _generate_api_impl(
     methods: List, api_module: str, types_module: str, api_cls_name: str, cls_name: str
 ) -> str:
-    return load_template("api_impl.j2").render(
+    return load_template("oas_api_impl.j2").render(
         api_cls_name=api_cls_name,
         types_module=types_module,
         api_module=api_module,

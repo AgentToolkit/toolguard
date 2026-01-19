@@ -8,7 +8,7 @@ class ToolMethodsInvoker(IToolInvoker):
     def __init__(self, object: object) -> None:
         self._obj = object
 
-    def invoke(
+    async def invoke(
         self, toolname: str, arguments: Dict[str, Any], return_type: Type[T]
     ) -> T:
         mtd = getattr(self._obj, toolname)
