@@ -1,51 +1,25 @@
 Task:
-Given a Policy Document, Tools Descriptions, and a Target Tool (ToolX), extract and format all restrictive, tool-gating policy items that should be verified before invoking ToolX.
-Your output is a JSON object, as described below.
+Given a Policy Document, Tools Descriptions, and a Target Tool (ToolX), extract and format ONLY the policy items that MUST be enforced or validated immediately before invoking ToolX.
+Policies must be excluded unless they directly constrain whether ToolX may be called or how its output must be computed.
 
 Instructions:
 1. Identify policy items from the Policy Document that are relevant to ToolX.
 2. Ensure that extracted policy items:
-    * Are **restrictive or conditional** (they must be able to block, limit, or require something for ToolX).
-    * Are **specifically applicable to ToolX’s behavior** (not general user entitlements or rules for other tools).
-    * Can be validated **before calling ToolX** using ToolX parameters, chat history, or other tools.
-    * Are **actionable**, meaning failing the rule would prevent or alter the ToolX invocation.
-    * Are **self-contained** and do not rely on unstated context.
-3. Tool Scope Filtering (Rewritten)
-    * A policy statement applies to ToolX ONLY if it governs whether ToolX’s API call itself is allowed to execute.
-    * A policy MUST be ignored for ToolX if it only governs:
-        * whether a different tool may be called,
-        * whether a future or downstream action is allowed,
-        * or a customer’s eligibility for some other operation.
-    * The model must ask:
-        * “If this policy is violated, would calling ToolX right now be incorrect, forbidden, or meaningless?”
-        * If the answer is no, the policy MUST NOT be attached to ToolX.
-    * A restriction on an action tool MUST NOT propagate to diagnostic or lookup tools, even when:
-        * the lookup result is used to decide the action,
-        * or the policy references attributes returned by that lookup.
-        * If ToolX only retrieves information, then: “No customer is ever too restricted to be looked up.”
-            * Example (Binding by Action, not Topic)- This policy applies only to a tool whose action is submitting a support ticket, because violating the rule would make that submission invalid.
-                * It must not be attached to tools that merely retrieve account status or user data, since those lookups remain valid even when the account is inactive.
-4. Split policy items into the smallest reasonable parts so that:
-    * Each extracted policy contains only one condition.
-    * If a policy includes multiple conditions, split it into separate policy items whenever possible.
-5. Provide exact references to the Policy Document for each extracted policy.
+    * Are specifically applicable to ToolX (not general for all tools).
+    * Can be validated before calling ToolX.
+    * Tool Responsibility Rule:
+        - A policy item must be assigned ONLY to the tool that performs the action or enforces the rule, not to a tool that merely provides information or data required to evaluate the policy.
+        - Only assign a policy to a tool if the tool itself is responsible for enforcing the rule or producing an output that must comply with the rule.
+        - Tools that merely provide information to another tool do not enforce the rule, and policies must not be attached to them.
+    * Are actionable, meaning they can be enforced based on ToolX's parameters, chat history, and data access.
+    * Are self-contained, meaning the description should contain all necessary details without requiring access to external references.
+3. Provide exact references to the Policy Document for each extracted policy.
     * Locate the exact passage(s) in the Policy Document that fully support the policy statement.
     * The corrected reference must be a contiguous, verbatim excerpt from the Policy Document, ensuring it can be precisely highlighted.
     * If no single passage fully supports the policy, replace the incorrect reference with multiple distinct references.
     * Each reference must be a verbatim excerpt that appears exactly as written in the Policy Document.
     * Each supporting passage should be listed separately within the "references" array.
     * Make sure to extract only from the Policy Document and not from other input information like the tool description
-
-
-### Definitions
-
-A **policy item** is eligible for extraction only if it is:
-
-• **Restrictive** – it limits, forbids, or conditions when ToolX may be called
-• **Tool-scoped** – it applies to ToolX’s operation, not to other tools
-• **Pre-call enforceable** – it can be evaluated before calling ToolX
-
-**Permissive, descriptive, or benefit-granting rules MUST NOT be extracted unless they also impose a restriction or condition.**
 
 Input Format:
 Policy Document – A text containing policy items, rules, or constraints governing tool usage.

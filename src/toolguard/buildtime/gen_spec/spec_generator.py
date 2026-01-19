@@ -464,7 +464,9 @@ async def extract_toolguard_specs(
             if short
             else await generator.generate_policy(tool_name)
         )
-        save_output(step1_output_dir, tool_name + ".json", spec)
+        if spec.policy_items:
+            save_output(step1_output_dir, tool_name + ".json", spec)
+
         return spec
 
     specs = await asyncio.gather(
