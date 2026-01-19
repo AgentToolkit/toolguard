@@ -18,7 +18,7 @@ async def test_appointment_slot_fee_dependency():
     policy_txt = "Gold members receive a 10% discount on the slot visit fee."
     tool_signature = "schedule_appointment(self, args:ScheduleAppointmentArgs)"
 
-    model = "gpt-4o-2024-08-06"
+    model = "o1-2024-12-17"  # "gpt-4o-2024-08-06"
     llm_provider = "azure"
     llm = LitellmModel(model, llm_provider)
     mellea_backend = SimpleBackend(llm)
