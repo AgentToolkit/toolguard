@@ -23,6 +23,6 @@ async def {{ method.name }}(api: {{ domain.app_api_class_name }}, {{ method.sign
     """
     await asyncio.gather( *[
 {%- for item in items %}
-        {{ item.guard_fn }}(api, {{method.args_call}})
+        {{ item.guard_fn }}(api, {{method.args_call}}),
 {%- endfor %}
     ])

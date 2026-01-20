@@ -13,7 +13,7 @@ def generate_init_tests(
     dependent_tool_names: List[str],
 ) -> str:
     """
-        Generate Python unit tests for a function to verify tool-call compliance with policy constraints.
+        Generate Python async unit tests for a function to verify tool-call compliance with policy constraints.
 
         Args:
             fn_src (FileTwin): Source code containing the function-under-test signature.
@@ -54,7 +54,7 @@ def generate_init_tests(
         * fn_src:
     ```python
     # file: my_app/create_reservation/guard_create_reservation.py
-    def guard_create_reservation(api: SomeAPI, user_id: str, hotel_id: str, reservation_date: str, persons: int):
+    async def guard_create_reservation(api: SomeAPI, user_id: str, hotel_id: str, reservation_date: str, persons: int):
         ...
     ```
         * policy_item.description = "cannot book a room for a date in the past"
@@ -64,11 +64,11 @@ def generate_init_tests(
     ```python
     # file: my_app/api.py
     class SomeAPI(ABC):
-        def get_user(self, user_id):
+        async def get_user(self, user_id):
             ...
-        def get_hotel(self, hotel_id):
+        async def get_hotel(self, hotel_id):
             ...
-        def create_reservation(self, user_id: str, hotel_id: str, reservation_date: str, persons: int):
+        async def create_reservation(self, user_id: str, hotel_id: str, reservation_date: str, persons: int):
             \"\"\"
             Args:
                 ...
@@ -79,13 +79,14 @@ def generate_init_tests(
 
         Should return this snippet:
     ```python
-    from unittest.mock import MagicMock
+    from unittest.mock import MagicMock, AsyncMock
     import pytest
     from toolguard.runtime import PolicyViolationException
     from my_app.create_reservation.guard_create_reservation import guard_create_reservation
     from my_app.api import *
 
-    def test_violation_book_room_in_the_past():
+    @pytest.mark.asyncio
+    async def test_violation_book_room_in_the_past():
         \"\"\"
         Policy: "cannot book room for a date in the past"
         Example: "book a room for a hotel, one week ago"
@@ -96,13 +97,15 @@ def generate_init_tests(
         hotel = Hotel(hotel_id="789", ...)
 
         api = MagicMock(spec=SomeAPI)
+        api.get_user = AsyncMock()
         api.get_user.side_effect = lambda user_id: user if user_id == "123" else None
+        api.get_hotel = AsyncMock()
         api.get_hotel.side_effect = lambda hotel_id: hotel if hotel_id == "789" else None
 
         #invoke function under test.
         with pytest.raises(PolicyViolationException):
             next_week = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S")
-            guard_create_reservation(api, user_id="123", hotel_id="789", reservation_date=next_week, persons=3)
+            await guard_create_reservation(api, user_id="123", hotel_id="789", reservation_date=next_week, persons=3)
     ```
     """
     ...

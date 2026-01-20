@@ -269,10 +269,11 @@ class ToolGuardGenerator:
             res = prompts.improve_tool_guard(
                 self.m,
                 prev_impl=prev_python,  # noqa: B023
-                domain=domain,  # noqa: B023
-                policy_item=item,
+                policy_txt=item.description,
                 dependent_tool_names=dep_tools,
-                review_comments=review_comments + errors,  # noqa: B023
+                review_comments=review_comments + errors,
+                api=domain.app_api,
+                data_types=domain.app_types,
             )
 
             guard = FileTwin(
