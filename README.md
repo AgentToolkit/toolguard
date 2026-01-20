@@ -38,7 +38,7 @@ Uses the output from Step 1 and the OpenAPI spec to generate Python code that en
 1. **Clone the repository:**
 
    ```bash
-   uv install toolguard
+   uv pip install toolguard
    ```
 
 4. **Create a `.env` file:**
