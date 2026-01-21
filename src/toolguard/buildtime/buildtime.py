@@ -73,7 +73,7 @@ def _tools_to_tool_infos(
 
 
 # Step2 only
-async def generate_guards_from_specs(
+async def generate_guards_code(
     tools: TOOLS,
     tool_specs: List[ToolGuardSpec],
     work_dir: str | Path,

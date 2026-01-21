@@ -9,7 +9,7 @@ import markdown  # type: ignore[import]
 import logging
 import argparse
 
-from .buildtime import generate_guard_specs, generate_guards_from_specs
+from .buildtime import generate_guard_specs, generate_guards_code
 from .utils import py
 from .llm.tg_litellm import LitellmModel
 
@@ -83,7 +83,7 @@ def main():
             llm=llm,
             short=args.short_step1,
         )
-        guards = await generate_guards_from_specs(
+        guards = await generate_guards_code(
             tool_specs=specs,
             tools=tools,
             work_dir=step2_out_dir,

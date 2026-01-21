@@ -10,7 +10,7 @@ import markdown  # type: ignore[import]
 import pytest
 from toolguard.buildtime import (
     generate_guard_specs,
-    generate_guards_from_specs,
+    generate_guards_code,
     LitellmModel,
 )
 from toolguard.buildtime.llm.i_tg_llm import I_TG_LLM
@@ -71,7 +71,7 @@ async def _build_toolguards(
         short=short,
     )
     # spec = ToolGuardSpec.load("examples/calculator/outputs/tool_functions/gpt-4o-2024-08-06/step1/multiply_tool.json")
-    guards = await generate_guards_from_specs(
+    guards = await generate_guards_code(
         tool_specs=specs,
         tools=tools,
         work_dir=step2_out_dir,
@@ -93,46 +93,46 @@ async def assert_toolgurards_run(
 
     with load_toolguards(gen_result.out_dir) as toolguard:
         # test compliance
-        await toolguard.check_toolcall(
+        await toolguard.validate_toolcall(
             "divide_tool", make_args({"g": 5, "h": 4}), tool_invoker
         )
-        await toolguard.check_toolcall(
+        await toolguard.validate_toolcall(
             "add_tool", make_args({"a": 5, "b": 4}), tool_invoker
         )
-        await toolguard.check_toolcall(
+        await toolguard.validate_toolcall(
             "subtract_tool", make_args({"a": 5, "b": 4}), tool_invoker
         )
-        await toolguard.check_toolcall(
+        await toolguard.validate_toolcall(
             "multiply_tool", make_args({"a": 5, "b": 4}), tool_invoker
         )
-        await toolguard.check_toolcall(
+        await toolguard.validate_toolcall(
             "map_kdi_number", make_args({"i": 5}), tool_invoker
         )
 
         # test violations
         with pytest.raises(PolicyViolationException):
-            await toolguard.check_toolcall(
+            await toolguard.validate_toolcall(
                 "divide_tool", make_args({"g": 5, "h": 0}), tool_invoker
             )
 
         with pytest.raises(PolicyViolationException):
-            await toolguard.check_toolcall(
+            await toolguard.validate_toolcall(
                 "add_tool", make_args({"a": 5, "b": 73}), tool_invoker
             )
 
         with pytest.raises(PolicyViolationException):
-            await toolguard.check_toolcall(
+            await toolguard.validate_toolcall(
                 "add_tool", make_args({"a": 73, "b": 5}), tool_invoker
             )
 
         # Force to use the kdi_number other tool
         with pytest.raises(PolicyViolationException):
-            await toolguard.check_toolcall(
+            await toolguard.validate_toolcall(
                 "multiply_tool", make_args({"a": 2, "b": 73}), tool_invoker
             )
 
         with pytest.raises(PolicyViolationException):
-            await toolguard.check_toolcall(
+            await toolguard.validate_toolcall(
                 "multiply_tool", make_args({"a": 22, "b": 2}), tool_invoker
             )
 

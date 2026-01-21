@@ -84,7 +84,9 @@ class ToolguardRuntime:
                     guard_args[p_name] = arg_val
         return guard_args
 
-    async def check_toolcall(self, tool_name: str, args: dict, delegate: IToolInvoker):
+    async def validate_toolcall(
+        self, tool_name: str, args: dict, delegate: IToolInvoker
+    ):
         guard_fn = self._guards.get(tool_name)
         if guard_fn is None:  # No guard assigned to this tool
             return
