@@ -93,46 +93,46 @@ async def assert_toolgurards_run(
 
     with load_toolguards(gen_result.out_dir) as toolguard:
         # test compliance
-        await toolguard.validate_toolcall(
+        await toolguard.avalidate_toolcall(
             "divide_tool", make_args({"g": 5, "h": 4}), tool_invoker
         )
-        await toolguard.validate_toolcall(
+        await toolguard.avalidate_toolcall(
             "add_tool", make_args({"a": 5, "b": 4}), tool_invoker
         )
-        await toolguard.validate_toolcall(
+        await toolguard.avalidate_toolcall(
             "subtract_tool", make_args({"a": 5, "b": 4}), tool_invoker
         )
-        await toolguard.validate_toolcall(
+        await toolguard.avalidate_toolcall(
             "multiply_tool", make_args({"a": 5, "b": 4}), tool_invoker
         )
-        await toolguard.validate_toolcall(
+        await toolguard.avalidate_toolcall(
             "map_kdi_number", make_args({"i": 5}), tool_invoker
         )
 
         # test violations
         with pytest.raises(PolicyViolationException):
-            await toolguard.validate_toolcall(
+            await toolguard.avalidate_toolcall(
                 "divide_tool", make_args({"g": 5, "h": 0}), tool_invoker
             )
 
         with pytest.raises(PolicyViolationException):
-            await toolguard.validate_toolcall(
+            await toolguard.avalidate_toolcall(
                 "add_tool", make_args({"a": 5, "b": 73}), tool_invoker
             )
 
         with pytest.raises(PolicyViolationException):
-            await toolguard.validate_toolcall(
+            await toolguard.avalidate_toolcall(
                 "add_tool", make_args({"a": 73, "b": 5}), tool_invoker
             )
 
         # Force to use the kdi_number other tool
         with pytest.raises(PolicyViolationException):
-            await toolguard.validate_toolcall(
+            await toolguard.avalidate_toolcall(
                 "multiply_tool", make_args({"a": 2, "b": 73}), tool_invoker
             )
 
         with pytest.raises(PolicyViolationException):
-            await toolguard.validate_toolcall(
+            await toolguard.avalidate_toolcall(
                 "multiply_tool", make_args({"a": 22, "b": 2}), tool_invoker
             )
 

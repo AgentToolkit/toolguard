@@ -3,6 +3,7 @@ import inspect
 import os
 from pathlib import Path
 import sys
+import asyncio
 from types import ModuleType
 from typing import Any, Awaitable, Dict, Optional, Type, Callable
 from pydantic import BaseModel
@@ -84,13 +85,33 @@ class ToolguardRuntime:
                     guard_args[p_name] = arg_val
         return guard_args
 
-    async def validate_toolcall(
+    async def avalidate_toolcall(
         self, tool_name: str, args: dict, delegate: IToolInvoker
     ):
         guard_fn = self._guards.get(tool_name)
         if guard_fn is None:  # No guard assigned to this tool
             return
         await guard_fn(**self._make_args(guard_fn, args, delegate))
+
+    def validate_toolcall(
+        self, tool_name: str, args: dict, delegate: IToolInvoker
+    ) -> None:
+        """
+        Safe behavior:
+        - If called with no running event loop → runs the async version.
+        - If called from inside an event loop → raises a clear error.
+        """
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            # No event loop running → safe to create one
+            return asyncio.run(self.avalidate_toolcall(tool_name, args, delegate))
+        else:
+            # We are already in async context → cannot block safely
+            raise RuntimeError(
+                "validate_toolcall() was called from an async context. "
+                "Use `await avalidate_toolcall(...)` instead."
+            )
 
 
 def file_to_module_name(file_path: str | Path):

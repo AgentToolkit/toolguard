@@ -38,16 +38,13 @@ license = { file = "LICENSE" }
 [tool.hatch.metadata]
 allow-direct-references = true
 
-[project.optional-dependencies]
-dev = [
-    "pytest-asyncio>=1.3.0",
-    "tau2 @ git+https://github.com/sierra-research/tau2-bench.git@main"
-]
 
 [dependency-groups]
 dev = [
+    "pytest-asyncio>=1.3.0",
     "dotenv",
     "pre-commit>=4.2.0",
+    "tau2 @ git+https://github.com/sierra-research/tau2-bench.git@main",
 ]
 
 
