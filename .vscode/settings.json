@@ -3,6 +3,7 @@
     "python.testing.pytestArgs": [
         "tests",
         "-s",
+        "--ignore=tests/tmp"
         // "--log-cli-level=INFO"
     ],
     "python.testing.pytestEnabled": true,

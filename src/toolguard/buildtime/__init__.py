@@ -1,6 +1,6 @@
 from toolguard.buildtime.buildtime import (
     generate_guard_specs,
-    generate_guards_from_specs,
+    generate_guards_code,
 )
 from toolguard.buildtime.data_types import ToolInfo
 
@@ -10,7 +10,7 @@ from toolguard.runtime.data_types import ToolGuardsCodeGenerationResult, ToolGua
 
 __all__ = [
     "generate_guard_specs",
-    "generate_guards_from_specs",
+    "generate_guards_code",
     "ToolInfo",
     "I_TG_LLM",
     "LanguageModelBase",
