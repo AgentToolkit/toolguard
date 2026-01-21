@@ -1,4 +1,3 @@
-import asyncio
 import json
 import os
 import re
@@ -7,7 +6,6 @@ import time
 from litellm import acompletion
 from litellm.exceptions import RateLimitError
 from abc import ABC
-import dotenv
 
 from .i_tg_llm import I_TG_LLM
 
@@ -310,35 +308,15 @@ class LitellmModel(LanguageModelBase):
             base_url = rits_model_to_endpoint[self.model_name]
             extra_headers["RITS_API_KEY"] = os.getenv("RITS_API_KEY") or ""
 
+        call_kwargs = {
+            **self.kw_args,  # copy existing provider config
+            "base_url": base_url,  # add / override
+        }
         response = await acompletion(
             messages=messages,
             model=self.model_name,
             custom_llm_provider=provider,
-            base_url=base_url,
             extra_headers=extra_headers,
-            **self.kw_args,
+            **call_kwargs,
         )
         return response.choices[0].message.content
-
-
-if __name__ == "__main__":
-    dotenv.load_dotenv()
-    model = "gpt-4o-2024-08-06"
-    # model = "claude-3-5-sonnet-20240620"
-    # model = "meta-llama/llama-3-3-70b-instruct"
-    aw = LitellmModel(model, "azure")
-
-    async def my_test():
-        resp = await aw.generate([{"role": "user", "content": "what is the weather?"}])
-        print(resp)
-        resp = await aw.chat_json(
-            [
-                {
-                    "role": "user",
-                    "content": "what is the weather? please answer in json format",
-                }
-            ]
-        )
-        print(resp)
-
-    asyncio.run(my_test())
