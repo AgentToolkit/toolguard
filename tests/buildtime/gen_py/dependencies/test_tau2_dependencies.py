@@ -1,6 +1,6 @@
 import inspect
+import os
 from pathlib import Path
-from dotenv import load_dotenv
 import mellea
 import pytest
 
@@ -11,8 +11,6 @@ from toolguard.buildtime.llm.tg_litellm import LitellmModel
 from tau2.domains.airline.tools import AirlineTools
 from tau2.environment.toolkit import ToolType, is_tool
 from tau2.domains.airline.data_model import FlightBase
-
-load_dotenv()
 
 current_dir = str(Path(__file__).parent)
 # from programmatic_ai.config import settings
@@ -60,9 +58,15 @@ class TestToolsDependencies:
 
     @pytest.fixture(autouse=True)
     def session(self):
-        model = "o1-2024-12-17"  # "gpt-4o-2024-08-06"
-        llm_provider = "azure"
-        llm = LitellmModel(model, llm_provider)
+        llm = LitellmModel(
+            model_name=os.getenv("MODEL_NAME") or "Azure/gpt-5-2025-08-07",
+            provider=os.getenv("LLM_PROVIDER") or "azure",
+            kw_args={
+                "api_base": os.getenv("LLM_API_BASE"),
+                "api_version": os.getenv("LLM_API_VERSION"),
+                "api_key": os.getenv("LLM_API_KEY"),
+            },
+        )
         mellea_backend = SimpleBackend(llm)
         return mellea.MelleaSession(mellea_backend)
 
@@ -119,7 +123,7 @@ class TestToolsDependencies:
             policy, update_flights_signature, self.domain, session
         ) == {"get_reservation_details"}
 
-    # This test succeeds only with advanced models (eg, o1. but not gpt-4o)
+    # This test succeeds only with §§advanced models (eg, o1. but not gpt-4o)
     @pytest.mark.asyncio
     async def test_indirect_api(self, session):
         policy = "When changing flights in a reservation, the agent must ensure that the origin, destination, and trip type remain unchanged."

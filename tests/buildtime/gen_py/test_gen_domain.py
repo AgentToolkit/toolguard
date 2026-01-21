@@ -108,7 +108,7 @@ async def test_generate_domain_from_tau2_functions():
     ]  # only @is_tool]
 
     domain = generate_domain_from_functions(
-        py_path=trg_path, app_name="calc", funcs=funcs, include_module_roots=["tau2"]
+        py_path=trg_path, app_name="airline", funcs=funcs, include_module_roots=["tau2"]
     )
 
     report = await pyright.run(trg_path, domain.app_api.file_name)
