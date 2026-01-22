@@ -85,15 +85,13 @@ class ToolguardRuntime:
                     guard_args[p_name] = arg_val
         return guard_args
 
-    async def avalidate_toolcall(
-        self, tool_name: str, args: dict, delegate: IToolInvoker
-    ):
+    async def aguard_toolcall(self, tool_name: str, args: dict, delegate: IToolInvoker):
         guard_fn = self._guards.get(tool_name)
         if guard_fn is None:  # No guard assigned to this tool
             return
         await guard_fn(**self._make_args(guard_fn, args, delegate))
 
-    def validate_toolcall(
+    def guard_toolcall(
         self, tool_name: str, args: dict, delegate: IToolInvoker
     ) -> None:
         """
@@ -105,12 +103,12 @@ class ToolguardRuntime:
             asyncio.get_running_loop()
         except RuntimeError:
             # No event loop running → safe to create one
-            return asyncio.run(self.avalidate_toolcall(tool_name, args, delegate))
+            return asyncio.run(self.aguard_toolcall(tool_name, args, delegate))
         else:
             # We are already in async context → cannot block safely
             raise RuntimeError(
-                "validate_toolcall() was called from an async context. "
-                "Use `await avalidate_toolcall(...)` instead."
+                "guard_toolcall() was called from an async context. "
+                "Use `await aguard_toolcall(...)` instead."
             )
 
 
