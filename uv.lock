@@ -1634,7 +1634,7 @@ wheels = [
 
 [[package]]
 name = "mellea"
-version = "0.2.4"
+version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ansicolors" },
@@ -1658,9 +1658,9 @@ dependencies = [
     { name = "types-tqdm" },
     { name = "uvicorn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2f/8d/e9032cacc0b5f54236074a8e1a1333813db4f0613baea17e5d815305135b/mellea-0.2.4.tar.gz", hash = "sha256:973a20bf7a3f25a7e85a563d79a166b6bb8a12142d93a46f71df26632362db65", size = 208578, upload-time = "2026-01-08T17:25:40.282Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d5/e6/77f1de051b83e02ec923af3b8b5c7c6e9511a498d2b5b9658211c0985703/mellea-0.3.0.tar.gz", hash = "sha256:6b3e36e9e2a89a8ed4e9a2b3d59e6206865c5db81fa6ec565caec881444c6797", size = 217386, upload-time = "2026-01-21T19:25:25.167Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e0/96/b1482a8aec3419981e7f40eb9f7388a924c3023a77aaf032d39ddbe062ac/mellea-0.2.4-py3-none-any.whl", hash = "sha256:549b1b57f081a5837ea30692075ab29fd224a0600f4fa6da99b56be95b9c1759", size = 308071, upload-time = "2026-01-08T17:25:38.84Z" },
+    { url = "https://files.pythonhosted.org/packages/38/2c/6105b27609ee16c092f54f220fc371f88af19fed5ec4fd78a713cf9e2081/mellea-0.3.0-py3-none-any.whl", hash = "sha256:bb70902a4efeafa5a0a9ae29cc39172d8979cfdf8646a2fc8ad592952cf495e4", size = 317487, upload-time = "2026-01-21T19:25:23.495Z" },
 ]
 
 [[package]]
@@ -3546,7 +3546,7 @@ requires-dist = [
     { name = "langchain-core", specifier = ">=0.3.72" },
     { name = "litellm", specifier = "<2.0.0" },
     { name = "markdown", specifier = ">=3.7" },
-    { name = "mellea", specifier = ">=0.2.4" },
+    { name = "mellea", specifier = ">=0.3.0" },
     { name = "pydantic", specifier = ">=2.11.0" },
     { name = "pyright", specifier = ">=1.1.408" },
     { name = "pytest", specifier = ">=8.3.3" },
