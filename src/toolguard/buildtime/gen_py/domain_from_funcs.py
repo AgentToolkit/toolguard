@@ -54,7 +54,7 @@ def generate_domain_from_functions(
     )
 
     return RuntimeDomain(
-        app_name=app_name,
+        app_name=py.to_py_module_name(app_name),
         app_types=types,
         app_api_class_name=api_cls_name,
         app_api=api,

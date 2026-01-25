@@ -30,8 +30,8 @@ def generate_domain_from_openapi(
     oas = read_openapi(openapi_file)
     os.makedirs(join(py_path, py.to_py_module_name(app_name)), exist_ok=True)
 
-    types_name = f"{app_name}_types"
-    types_module_name = f"{app_name}.{types_name}"
+    types_name = py.to_py_module_name(f"{app_name}_types")
+    types_module_name = f"{py.to_py_module_name(app_name)}.{types_name}"
     types = FileTwin(
         file_name=py.module_to_path(types_module_name), content=dm_codegen(openapi_file)
     ).save(py_path)
@@ -46,7 +46,9 @@ def generate_domain_from_openapi(
     # APP API
     api_cls_name = py.to_py_class_name("I " + app_name)
     methods = _get_oas_methods(oas, type_names)
-    api_module_name = py.to_py_module_name(f"{app_name}.i_{app_name}")
+    api_module_name = (
+        f"{py.to_py_module_name(app_name)}.{py.to_py_module_name('i_' + app_name)}"
+    )
     api = FileTwin(
         file_name=py.module_to_path(api_module_name),
         content=_generate_api(methods, api_cls_name, types_module_name),
@@ -54,7 +56,9 @@ def generate_domain_from_openapi(
 
     # APP API Impl
     impl_cls_name = py.to_py_class_name(app_name + " impl")
-    impl_module_name = py.to_py_module_name(f"{app_name}.{app_name}_impl")
+    impl_module_name = (
+        f"{py.to_py_module_name(app_name)}.{py.to_py_module_name(app_name + '_impl')}"
+    )
     cls_str = _generate_api_impl(
         methods, api_module_name, types_module_name, api_cls_name, impl_cls_name
     )

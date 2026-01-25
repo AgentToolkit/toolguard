@@ -166,10 +166,10 @@ def pytest_runtest_protocol(item, nextitem):
     if docstring:
         item.user_properties.append(("docstring", docstring))
 """
-    FileTwin(file_name="conftest.py", content=hook).save(folder)
+    FileTwin(file_name=Path("conftest.py"), content=hook).save(folder)
 
 
 def read_test_report(file_path: Path) -> TestReport:
-    with open(file_path, "r") as file:
+    with open(file_path, "r", encoding="utf-8") as file:
         data = json.load(file)
     return TestReport.model_validate(data, strict=False)

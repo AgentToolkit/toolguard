@@ -33,7 +33,7 @@ async def test_generate_domain_from_appointment_oas():
     pyright.config(trg_path)
 
     domain = generate_domain_from_openapi(
-        py_path=trg_path, app_name="appo", openapi_file=oas_path
+        py_path=trg_path, app_name="My-ApP", openapi_file=oas_path
     )
 
     report = await pyright.run(trg_path, domain.app_api.file_name)
@@ -46,10 +46,10 @@ async def test_generate_domain_from_appointment_oas():
     )
 
     expected_signatures = {
-        "get_user_id": "(self, app:str, args:appo.appo_types.GetUserIdArgs)->int",
-        "add_payment_method": "(self, args:appo.appo_types.AddPaymentMethodArgs)->int",
-        "get_user": "(self, args:appo.appo_types.GetUserArgs)->appo.appo_types.GetUserResponse",
-        "remove_appointment": "(self, args:appo.appo_types.RemoveAppointmentArgs)->Any",
+        "get_user_id": "(self, app:str, args:my_app.my_app_types.GetUserIdArgs)->int",
+        "add_payment_method": "(self, args:my_app.my_app_types.AddPaymentMethodArgs)->int",
+        "get_user": "(self, args:my_app.my_app_types.GetUserArgs)->my_app.my_app_types.GetUserResponse",
+        "remove_appointment": "(self, args:my_app.my_app_types.RemoveAppointmentArgs)->Any",
     }
     assert_method_signature(api, expected_signatures)
 
