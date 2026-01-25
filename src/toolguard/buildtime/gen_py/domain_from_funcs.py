@@ -1,7 +1,5 @@
 import os
 from pathlib import Path
-from toolguard.runtime.data_types import FileTwin, RuntimeDomain
-from toolguard.buildtime.utils import py
 from dataclasses import is_dataclass
 from enum import Enum
 import inspect
@@ -25,6 +23,8 @@ from typing import (
     Union,
 )
 from collections import defaultdict, deque
+from toolguard.runtime.data_types import FileTwin, RuntimeDomain
+from toolguard.buildtime.utils import py
 
 from toolguard.buildtime.utils.py import module_to_path
 
@@ -55,7 +55,6 @@ def generate_domain_from_functions(
 
     return RuntimeDomain(
         app_name=app_name,
-        # toolguard_common=common,
         app_types=types,
         app_api_class_name=api_cls_name,
         app_api=api,
@@ -66,9 +65,11 @@ def generate_domain_from_functions(
 
 
 class APIExtractor:
-    def __init__(self, py_path: Path, include_module_roots: List[str] = []):
+    def __init__(self, py_path: Path, include_module_roots: List[str] | None = None):
         self.py_path = py_path
-        self.include_module_roots = include_module_roots
+        self.include_module_roots = (
+            include_module_roots if include_module_roots is not None else []
+        )
 
     def extract_from_functions(
         self,
@@ -147,78 +148,78 @@ class APIExtractor:
     def _generate_interface_from_class(
         self, typ: type, interface_name: str, types_module: str
     ) -> str:
-        # Start building the interface
-        lines = [
-            "# Auto-generated class interface",
-            "from typing import *  # type: ignore",
-            "from abc import ABC, abstractmethod",
-            f"from {types_module} import *",
-            "",
-        ]
-
-        lines.append(f"class {interface_name}(ABC):")  # Abstract class
-
-        # Add class docstring if available
-        if typ.__doc__:
-            docstring = typ.__doc__.strip()
-            if docstring:
-                lines.append('    """')
-                # Handle multi-line docstrings
-                for line in docstring.split("\n"):
-                    lines.append(f"    {line.strip()}")
-                lines.append('    """')
-
+        """Generate interface from a class."""
         # Get all methods
         methods = []
         for name, method in inspect.getmembers(typ, predicate=inspect.isfunction):
             if not name.startswith("_"):
                 methods.append((name, method))
 
-        if not methods:
-            lines.append("    pass")
-        else:
-            for method_name, method in methods:
-                # Add method docstring and signature
-                lines.append("    @abstractmethod")
-                method_lines = self._get_function_with_docstring(method, method_name)
-                lines.extend([line if line else "" for line in method_lines])
-                lines.append("        ...")
-                lines.append("")
+        # Add class docstring if available
+        class_doc = typ.__doc__.strip() if typ.__doc__ else None
 
-        return textwrap.dedent("\n".join(lines))
+        return self._generate_interface(
+            methods=[(name, method) for name, method in methods],
+            interface_name=interface_name,
+            types_module=types_module,
+            class_docstring=class_doc,
+            use_textwrap=True,
+        )
 
     def _generate_interface_from_functions(
         self, funcs: List[Callable], interface_name: str, types_module: str
     ) -> str:
+        """Generate interface from functions."""
+        methods = [(_get_type_name(func), func) for func in funcs]
+        return self._generate_interface(
+            methods=methods,
+            interface_name=interface_name,
+            types_module=types_module,
+            class_docstring=None,
+            use_textwrap=False,
+        )
+
+    def _generate_interface(
+        self,
+        methods: List[Tuple[str, Callable]],
+        interface_name: str,
+        types_module: str,
+        class_docstring: Optional[str],
+        use_textwrap: bool,
+    ) -> str:
+        """Common interface generation logic."""
         lines = [
             "# Auto-generated class interface",
-            "from typing import * # type: ignore",
+            "from typing import *  # type: ignore",
             "from abc import ABC, abstractmethod",
             f"from {types_module} import *",
             "",
+            f"class {interface_name}(ABC):",
         ]
 
-        lines.append(f"class {interface_name}(ABC):")  # Abstract class
-        lines.append("")
+        # Add class docstring if available
+        if class_docstring:
+            lines.append('    """')
+            for line in class_docstring.split("\n"):
+                lines.append(f"    {line.strip()}")
+            lines.append('    """')
+        else:
+            lines.append("")
 
         indent = " " * 4
-        if not funcs:
+        if not methods:
             lines.append(f"{indent}pass")
         else:
-            for func in funcs:
-                # Add method docstring and signature
+            for method_name, method in methods:
                 lines.append(f"{indent}@abstractmethod")
-                method_lines = self._get_function_with_docstring(
-                    func, _get_type_name(func)
-                )
+                method_lines = self._get_function_with_docstring(method, method_name)
                 lines.extend([line if line else "" for line in method_lines])
                 lines.append(f"{indent}{indent}...")
                 lines.append("")
 
-        if any(["Decimal" in line for line in lines]):
-            lines.insert(2, "from decimal import Decimal")
-
-        return "\n".join(lines)
+        self._add_decimal_import_if_needed(lines)
+        result = "\n".join(lines)
+        return textwrap.dedent(result) if use_textwrap else result
 
     def _generate_impl_from_functions(
         self,
@@ -261,9 +262,7 @@ class APIExtractor:
                 lines.extend(self._generate_delegate_code(func))
                 lines.append("")
 
-        if any(["Decimal" in line for line in lines]):
-            lines.insert(2, "from decimal import Decimal")
-
+        self._add_decimal_import_if_needed(lines)
         return "\n".join(lines)
 
     def _generate_delegate_code(self, func: Callable) -> List[str]:
@@ -305,6 +304,11 @@ class APIExtractor:
 
         return lines
 
+    def _add_decimal_import_if_needed(self, lines: List[str]) -> None:
+        """Add Decimal import if needed in the code."""
+        if any("Decimal" in line for line in lines):
+            lines.insert(2, "from decimal import Decimal")
+
     def should_include_type(self, typ: type) -> bool:
         if hasattr(typ, "__module__"):
             module_root = typ.__module__.split(".")[0]
@@ -324,12 +328,6 @@ class APIExtractor:
         bases = [_get_type_name(b) for b in _get_type_bases(typ)]
         inheritance = f"({', '.join(bases)})" if bases else ""
         lines.append(f"class {class_name}{inheritance}:")
-
-        # #is Pydantic?
-        # is_pydantic = False
-        # for base in cls.__bases__:
-        #     if hasattr(base, '__module__') and 'pydantic' in str(base.__module__):
-        #         is_pydantic = True
 
         indent = " " * 4
         # Add class docstring if available
@@ -377,10 +375,6 @@ class APIExtractor:
 
                 # Check if we have a description for this field
                 description = field_descriptions.get(field_name)
-
-                # if description and is_pydantic:
-                #     # Use Pydantic Field with description
-                #     lines.append(f'    {field_name}: {type_str} = Field(description="{description}")')
                 if description:
                     # Add description as comment for non-Pydantic classes
                     lines.append(f"{indent}{field_name}: {type_str}  # {description}")
@@ -406,28 +400,49 @@ class APIExtractor:
         """Extract field descriptions from various sources."""
         descriptions = {}
 
-        # Method 1: Check for Pydantic Field definitions
-        if hasattr(typ, "__fields__"):  # Pydantic v1
-            for field_name, field_info in typ.__fields__.items():
+        # Extract from Pydantic models (v1 and v2)
+        descriptions.update(self._extract_pydantic_descriptions(typ))
+
+        # Extract from source code comments
+        descriptions.update(self._extract_source_comments(typ))
+
+        # Extract from dataclass metadata
+        if hasattr(typ, "__dataclass_fields__"):
+            for field_name, field in typ.__dataclass_fields__.items():
+                if hasattr(field, "metadata") and "description" in field.metadata:
+                    if field_name not in descriptions:
+                        descriptions[field_name] = field.metadata["description"]
+
+        return descriptions
+
+    def _extract_pydantic_descriptions(self, typ: type) -> Dict[str, str]:
+        """Extract descriptions from Pydantic models (v1 and v2)."""
+        descriptions = {}
+
+        # Pydantic v1
+        if hasattr(typ, "__fields__"):
+            for field_name, field_info in typ.__fields__.items():  # type: ignore
+                desc = None
                 if hasattr(field_info, "field_info") and hasattr(
                     field_info.field_info, "description"
                 ):
-                    descriptions[field_name] = field_info.field_info.description
-                elif hasattr(field_info, "description") and field_info.description:
-                    descriptions[field_name] = field_info.description
+                    desc = field_info.field_info.description
+                elif hasattr(field_info, "description"):
+                    desc = field_info.description
+                if desc:
+                    descriptions[field_name] = desc
 
-        # Method 2: Check for Pydantic v2 model fields
-        if hasattr(typ, "model_fields"):  # Pydantic v2
-            for field_name, field_info in typ.model_fields.items():
+        # Pydantic v2
+        if hasattr(typ, "model_fields"):
+            for field_name, field_info in typ.model_fields.items():  # type: ignore
                 if hasattr(field_info, "description") and field_info.description:
                     descriptions[field_name] = field_info.description
 
-        # Method 3: Check class attributes for Field() definitions
+        # Check class attributes for Field() definitions
         for attr_name in dir(typ):
-            if not attr_name.startswith("_"):
+            if not attr_name.startswith("_") and attr_name not in descriptions:
                 try:
                     attr_value = getattr(typ, attr_name)
-                    # Check if it's a Pydantic Field
                     if hasattr(attr_value, "description") and attr_value.description:
                         descriptions[attr_name] = attr_value.description
                     elif hasattr(attr_value, "field_info") and hasattr(
@@ -437,7 +452,11 @@ class APIExtractor:
                 except Exception:
                     pass
 
-        # Method 4: Parse class source for inline comments or docstrings
+        return descriptions
+
+    def _extract_source_comments(self, typ: type) -> Dict[str, str]:
+        """Extract field descriptions from inline comments in source code."""
+        descriptions = {}
         try:
             source_lines = inspect.getsourcelines(typ)[0]
             current_field = None
@@ -446,31 +465,19 @@ class APIExtractor:
                 line = line.strip()
 
                 # Look for field definitions with type hints
-                if (
-                    ":" in line
-                    and not line.startswith("def ")
-                    and not line.startswith("class ")
-                ):
-                    # Extract field name
+                if ":" in line and not line.startswith(("def ", "class ")):
                     field_part = line.split(":")[0].strip()
                     if " " not in field_part and field_part.isidentifier():
                         current_field = field_part
 
-                # Look for comments on the same line or next line
+                # Look for comments
                 if "#" in line and current_field:
                     comment = line.split("#", 1)[1].strip()
-                    if comment and current_field not in descriptions:
+                    if comment:
                         descriptions[current_field] = comment
                     current_field = None
-
         except Exception:
             pass
-
-        # Method 5: Check for dataclass field descriptions
-        if hasattr(typ, "__dataclass_fields__"):
-            for field_name, field in typ.__dataclass_fields__.items():
-                if hasattr(field, "metadata") and "description" in field.metadata:
-                    descriptions[field_name] = field.metadata["description"]
 
         return descriptions
 
@@ -526,15 +533,14 @@ class APIExtractor:
     def _collect_all_types_from_functions(
         self, funcs: List[Callable]
     ) -> Tuple[Set[type], Dependencies]:
-        processed_types: Set[type] = set()
+        """Collect all types from function signatures."""
+        visited: Set[type] = set()
         collected: Set[type] = set()
         dependencies: Dependencies = defaultdict(set)
 
         for func in funcs:
             for param, hint in get_type_hints(func).items():  # noqa: B007
-                self._collect_types_recursive(
-                    hint, processed_types, collected, dependencies
-                )
+                self._collect_types_recursive(hint, visited, collected, dependencies)
 
         return collected, dependencies
 
@@ -565,7 +571,7 @@ class APIExtractor:
             except Exception:
                 pass
 
-        # Also collect base class types
+        # Base class types
         for base in _get_type_bases(typ):
             self._collect_types_recursive(base, visited, collected, dependencies)
 
@@ -588,7 +594,11 @@ class APIExtractor:
         if origin and args:
             for f_arg in args:
                 self._collect_types_recursive(f_arg, visited, acc, dependencies)
-                self._add_dependency(typ, f_arg, dependencies)
+                # Inline dependency tracking
+                if _get_type_name(typ) != _get_type_name(f_arg):
+                    dependencies[typ].add(f_arg)
+                for arg in get_args(f_arg):
+                    dependencies[typ].add(arg)
             return
 
         # If it's a custom class, try to get its type hints
@@ -599,30 +609,30 @@ class APIExtractor:
                 if f_origin:
                     for f_arg in get_args(field_hint):
                         self._collect_types_recursive(f_arg, visited, acc, dependencies)
-                        self._add_dependency(typ, f_arg, dependencies)
+                        # Inline dependency tracking
+                        if _get_type_name(typ) != _get_type_name(f_arg):
+                            dependencies[typ].add(f_arg)
+                        for arg in get_args(f_arg):
+                            dependencies[typ].add(arg)
                 else:
                     self._collect_types_recursive(
                         field_hint, visited, acc, dependencies
                     )
-                    self._add_dependency(typ, field_hint, dependencies)
+                    # Inline dependency tracking
+                    if _get_type_name(typ) != _get_type_name(field_hint):
+                        dependencies[typ].add(field_hint)
+                    for arg in get_args(field_hint):
+                        dependencies[typ].add(arg)
 
             for base in _get_type_bases(typ):  # Base classes
                 self._collect_types_recursive(base, visited, acc, dependencies)
-                self._add_dependency(typ, base, dependencies)
+                # Inline dependency tracking
+                if _get_type_name(typ) != _get_type_name(base):
+                    dependencies[typ].add(base)
+                for arg in get_args(base):
+                    dependencies[typ].add(arg)
         except Exception:
             pass
-
-    def _add_dependency(
-        self, dependent_type: type, dependency_type: type, dependencies: Dependencies
-    ):
-        """Add a dependency relationship between types."""
-        dep_name = _get_type_name(dependent_type)
-        dep_on_name = _get_type_name(dependency_type)
-        if dep_name != dep_on_name:
-            dependencies[dependent_type].add(dependency_type)
-
-        for arg in get_args(dependency_type):
-            dependencies[dependent_type].add(arg)
 
     def _topological_sort_types(self, types: List[type], dependencies: Dependencies):
         """Sort types by their dependencies using topological sort."""
@@ -705,12 +715,11 @@ class APIExtractor:
                 lines.extend(class_def)
                 lines.append("")
 
-        if any(["Decimal" in line for line in lines]):
-            lines.insert(2, "from decimal import Decimal")
-
+        self._add_decimal_import_if_needed(lines)
         return "\n".join(lines)
 
     def _format_type(self, typ: type) -> str:
+        """Format a type annotation as a string."""
         if typ is None:
             return "Any"
 
@@ -720,36 +729,36 @@ class APIExtractor:
             typ = get_args(typ)[0]
             origin = get_origin(typ)
 
-        # Literal
+        # Literal types
         if origin is Literal:
             args = get_args(typ)
             literals = ", ".join(repr(a) for a in args)
             return f"Literal[{literals}]"
 
-        # Union (Optional or other)
+        # Union types (including Optional)
         if origin is Union:
             args = get_args(typ)
             non_none = [a for a in args if a is not type(None)]
             if len(non_none) == 1:
                 return f"Optional[{self._format_type(non_none[0])}]"
-            else:
-                inner = ", ".join(self._format_type(a) for a in args)
-                return f"Union[{inner}]"
+            inner = ", ".join(self._format_type(a) for a in args)
+            return f"Union[{inner}]"
 
+        # UnionType (Python 3.10+ syntax: X | Y)
         if origin is UnionType:
             args = get_args(typ)
-            return "| ".join(self._format_type(a) for a in args)
+            return " | ".join(self._format_type(a) for a in args)
 
-        # Generic containers
+        # Generic containers (List, Dict, etc.)
         if origin:
             args = get_args(typ)
-            inner = ", ".join(self._format_type(a) for a in args)
-            if inner:
+            if args:
+                inner = ", ".join(self._format_type(a) for a in args)
                 return f"{_get_type_name(origin)}[{inner}]"
             return _get_type_name(origin)
 
         # Simple type
-        return _get_type_name(origin or typ)
+        return _get_type_name(typ)
 
 
 def _get_type_name(typ) -> str:
