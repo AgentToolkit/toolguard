@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
-from typing import Callable, List, Optional, cast
-import json
+from typing import Any, Callable, Dict, List, Optional, cast
 import logging
 from langchain_core.tools import BaseTool
 
@@ -12,13 +11,13 @@ from .gen_py.gen_toolguards import (
     generate_toolguards_from_functions,
     generate_toolguards_from_openapi,
 )
-from .oas_to_toolinfo import openapi_to_toolinfos
 from .gen_spec.spec_generator import extract_toolguard_specs
 from .langchain_to_oas import langchain_tools_to_openapi
 
 logger = logging.getLogger(__name__)
 
-TOOLS = List[Callable] | List[BaseTool] | List[ToolInfo] | str | Path
+OPEN_API = Dict[str, Any]
+TOOLS = List[Callable] | List[BaseTool] | OPEN_API | List[ToolInfo]
 
 
 # Step1 only
@@ -33,43 +32,47 @@ async def generate_guard_specs(
     work_dir = Path(work_dir)
     os.makedirs(work_dir, exist_ok=True)
 
-    tools_info = _tools_to_tool_infos(tools, work_dir)
+    # tools_info = _tools_to_tool_infos(tools, work_dir)
+
     return await extract_toolguard_specs(
-        policy_text, tools_info, work_dir, llm, tools2guard, short
+        policy_text, tools, work_dir, llm, tools2guard, short
     )
 
 
-def _tools_to_tool_infos(
-    tools: TOOLS,
-    work_dir: Path,
-) -> List[ToolInfo]:
-    # case1: path to OpenAPI spec
-    oas_path = Path(tools) if isinstance(tools, str | Path) else None
+# def _tools_to_tool_infos(
+#     tools: TOOLS,
+#     work_dir: Path,
+# ) -> List[ToolInfo]:
+#     # case1: an OpenAPI spec dictionary
+#     if isinstance(tools, dict):
+#         oas = OpenAPI.model_construct(**tools)
+#         return openapi_to_toolinfos(oas)
+#     oas_path = Path(tools) if isinstance(tools, str | Path) else None
 
-    # case2: List of Langchain tools
-    if isinstance(tools, list) and all([isinstance(tool, BaseTool) for tool in tools]):
-        oas = langchain_tools_to_openapi(tools)  # type: ignore
-        oas_path = work_dir / "oas.json"
-        oas.save(oas_path)
+#     # case2: List of Langchain tools
+#     if isinstance(tools, list) and all([isinstance(tool, BaseTool) for tool in tools]):
+#         oas = langchain_tools_to_openapi(tools)  # type: ignore
+#         oas_path = work_dir / "oas.json"
+#         oas.save(oas_path)
 
-    if oas_path:  # for cases 1 and 2
-        with open(oas_path, "r", encoding="utf-8") as file:
-            oas = json.load(file)
-        return openapi_to_toolinfos(oas)
+#     if oas_path:  # for cases 1 and 2
+#         with open(oas_path, "r", encoding="utf-8") as file:
+#             oas = json.load(file)
+#         return openapi_to_toolinfos(oas)
 
-    # Case 3: List of functions/ List of methods / List of ToolInfos
-    if isinstance(tools, list):
-        tools_info = []
-        for tool in tools:
-            if callable(tool):
-                tools_info.append(ToolInfo.from_function(cast(Callable, tool)))
-            elif isinstance(tool, ToolInfo):
-                tools_info.append(tool)
-            else:
-                raise NotImplementedError()
-        return tools_info
+#     # Case 3: List of functions/ List of methods / List of ToolInfos
+#     if isinstance(tools, list):
+#         tools_info = []
+#         for tool in tools:
+#             if callable(tool):
+#                 tools_info.append(ToolInfo.from_function(cast(Callable, tool)))
+#             elif isinstance(tool, ToolInfo):
+#                 tools_info.append(tool)
+#             else:
+#                 raise NotImplementedError()
+#         return tools_info
 
-    raise NotImplementedError()
+#     raise NotImplementedError()
 
 
 # Step2 only

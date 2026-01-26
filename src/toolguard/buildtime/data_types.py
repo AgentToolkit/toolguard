@@ -1,14 +1,19 @@
-from typing import Callable, Any
+from typing import Callable, Dict
 from pydantic import BaseModel
 import inspect
+
+
+class ToolInfoParam(BaseModel):
+    type: str
+    description: str | None
+    required: bool
 
 
 class ToolInfo(BaseModel):
     name: str
     description: str
-    parameters: Any
+    parameters: Dict[str, ToolInfoParam]
     signature: str
-    full_description: str
 
     @classmethod
     def from_function(cls, fn: Callable) -> "ToolInfo":
@@ -27,10 +32,9 @@ class ToolInfo(BaseModel):
             if fn.__doc__
             else (inspect.getdoc(fn) or "")
         )  # type: ignore
-        return cls(
+        return ToolInfo(
             name=fn_name,
             description=doc_summary(full_desc),
-            full_description=full_desc,
             parameters=fn.args_schema.model_json_schema()
             if hasattr(fn, "args_schema")
             else inspect.getdoc(fn),  # type: ignore

@@ -1,56 +1,69 @@
-import json
 from typing import Any, Dict, List
 
-from toolguard.buildtime.data_types import ToolInfo
+from toolguard.buildtime.data_types import ToolInfo, ToolInfoParam
+from toolguard.buildtime.utils.jschema import JSchema
+from toolguard.buildtime.utils.open_api import (
+    OpenAPI,
+    Operation,
+    PathItem,
+    RequestBody,
+    Response,
+)
 
 
-def openapi_to_toolinfos(oas: Dict[str, Any]) -> List[ToolInfo]:
-    components = oas.get("components", {}).get("schemas", {})
-
-    def _format_operation(
-        path: str, method: str, operation: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        operation_id = operation.get(
-            "operationId", f"{method}_{path.strip('/').replace('/', '_')}"
+def openapi_to_toolinfos(oas: OpenAPI) -> List[ToolInfo]:
+    def _operation_to_tool_info(
+        path: str, method: str, operation: Operation
+    ) -> ToolInfo:
+        operation_id = (
+            operation.operationId or f"{method}_{path.strip('/').replace('/', '_')}"
         )
-        class_name = operation_id
-        description = operation.get("description", "")
-        request_body = operation.get("requestBody", {})
+        func_name = operation_id
+        description = operation.description or ""
+        request_body: RequestBody | None = oas.resolve_ref(
+            operation.requestBody, RequestBody
+        )
         params = _parse_request_body(request_body) if request_body else {}
-        signature = _generate_signature(
-            class_name, params, operation.get("responses", {})
-        )
-        example = operation.get(
-            "x-input-examples", []
-        )  # self._generate_example(class_name, params)
-        output_examples = operation.get(
-            "x-output-examples", []
-        )  # self._parse_response_examples(operation.get("responses", {}))
-
-        return {
-            "name": class_name,
-            "signature": signature,
-            "description": description,
-            "params": params,
-            "examples": [example],
-            "output_examples": output_examples,
+        resps = {
+            code: oas.resolve_ref(resp, Response)
+            for code, resp in operation.responses.items()
         }
+        signature = _generate_signature(func_name, params, resps)
+        # example = operation.get(
+        #     "x-input-examples", []
+        # )  # self._generate_example(class_name, params)
+        # output_examples = operation.get(
+        #     "x-output-examples", []
+        # )  # self._parse_response_examples(operation.get("responses", {}))
 
-    def _parse_request_body(request_body: Dict[str, Any]) -> Dict[str, Any]:
-        content = request_body.get("content", {}).get("application/json", {})
-        schema = _resolve_ref(content.get("schema", {}))
-        props = schema.get("properties", {})
-        required = schema.get("required", [])
+        return ToolInfo(
+            name=func_name,
+            description=description,
+            parameters=params,
+            signature=signature,
+            # "examples": [example],
+            # "output_examples": output_examples,
+        )
+
+    def _parse_request_body(request_body: RequestBody) -> Dict[str, ToolInfoParam]:
+        content = request_body.content_json
+        if not content or not content.schema_:
+            return {}
+
+        schema = oas.resolve_ref(content.schema_, JSchema)
+        assert schema
+        props = schema.properties or {}
+        props = {prop: oas.resolve_ref(scm, JSchema) for prop, scm in props.items()}
+        required = schema.required or []
+
         params = {}
         for param_name, param_schema in props.items():
-            resolved_schema = _resolve_ref(param_schema)
+            resolved_schema = oas.resolve_ref(param_schema, JSchema)
             param_type = _resolve_schema_type(resolved_schema)
-            param_desc = resolved_schema.get("description", "")
-            params[param_name] = {
-                "type": param_type,
-                "description": param_desc,
-                "required": param_name in required,
-            }
+            param_desc = resolved_schema.description
+            params[param_name] = ToolInfoParam(
+                type=param_type, description=param_desc, required=param_name in required
+            )
         return params
 
     # def _resolve_schema_type(self, schema: Dict[str, Any]) -> str:
@@ -74,44 +87,53 @@ def openapi_to_toolinfos(oas: Dict[str, Any]) -> List[ToolInfo]:
     #         "object": "Dict[str, Any]",
     #     }.get(schema.get("type", "Any"), "Any")
 
-    def _resolve_schema_type(schema: Dict[str, Any]) -> str:
-        if "anyOf" in schema:
+    def _resolve_schema_type(schema: JSchema | None) -> str:
+        if not schema:
+            return "Any"
+
+        if schema.anyOf:
             return (
                 "Union["
-                + ", ".join(_resolve_schema_type(s) for s in schema["anyOf"])
+                + ", ".join(
+                    _resolve_schema_type(oas.resolve_ref(s, JSchema))
+                    for s in schema.anyOf
+                )
                 + "]"
             )
-        if "oneOf" in schema:
+        if schema.oneOf:
             return (
                 "Union["
-                + ", ".join(_resolve_schema_type(s) for s in schema["oneOf"])
+                + ", ".join(
+                    _resolve_schema_type(oas.resolve_ref(s, JSchema))
+                    for s in schema.oneOf
+                )
                 + "]"
             )
-        if "$ref" in schema:
-            return _resolve_schema_type(_resolve_ref(schema))
-        if schema.get("type") == "array":
-            item_type = _resolve_schema_type(schema.get("items", {}))
+
+        if schema.type == "array":
+            item_type = _resolve_schema_type(oas.resolve_ref(schema.items, JSchema))
             return f"List[{item_type}]"
-        if schema.get("type") == "object":
+
+        if schema.type == "object":
             return "Dict[str, Any]"
 
-        type_value = schema.get("type", "Any")
-        if isinstance(type_value, list):
-            # Filter out "null" and resolve remaining types
-            non_null_types = [t for t in type_value if t != "null"]
-            if not non_null_types:
-                return "Optional[Any]"
-            if len(non_null_types) == 1:
-                base_type = _resolve_schema_type({**schema, "type": non_null_types[0]})
-            else:
-                base_type = (
-                    "Union["
-                    + ", ".join(
-                        _resolve_schema_type({"type": t}) for t in non_null_types
-                    )
-                    + "]"
-                )
-            return f"Optional[{base_type}]" if "null" in type_value else base_type
+        # type_value = schema.type or "Any"
+        # if isinstance(type_value, list):
+        #     # Filter out "null" and resolve remaining types
+        #     non_null_types = [t for t in type_value if t != "null"]
+        #     if not non_null_types:
+        #         return "Optional[Any]"
+        #     if len(non_null_types) == 1:
+        #         base_type = _resolve_schema_type({**schema, "type": non_null_types[0]})
+        #     else:
+        #         base_type = (
+        #             "Union["
+        #             + ", ".join(
+        #                 _resolve_schema_type({"type": t}) for t in non_null_types
+        #             )
+        #             + "]"
+        #         )
+        #     return f"Optional[{base_type}]" if "null" in type_value else base_type
 
         return {
             "string": "str",
@@ -119,108 +141,108 @@ def openapi_to_toolinfos(oas: Dict[str, Any]) -> List[ToolInfo]:
             "number": "float",
             "boolean": "bool",
             "object": "Dict[str, Any]",
-        }.get(type_value, "Any")
+        }.get(str(schema.type), "Any")
 
-    def _resolve_ref(schema: Dict[str, Any]) -> Dict[str, Any]:
-        if isinstance(schema, Dict):
-            if "$ref" in schema:
-                ref_path = schema["$ref"]
-                if ref_path.startswith("#/components/schemas/"):
-                    key = ref_path.split("/")[-1]
-                    return components.get(key, {})
-            return schema
-        return schema
+    # def _resolve_ref(schema: Dict[str, Any]) -> Dict[str, Any]:
+    #     if isinstance(schema, Dict):
+    #         if "$ref" in schema:
+    #             ref_path = schema["$ref"]
+    #             if ref_path.startswith("#/components/schemas/"):
+    #                 key = ref_path.split("/")[-1]
+    #                 return components.get(key, {})
+    #         return schema
+    #     return schema
 
     def _generate_signature(
-        class_name: str, params: Dict[str, Any], responses: Dict[str, Any]
+        class_name: str, params: Dict[str, Any], responses: Dict[str, Response]
     ) -> str:
-        args = ", ".join(f"{name}: {meta['type']}" for name, meta in params.items())
+        args = ", ".join(f"{name}: {meta.type}" for name, meta in params.items())
         out = "str"
         if responses and "200" in responses:
-            content = responses["200"]["content"]
-            app_json = content.get("application/json", {})
-            schema = _resolve_ref(app_json.get("schema", {}))
-            out = _resolve_schema_type(schema)
+            resp = responses["200"]
+            app_json = resp.content_json
+            out = "Any"
+            if app_json:
+                schema = oas.resolve_ref(app_json.schema_, JSchema)
+                out = _resolve_schema_type(schema)
         return f"{class_name}({args}) -> {out}"
 
-    def _generate_example(class_name: str, params: Dict[str, Any]) -> str:
-        args = ", ".join(
-            '"example_string"' if meta["type"].startswith("str") else "0"
-            for _, meta in params.items()
-        )
-        return f"{class_name}({args})"
+    # def _generate_example(class_name: str, params: Dict[str, Any]) -> str:
+    #     args = ", ".join(
+    #         '"example_string"' if meta["type"].startswith("str") else "0"
+    #         for _, meta in params.items()
+    #     )
+    #     return f"{class_name}({args})"
 
-    def _parse_response_examples(responses: Dict[str, Any]) -> List[str]:
-        examples = []
-        for response in responses.values():
-            content = response.get("content", {})
-            app_json = content.get("application/json", {})
-            schema = _resolve_ref(app_json.get("schema", {}))
+    # def _parse_response_examples(responses: Dict[str, Any]) -> List[str]:
+    #     examples = []
+    #     for response in responses.values():
+    #         content = response.get("content", {})
+    #         app_json = content.get("application/json", {})
+    #         schema = _resolve_ref(app_json.get("schema", {}))
 
-            if "example" in app_json:
-                example_data = app_json["example"]
-            elif "examples" in app_json:
-                examples_d: Dict[str, Any] = next(iter(app_json["examples"].values()))
-                example_data = examples_d.get("value")
-            else:
-                example_data = _construct_example_from_schema(schema)
+    #         if "example" in app_json:
+    #             example_data = app_json["example"]
+    #         elif "examples" in app_json:
+    #             examples_d: Dict[str, Any] = next(iter(app_json["examples"].values()))
+    #             example_data = examples_d.get("value")
+    #         else:
+    #             example_data = _construct_example_from_schema(schema)
 
-            if example_data is not None:
-                try:
-                    examples.append(json.dumps(example_data))
-                except Exception:
-                    examples.append(str(example_data))
-        return examples
+    #         if example_data is not None:
+    #             try:
+    #                 examples.append(json.dumps(example_data))
+    #             except Exception:
+    #                 examples.append(str(example_data))
+    #     return examples
 
-    def _construct_example_from_schema(schema: Dict[str, Any]) -> Any:
-        schema = _resolve_ref(schema)
-        if not isinstance(schema, Dict):
-            return schema
-        schema_type = schema.get("type")
+    # def _construct_example_from_schema(schema: Dict[str, Any]) -> Any:
+    #     schema = _resolve_ref(schema)
+    #     if not isinstance(schema, Dict):
+    #         return schema
+    #     schema_type = schema.get("type")
 
-        if schema_type == "object":
-            if "additionalProperties" in schema:
-                value_schema = _resolve_ref(schema["additionalProperties"])
-                return {"example_key": _construct_example_from_schema(value_schema)}
-            props = schema.get("properties", {})
-            return {
-                key: _construct_example_from_schema(_resolve_ref(subschema))
-                for key, subschema in props.items()
-            }
+    #     if schema_type == "object":
+    #         if "additionalProperties" in schema:
+    #             value_schema = _resolve_ref(schema["additionalProperties"])
+    #             return {"example_key": _construct_example_from_schema(value_schema)}
+    #         props = schema.get("properties", {})
+    #         return {
+    #             key: _construct_example_from_schema(_resolve_ref(subschema))
+    #             for key, subschema in props.items()
+    #         }
 
-        if schema_type == "array":
-            item_schema = _resolve_ref(schema.get("items", {}))
-            return [_construct_example_from_schema(item_schema)]
+    #     if schema_type == "array":
+    #         item_schema = _resolve_ref(schema.get("items", {}))
+    #         return [_construct_example_from_schema(item_schema)]
 
-        if schema_type == "string":
-            return schema.get("example", "example_string")
-        if schema_type == "integer":
-            return schema.get("example", 42)
-        if schema_type == "number":
-            return schema.get("example", 3.14)
-        if schema_type == "boolean":
-            return schema.get("example", True)
+    #     if schema_type == "string":
+    #         return schema.get("example", "example_string")
+    #     if schema_type == "integer":
+    #         return schema.get("example", 42)
+    #     if schema_type == "number":
+    #         return schema.get("example", 3.14)
+    #     if schema_type == "boolean":
+    #         return schema.get("example", True)
 
-        if "anyOf" in schema:
-            return _construct_example_from_schema(schema["anyOf"][0])
-        if "oneOf" in schema:
-            return _construct_example_from_schema(schema["oneOf"][0])
-        if "allOf" in schema:
-            return _construct_example_from_schema(schema["allOf"][0])
+    #     if "anyOf" in schema:
+    #         return _construct_example_from_schema(schema["anyOf"][0])
+    #     if "oneOf" in schema:
+    #         return _construct_example_from_schema(schema["oneOf"][0])
+    #     if "allOf" in schema:
+    #         return _construct_example_from_schema(schema["allOf"][0])
 
-        return "example_value"
+    #     return "example_value"
 
     operations = []
-    for path, methods in oas.get("paths", {}).items():
-        for method, operation in methods.items():
-            summary = _format_operation(path, method, operation)
-            tool_info = ToolInfo(
-                name=summary.get("name"),
-                description=summary.get("description"),
-                signature=summary.get("signature"),
-                parameters=summary.get("params"),
-                full_description=json.dumps(summary, indent=4),
-            )
+    for path, p_item in oas.paths.items():  # noqa: B007
+        path_item = oas.resolve_ref(p_item, PathItem)
+        assert path_item
+        for mtd, op in path_item.operations.items():  # noqa: B007
+            op = oas.resolve_ref(op, Operation)
+            if not op:
+                continue
+            tool_info = _operation_to_tool_info(path, mtd, op)
             operations.append(tool_info)
     return operations
 
