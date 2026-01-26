@@ -11,6 +11,7 @@ from toolguard.buildtime.utils import py
 from toolguard.buildtime.gen_py.domain_from_openapi import generate_domain_from_openapi
 from toolguard.buildtime.utils import pyright
 from tau2.domains.airline.tools import AirlineTools
+from toolguard.buildtime.utils.open_api import OpenAPI
 
 
 def load_class(
@@ -28,13 +29,12 @@ def load_class(
 
 @pytest.mark.asyncio
 async def test_generate_domain_from_appointment_oas():
-    oas_path = Path("tests/resources/appointments_oas.json")
+    oas_path = Path("tests/examples/appointments/appointments_oas.json")
+    oas = OpenAPI.load_from(oas_path)
     trg_path = Path("tests/tmp/appointments")
     pyright.config(trg_path)
 
-    domain = generate_domain_from_openapi(
-        py_path=trg_path, app_name="My-ApP", openapi_file=oas_path
-    )
+    domain = generate_domain_from_openapi(py_path=trg_path, app_name="My-ApP", oas=oas)
 
     report = await pyright.run(trg_path, domain.app_api.file_name)
     assert report.summary.errorCount == 0  # no syntax errors
@@ -70,13 +70,12 @@ def assert_method_signature(actual_api, expected_signatures: Dict[str, str]):
 
 @pytest.mark.asyncio
 async def test_generate_domain_from_calculator_oas():
-    oas_path = Path("examples/calculator/inputs/oas.json")
+    oas_path = Path("tests/examples/calculator/inputs/oas.json")
+    oas = OpenAPI.load_from(oas_path)
     trg_path = Path("tests/tmp/calc")
     pyright.config(trg_path)
 
-    domain = generate_domain_from_openapi(
-        py_path=trg_path, app_name="calc", openapi_file=oas_path
-    )
+    domain = generate_domain_from_openapi(py_path=trg_path, app_name="calc", oas=oas)
 
     report = await pyright.run(trg_path, domain.app_api.file_name)
     assert report.summary.errorCount == 0  # no syntax errors

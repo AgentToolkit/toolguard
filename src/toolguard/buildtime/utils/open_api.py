@@ -188,7 +188,7 @@ class OpenAPI(BaseModel):
         suffix = file_path.suffix.lower()
 
         # Prepare the data once for both formats
-        data = self.model_dump(by_alias=True, exclude_none=True)
+        data = self.model_dump(by_alias=True, exclude_none=True, mode="json")
 
         if suffix == ".json":
             with open(file_path, "w", encoding="utf-8") as f:

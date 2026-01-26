@@ -52,8 +52,8 @@ dev = [
 packages = ["src/toolguard"]
 
 [tool.hatch.build.targets.wheel.sources]
-"src/toolguard/gen_spec/prompts" = "toolguard/gen_spec/prompts"
-"src/toolguard/gen_py/templates" = "toolguard/gen_py/templates"
+"src/toolguard/buildtime/gen_spec/prompts" = "toolguard/buildtime/gen_spec/prompts"
+"src/toolguard/buildtime/gen_py/templates" = "toolguard/buildtime/gen_py/templates"
 
 [tool.hatch.build]
 include = [

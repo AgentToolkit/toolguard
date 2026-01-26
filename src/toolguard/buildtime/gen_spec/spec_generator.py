@@ -2,11 +2,18 @@ import asyncio
 import json
 import os
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple, cast
 from logging import getLogger
 
+from langchain_core.tools import BaseTool
+
+from toolguard.buildtime.gen_spec.fn_to_toolinfo import function_to_toolInfo
+from toolguard.buildtime.gen_spec.oas_to_toolinfo import openapi_to_toolinfos
+from toolguard.buildtime.utils.open_api import OpenAPI
 from toolguard.runtime.data_types import ToolGuardSpec, ToolGuardSpecItem
-from toolguard.buildtime.data_types import ToolInfo
+from toolguard.buildtime.gen_spec.data_types import ToolInfo
+from toolguard.buildtime.langchain_to_oas import langchain_tools_to_openapi
+from toolguard.buildtime.data_types import TOOLS
 from toolguard.buildtime.llm.i_tg_llm import I_TG_LLM
 from toolguard.buildtime.gen_spec.utils import (
     read_prompt_file,
@@ -16,6 +23,46 @@ from toolguard.buildtime.gen_spec.utils import (
 )
 
 logger = getLogger(__name__)
+
+
+async def extract_toolguard_specs(
+    policy_text: str,
+    tools: TOOLS,
+    step1_output_dir: Path,
+    llm: I_TG_LLM,
+    tools2guard: Optional[List[str]] = None,  # None==all tools
+    short=False,
+) -> List[ToolGuardSpec]:
+    tool_infos = _tools_to_tool_infos(tools)
+
+    if not os.path.isdir(step1_output_dir):
+        os.makedirs(step1_output_dir)
+
+    process_dir = step1_output_dir / "process"
+    if not os.path.isdir(process_dir):
+        os.makedirs(process_dir)
+    generator = ToolGuardSpecGenerator(llm, policy_text, tool_infos, process_dir)
+
+    async def do_one_tool(tool_name: str) -> ToolGuardSpec:
+        spec = (
+            await generator.generate_minimal_policy(tool_name)
+            if short
+            else await generator.generate_policy(tool_name)
+        )
+        if spec.policy_items:
+            save_output(step1_output_dir, tool_name + ".json", spec)
+
+        return spec
+
+    specs = await asyncio.gather(
+        *[
+            do_one_tool(tool.name)
+            for tool in tool_infos
+            if ((tools2guard is None) or (tool.name in tools2guard))
+        ]
+    )
+    logger.debug("All tools done")
+    return specs
 
 
 class ToolGuardSpecGenerator:
@@ -442,39 +489,29 @@ Example: {example}"""
         return True
 
 
-async def extract_toolguard_specs(
-    policy_text: str,
-    tools: List[ToolInfo],
-    step1_output_dir: Path,
-    llm: I_TG_LLM,
-    tools2guard: Optional[List[str]] = None,  # None==all tools
-    short=False,
-) -> List[ToolGuardSpec]:
-    if not os.path.isdir(step1_output_dir):
-        os.makedirs(step1_output_dir)
+def _tools_to_tool_infos(
+    tools: TOOLS,
+) -> List[ToolInfo]:
+    # case1: an OpenAPI spec dictionary
+    if isinstance(tools, dict):
+        oas = OpenAPI.model_validate(tools)
+        return openapi_to_toolinfos(oas)
 
-    process_dir = step1_output_dir / "process"
-    if not os.path.isdir(process_dir):
-        os.makedirs(process_dir)
-    generator = ToolGuardSpecGenerator(llm, policy_text, tools, process_dir)
+    # case2: List of Langchain tools
+    if isinstance(tools, list) and all([isinstance(tool, BaseTool) for tool in tools]):
+        oas = langchain_tools_to_openapi(tools)  # type: ignore
+        return openapi_to_toolinfos(oas)
 
-    async def do_one_tool(tool_name: str) -> ToolGuardSpec:
-        spec = (
-            await generator.generate_minimal_policy(tool_name)
-            if short
-            else await generator.generate_policy(tool_name)
-        )
-        if spec.policy_items:
-            save_output(step1_output_dir, tool_name + ".json", spec)
+    # Case 3: List of functions/ List of methods / List of ToolInfos
+    if isinstance(tools, list):
+        tools_info = []
+        for tool in tools:
+            if callable(tool):
+                tools_info.append(function_to_toolInfo(cast(Callable, tool)))
+            elif isinstance(tool, ToolInfo):
+                tools_info.append(tool)
+            else:
+                raise NotImplementedError()
+        return tools_info
 
-        return spec
-
-    specs = await asyncio.gather(
-        *[
-            do_one_tool(tool.name)
-            for tool in tools
-            if ((tools2guard is None) or (tool.name in tools2guard))
-        ]
-    )
-    logger.debug("All tools done")
-    return specs
+    raise NotImplementedError()

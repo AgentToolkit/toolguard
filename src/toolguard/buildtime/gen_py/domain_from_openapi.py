@@ -23,10 +23,12 @@ from toolguard.buildtime.utils.open_api import (
 
 
 def generate_domain_from_openapi(
-    py_path: Path, app_name: str, openapi_file: Path
+    py_path: Path, app_name: str, oas: OpenAPI
 ) -> RuntimeDomain:
+    openapi_file = py_path / "oas.json"
+    oas.save(openapi_file)
+
     # APP Types
-    oas = OpenAPI.load_from(openapi_file)
     os.makedirs(join(py_path, py.to_py_module_name(app_name)), exist_ok=True)
 
     types_name = py.to_py_module_name(f"{app_name}_types")
@@ -135,6 +137,8 @@ def _make_signature(
     fn_name = to_camel_case(op.operationId or "operationId")
 
     args = []
+    rsp_type = "Any"
+
     for param in params:
         if param.in_ == ParameterIn.path and param.schema_:
             param_type = _oas_to_py_type(param.schema_, oas, type_names) or ANY

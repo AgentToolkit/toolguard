@@ -31,5 +31,8 @@ def run(oas_file: Path):
         text=True,
     )
     if res.returncode != 0:
-        raise Exception(res.stderr)
+        if "Models not found in the input data" in res.stderr:
+            # Legitimate: spec has no schemas
+            return ""  # an empty file
+        raise RuntimeError(f"datamodel-codegen failed:\n{res.stderr}")
     return res.stdout

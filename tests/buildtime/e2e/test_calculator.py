@@ -8,12 +8,14 @@ from typing import Any, Callable, Dict, List, Type, TypeVar
 import markdown  # type: ignore[import]
 
 import pytest
+from toolguard.buildtime.data_types import TOOLS
 from toolguard.buildtime import (
     generate_guard_specs,
     generate_guards_code,
     LitellmModel,
 )
 from toolguard.buildtime.llm.i_tg_llm import I_TG_LLM
+from toolguard.buildtime.utils.open_api import OpenAPI
 from toolguard.runtime import (
     LangchainToolInvoker,
     IToolInvoker,
@@ -23,21 +25,21 @@ from toolguard.runtime import (
     ToolGuardsCodeGenerationResult,
     PolicyViolationException,
 )
-from calculator.inputs import tool_langchain as lg_tools
-from calculator.inputs import tool_functions as fn_tools
+from examples.calculator.inputs import tool_langchain as lg_tools
+from examples.calculator.inputs import tool_functions as fn_tools
+from examples.calculator.inputs import tool_methods as mtd_tools
 
-wiki_path = "examples/calculator/inputs/policy_doc.md"
-model = "gpt-4o-2024-08-06"
+wiki_path = "tests/examples/calculator/inputs/policy_doc.md"
+model = os.getenv("MODEL_NAME") or "gpt-4o-2024-08-06"
 llm_provider = "azure"
 app_name = "calc"  # dont use "calculator", as it conflicts with example name
 STEP1 = "step1"
 STEP2 = "step2"
 
 
-@pytest.fixture
 def llm() -> I_TG_LLM:
     return LitellmModel(
-        model_name=os.getenv("MODEL_NAME") or "gpt-4o-2024-08-06",
+        model_name=model,
         provider=os.getenv("LLM_PROVIDER") or "azure",
         kw_args={
             "api_base": os.getenv("LLM_API_BASE"),
@@ -48,10 +50,8 @@ def llm() -> I_TG_LLM:
 
 
 async def _build_toolguards(
-    model: str,
-    llm: I_TG_LLM,
     work_dir: Path,
-    tools: List[Callable] | str,
+    tools: TOOLS,
     app_sufix: str = "",
     short: bool = True,
 ):
@@ -67,15 +67,16 @@ async def _build_toolguards(
         policy_text=policy_text,
         tools=tools,
         work_dir=step1_out_dir,
-        llm=llm,
+        llm=llm(),
         short=short,
     )
-    # spec = ToolGuardSpec.load("examples/calculator/outputs/tool_functions/gpt-4o-2024-08-06/step1/multiply_tool.json")
+    # spec = ToolGuardSpec.load("/Users/davidboaz/Documents/GitHub/toolguard/tests/tmp/e2e/calculator/tool_functions_short/GCP/claude-4-sonnet/step1/divide_tool.json")
+    # specs = [spec]
     guards = await generate_guards_code(
         tool_specs=specs,
         tools=tools,
         work_dir=step2_out_dir,
-        llm=llm,
+        llm=llm(),
         app_name=app_name + app_sufix,
     )
     return guards
@@ -138,8 +139,8 @@ async def assert_toolgurards_run(
 
 
 @pytest.mark.asyncio
-async def test_tool_functions_short(llm: I_TG_LLM):
-    work_dir = Path("tests/tmp/calculator/tool_functions_short")
+async def test_tool_functions_short():
+    work_dir = Path("tests/tmp/e2e/calculator/tool_functions_short")
     funcs = [
         fn_tools.divide_tool,
         fn_tools.add_tool,
@@ -148,16 +149,14 @@ async def test_tool_functions_short(llm: I_TG_LLM):
         fn_tools.map_kdi_number,
     ]
 
-    gen_result = await _build_toolguards(
-        model, llm, work_dir, funcs, "_fns_short", True
-    )
+    gen_result = await _build_toolguards(work_dir, funcs, "_fns_short", True)
     gen_result = ToolGuardsCodeGenerationResult.load(work_dir / model / STEP2)
     await assert_toolgurards_run(gen_result, ToolFunctionsInvoker(funcs))
 
 
 @pytest.mark.asyncio
-async def test_tool_functions_long(llm: I_TG_LLM):
-    work_dir = Path("tests/tmp/calculator/tool_functions_long")
+async def test_tool_functions_long():
+    work_dir = Path("tests/tmp/e2e/calculator/tool_functions_long")
     funcs = [
         fn_tools.divide_tool,
         fn_tools.add_tool,
@@ -166,33 +165,32 @@ async def test_tool_functions_long(llm: I_TG_LLM):
         fn_tools.map_kdi_number,
     ]
 
-    gen_result = await _build_toolguards(
-        model, llm, work_dir, funcs, "_fns_long", False
-    )
+    gen_result = await _build_toolguards(work_dir, funcs, "_fns_long", False)
     gen_result = ToolGuardsCodeGenerationResult.load(work_dir / model / STEP2)
     await assert_toolgurards_run(gen_result, ToolFunctionsInvoker(funcs))
 
 
 @pytest.mark.asyncio
-async def test_tool_methods(llm: I_TG_LLM):
-    work_dir = Path("tests/tmp/calculator/tool_methods")
-    from calculator.inputs.tool_methods import CalculatorTools
+async def test_tool_methods():
+    work_dir = Path("tests/tmp/e2e/calculator/tool_methods")
 
     mtds: List[Callable] = [
         member
         for name, member in inspect.getmembers(
-            CalculatorTools, predicate=inspect.isfunction
+            mtd_tools.CalculatorTools, predicate=inspect.isfunction
         )
     ]
 
-    gen_result = await _build_toolguards(model, llm, work_dir, mtds, "_mtds", True)
+    gen_result = await _build_toolguards(work_dir, mtds, "_mtds", True)
     gen_result = ToolGuardsCodeGenerationResult.load(work_dir / model / STEP2)
-    await assert_toolgurards_run(gen_result, ToolMethodsInvoker(CalculatorTools()))
+    await assert_toolgurards_run(
+        gen_result, ToolMethodsInvoker(mtd_tools.CalculatorTools())
+    )
 
 
 @pytest.mark.asyncio
-async def test_tools_langchain(llm: I_TG_LLM):
-    work_dir = Path("tests/tmp/calculator/lg_tools")
+async def test_tools_langchain():
+    work_dir = Path("tests/tmp/e2e/calculator/lg_tools")
     tools = [
         lg_tools.divide_tool,
         lg_tools.add_tool,
@@ -201,19 +199,19 @@ async def test_tools_langchain(llm: I_TG_LLM):
         lg_tools.map_kdi_number,
     ]
 
-    gen_result = await _build_toolguards(model, llm, work_dir, tools, "_lg", True)
+    gen_result = await _build_toolguards(work_dir, tools, "_lg", True)
     gen_result = ToolGuardsCodeGenerationResult.load(work_dir / model / STEP2)
 
     await assert_toolgurards_run(gen_result, LangchainToolInvoker(tools), True)
 
 
 @pytest.mark.asyncio
-async def test_tools_openapi_spec(llm: I_TG_LLM):
-    work_dir = Path("tests/tmp/calculator/oas_tools")
-    oas_path = "examples/calculator/inputs/oas.json"
-
+async def test_tools_openapi_spec():
+    work_dir = Path("tests/tmp/e2e/calculator/oas_tools")
+    oas_path = "tests/examples/calculator/inputs/oas.json"
+    oas = OpenAPI.load_from(oas_path)
     gen_result = await _build_toolguards(
-        model, llm, work_dir, tools=oas_path, app_sufix="_oas", short=True
+        work_dir, tools=oas.model_dump(by_alias=True), app_sufix="_oas", short=True
     )
     gen_result = ToolGuardsCodeGenerationResult.load(work_dir / model / STEP2)
 

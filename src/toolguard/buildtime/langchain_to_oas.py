@@ -1,8 +1,8 @@
 from typing import Any, Dict, List
 from langchain_core.tools import BaseTool
 
-from .utils.dict import substitute_refs
-from .utils.open_api import OpenAPI
+from toolguard.buildtime.utils.dict import substitute_refs
+from toolguard.buildtime.utils.open_api import OpenAPI
 
 
 def langchain_tools_to_openapi(

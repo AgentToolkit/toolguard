@@ -5,6 +5,7 @@ from typing import Callable, List, Optional
 
 import mellea
 
+from toolguard.buildtime.utils.open_api import OpenAPI
 from toolguard.runtime.data_types import (
     RuntimeDomain,
     ToolGuardSpec,
@@ -47,13 +48,13 @@ async def generate_toolguards_from_openapi(
     app_name: str,
     tool_policies: List[ToolGuardSpec],
     py_root: Path,
-    openapi_file: Path,
+    oas: OpenAPI,
     llm: I_TG_LLM,
 ) -> ToolGuardsCodeGenerationResult:
     logger.debug(f"Starting... will save into {py_root}")
 
     # Domain from OpenAPI
-    domain = generate_domain_from_openapi(py_root, app_name, openapi_file)
+    domain = generate_domain_from_openapi(py_root, app_name, oas)
     return await generate_toolguards_from_domain(
         app_name, tool_policies, py_root, domain, llm
     )
