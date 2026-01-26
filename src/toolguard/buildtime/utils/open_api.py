@@ -209,8 +209,8 @@ class OpenAPI(BaseModel):
             )
 
     @staticmethod
-    def load_from(file_path: Path) -> "OpenAPI":
-        suffix = file_path.suffix.lower()
+    def load_from(file_path: str | Path) -> "OpenAPI":
+        suffix = Path(file_path).suffix.lower()
         with open(file_path, "r", encoding="utf-8") as file:
             if suffix == ".json":
                 d = json.load(file)
