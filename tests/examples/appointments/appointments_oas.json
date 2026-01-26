@@ -650,7 +650,8 @@
         "type": "object",
         "properties": {
           "user_id": {
-            "type": "integer"
+            "type": "integer",
+            "description": "The ID of the user to whom the payment method will be added."
           },
           "card_last_4": {
             "type": "integer"

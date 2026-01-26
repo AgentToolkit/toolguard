@@ -183,21 +183,39 @@ class OpenAPI(BaseModel):
             return object_type.model_validate(tmp)
         return obj
 
-    def save(self, file_name: str | Path):
-        if Path(file_name).suffix == ".json":
-            with open(file_name, "w", encoding="utf-8") as f:
-                f.write(
-                    self.model_dump_json(indent=2, by_alias=True, exclude_none=True)
+    def save(self, file_name: str | Path) -> None:
+        file_path = Path(file_name)
+        suffix = file_path.suffix.lower()
+
+        # Prepare the data once for both formats
+        data = self.model_dump(by_alias=True, exclude_none=True)
+
+        if suffix == ".json":
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+        elif suffix in {".yaml", ".yml"}:
+            with open(file_path, "w", encoding="utf-8") as f:
+                yaml.safe_dump(
+                    data,
+                    f,
+                    default_flow_style=False,
+                    allow_unicode=True,
+                    sort_keys=False,
                 )
-            return
-        # TODO yaml
-        raise NotImplementedError()
+        else:
+            raise ValueError(
+                f"Unsupported file extension '{suffix}'. "
+                f"Supported formats: .json, .yaml, .yml"
+            )
 
     @staticmethod
     def load_from(file_path: str | Path) -> "OpenAPI":
+        suffix = Path(file_path).suffix.lower()
         with open(file_path, "r", encoding="utf-8") as file:
-            if Path(file_path).suffix == ".json":
+            if suffix == ".json":
                 d = json.load(file)
-            else:
+                return OpenAPI.model_validate(d, strict=False)
+            if suffix in {".yaml", ".yml"}:
                 d = yaml.safe_load(file)
-            return OpenAPI.model_validate(d, strict=False)
+                return OpenAPI.model_validate(d, strict=False)
+        raise ValueError("Unsupported file format")
