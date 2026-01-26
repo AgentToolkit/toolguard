@@ -19,7 +19,6 @@ from toolguard.buildtime.utils.open_api import (
     RequestBody,
     Response,
     JSchema,
-    read_openapi,
 )
 
 
@@ -27,7 +26,7 @@ def generate_domain_from_openapi(
     py_path: Path, app_name: str, openapi_file: Path
 ) -> RuntimeDomain:
     # APP Types
-    oas = read_openapi(openapi_file)
+    oas = OpenAPI.load_from(openapi_file)
     os.makedirs(join(py_path, py.to_py_module_name(app_name)), exist_ok=True)
 
     types_name = py.to_py_module_name(f"{app_name}_types")

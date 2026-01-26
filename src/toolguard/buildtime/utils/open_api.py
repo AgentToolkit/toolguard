@@ -193,11 +193,11 @@ class OpenAPI(BaseModel):
         # TODO yaml
         raise NotImplementedError()
 
-
-def read_openapi(file_path: str | Path) -> OpenAPI:
-    with open(file_path, "r") as file:
-        if Path(file_path).suffix == ".json":
-            d = json.load(file)
-        else:
-            d = yaml.safe_load(file)
-    return OpenAPI.model_validate(d, strict=False)
+    @staticmethod
+    def load_from(file_path: str | Path) -> "OpenAPI":
+        with open(file_path, "r", encoding="utf-8") as file:
+            if Path(file_path).suffix == ".json":
+                d = json.load(file)
+            else:
+                d = yaml.safe_load(file)
+            return OpenAPI.model_validate(d, strict=False)
