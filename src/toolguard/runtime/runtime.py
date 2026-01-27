@@ -19,12 +19,29 @@ from toolguard.runtime import IToolInvoker
 def load_toolguards(
     directory: str | Path, filename: str | Path = RESULTS_FILENAME
 ) -> "ToolguardRuntime":
+    """Load toolguards from a directory.
+
+    Args:
+        directory: The directory containing the toolguard files.
+        filename: The name of the results file to load. Defaults to RESULTS_FILENAME.
+
+    Returns:
+        ToolguardRuntime: A runtime instance for executing toolguards.
+    """
     return ToolguardRuntime(
         ToolGuardsCodeGenerationResult.load(directory, filename), Path(directory)
     )
 
 
 class ToolguardRuntime:
+    """Runtime environment for executing toolguards.
+
+    This class manages the lifecycle of toolguard execution, including:
+    - Loading and caching guard functions
+    - Managing Python path modifications
+    - Coordinating guard function calls with proper argument injection
+    """
+
     _original_pypath: list[str] = []
 
     def __init__(self, result: ToolGuardsCodeGenerationResult, ctx_dir: Path) -> None:
@@ -39,9 +56,9 @@ class ToolguardRuntime:
         # cache the tool guards
         self._guards: Dict[str, Callable[..., Awaitable[Any]]] = {}
         for tool_name, tool_result in self._result.tools.items():
-            mod_name = file_to_module_name(tool_result.guard_file.file_name)
+            mod_name = _file_to_module_name(tool_result.guard_file.file_name)
             module = importlib.import_module(mod_name)
-            guard_fn = find_function_in_module(module, tool_result.guard_fn_name)
+            guard_fn = _find_function_in_module(module, tool_result.guard_fn_name)
             assert guard_fn, "Guard not found"
             self._guards[tool_name] = guard_fn
 
@@ -60,11 +77,11 @@ class ToolguardRuntime:
         guard_args = {}
         for p_name, param in sig.parameters.items():
             if p_name == API_PARAM:
-                mod_name = file_to_module_name(
+                mod_name = _file_to_module_name(
                     self._result.domain.app_api_impl.file_name
                 )
                 module = importlib.import_module(mod_name)
-                clazz = find_class_in_module(
+                clazz = _find_class_in_module(
                     module, self._result.domain.app_api_impl_class_name
                 )
                 assert clazz, (
@@ -85,17 +102,27 @@ class ToolguardRuntime:
         return guard_args
 
     async def guard_toolcall(self, tool_name: str, args: dict, delegate: IToolInvoker):
+        """Execute a guard function for a specific tool call.
+
+        Args:
+            tool_name: The name of the tool being invoked.
+            args: Dictionary of arguments to pass to the tool.
+            delegate: The tool invoker instance for executing the actual tool.
+
+        Raises:
+            PolicyViolationException: If the guard function detects a policy violation.
+        """
         guard_fn = self._guards.get(tool_name)
         if guard_fn is None:  # No guard assigned to this tool
             return
         await guard_fn(**self._make_args(guard_fn, args, delegate))
 
 
-def file_to_module_name(file_path: str | Path):
+def _file_to_module_name(file_path: str | Path):
     return str(file_path).removesuffix(".py").replace("/", ".")
 
 
-def find_function_in_module(module: ModuleType, function_name: str):
+def _find_function_in_module(module: ModuleType, function_name: str):
     func = getattr(module, function_name, None)
     if func is None or not inspect.isfunction(func):
         raise AttributeError(
@@ -104,7 +131,7 @@ def find_function_in_module(module: ModuleType, function_name: str):
     return func
 
 
-def find_class_in_module(module: ModuleType, class_name: str) -> Optional[Type]:
+def _find_class_in_module(module: ModuleType, class_name: str) -> Optional[Type]:
     cls = getattr(module, class_name, None)
     if isinstance(cls, type):
         return cls

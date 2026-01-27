@@ -23,9 +23,23 @@ async def generate_guard_specs(
     tools: TOOLS,
     llm: I_TG_LLM,
     work_dir: str | Path,
+    *,
     tools2guard: List[str] | None = None,
-    short=False,
+    short: bool = False,
 ) -> List[ToolGuardSpec]:
+    """Generate guard specifications from policy text and tools.
+
+    Args:
+        policy_text: The policy text describing the guard rules.
+        tools: The tools to generate guards for (OpenAPI spec, Langchain tools, or functions).
+        llm: The LLM instance to use for generation.
+        work_dir: The working directory for intermediate files.
+        tools2guard: Optional list of specific tool names to generate guards for.
+        short: Whether to use a short generation process, less accurate (default: False).
+
+    Returns:
+        List of ToolGuardSpec objects containing the generated specifications.
+    """
     work_dir = Path(work_dir)
     os.makedirs(work_dir, exist_ok=True)
     logger.debug("Step1 folder created")
@@ -40,10 +54,28 @@ async def generate_guards_code(
     tool_specs: List[ToolGuardSpec],
     work_dir: str | Path,
     llm: I_TG_LLM,
-    app_name: str = "myapp",
+    app_name: str,
+    *,
     lib_names: Optional[List[str]] = None,
     tool_names: Optional[List[str]] = None,
 ) -> ToolGuardsCodeGenerationResult:
+    """Generate guard code from tool specifications.
+
+    Args:
+        tools: The tools to generate guards for (OpenAPI spec, Langchain tools, or functions).
+        tool_specs: List of ToolGuardSpec objects containing the guard specifications.
+        work_dir: The working directory for intermediate files.
+        llm: The LLM instance to use for generation.
+        app_name: The application name for the generated code.
+        lib_names: Optional list of module root names for function-based tools.
+        tool_names: Optional list of specific tool names to generate code for.
+
+    Returns:
+        ToolGuardsCodeGenerationResult containing the generated guard code and metadata.
+
+    Raises:
+        NotImplementedError: If the tools type is not supported.
+    """
     tool_specs = [
         policy
         for policy in tool_specs
