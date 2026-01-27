@@ -6,14 +6,11 @@ from pathlib import Path
 from typing import Callable, List
 from importlib import import_module
 import markdown  # type: ignore[import]
-import logging
 import argparse
 
 from .buildtime import generate_guard_specs, generate_guards_code
 from .utils import py
 from .llm.tg_litellm import LitellmModel
-
-logger = logging.getLogger(__name__)
 
 
 def main():

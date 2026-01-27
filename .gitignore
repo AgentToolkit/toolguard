@@ -12,3 +12,4 @@ docs/*.bkp
 dist/toolguard-0.1.6-py3-none-any.whl
 dist/toolguard-0.1.6.tar.gz
 tmp
+.history/*
