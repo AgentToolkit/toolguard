@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 from typing import Callable, List, Optional, cast
-import logging
 from langchain_core.tools import BaseTool
 
 from toolguard.buildtime.utils.open_api import OpenAPI
@@ -15,7 +14,7 @@ from toolguard.buildtime.langchain_to_oas import langchain_tools_to_openapi
 from toolguard.buildtime.data_types import TOOLS
 from toolguard.buildtime.gen_spec.spec_generator import extract_toolguard_specs
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 # Step1 only
@@ -29,7 +28,7 @@ async def generate_guard_specs(
 ) -> List[ToolGuardSpec]:
     work_dir = Path(work_dir)
     os.makedirs(work_dir, exist_ok=True)
-
+    logger.debug("Step1 folder created")
     return await extract_toolguard_specs(
         policy_text, tools, work_dir, llm, tools2guard, short
     )
@@ -52,7 +51,7 @@ async def generate_guards_code(
     ]
     work_dir = Path(work_dir)
     os.makedirs(work_dir, exist_ok=True)
-
+    logger.debug("Step2 folder created")
     # case1: path to OpenAPI spec
     if isinstance(tools, dict):
         oas = OpenAPI.model_validate(tools, strict=False)

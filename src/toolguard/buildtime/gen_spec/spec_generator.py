@@ -3,7 +3,6 @@ import json
 import os
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple, cast
-from logging import getLogger
 
 from langchain_core.tools import BaseTool
 
@@ -22,7 +21,7 @@ from toolguard.buildtime.gen_spec.utils import (
     find_mismatched_references,
 )
 
-logger = getLogger(__name__)
+from loguru import logger
 
 
 async def extract_toolguard_specs(

@@ -1,5 +1,4 @@
 import asyncio
-import logging
 from pathlib import Path
 from typing import Callable, List, Optional
 
@@ -18,7 +17,7 @@ from toolguard.buildtime.gen_py.domain_from_funcs import generate_domain_from_fu
 from toolguard.buildtime.gen_py.domain_from_openapi import generate_domain_from_openapi
 from toolguard.buildtime.gen_py.tool_guard_generator import ToolGuardGenerator
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 async def generate_toolguards_from_functions(
