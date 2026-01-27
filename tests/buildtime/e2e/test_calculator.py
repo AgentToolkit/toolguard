@@ -1,9 +1,8 @@
-import inspect
 import os
 from os.path import join
 from pathlib import Path
 import shutil
-from typing import Any, Callable, Dict, List, Type, TypeVar
+from typing import Any, Dict, Type, TypeVar
 
 import markdown  # type: ignore[import]
 
@@ -16,6 +15,8 @@ from toolguard.buildtime import (
 )
 from toolguard.buildtime.llm.i_tg_llm import I_TG_LLM
 from toolguard.buildtime.utils.open_api import OpenAPI
+from toolguard.extra.langchain_to_oas import langchain_tools_to_openapi
+from toolguard.extra.api_to_functions import api_cls_to_functions
 from toolguard.runtime import (
     LangchainToolInvoker,
     IToolInvoker,
@@ -173,15 +174,9 @@ async def test_tool_functions_long():
 @pytest.mark.asyncio
 async def test_tool_methods():
     work_dir = Path("tests/tmp/e2e/calculator/tool_methods")
+    fns = api_cls_to_functions(mtd_tools.CalculatorTools)
 
-    mtds: List[Callable] = [
-        member
-        for name, member in inspect.getmembers(
-            mtd_tools.CalculatorTools, predicate=inspect.isfunction
-        )
-    ]
-
-    gen_result = await _build_toolguards(work_dir, mtds, "_mtds", True)
+    gen_result = await _build_toolguards(work_dir, fns, "_mtds", True)
     gen_result = ToolGuardsCodeGenerationResult.load(work_dir / model / STEP2)
     await assert_toolgurards_run(
         gen_result, ToolMethodsInvoker(mtd_tools.CalculatorTools())
@@ -198,8 +193,9 @@ async def test_tools_langchain():
         lg_tools.multiply_tool,
         lg_tools.map_kdi_number,
     ]
+    oas = langchain_tools_to_openapi(tools)
 
-    gen_result = await _build_toolguards(work_dir, tools, "_lg", True)
+    gen_result = await _build_toolguards(work_dir, oas, "_lg", True)
     gen_result = ToolGuardsCodeGenerationResult.load(work_dir / model / STEP2)
 
     await assert_toolgurards_run(gen_result, LangchainToolInvoker(tools), True)

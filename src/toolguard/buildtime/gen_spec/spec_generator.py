@@ -4,14 +4,11 @@ import os
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple, cast
 
-from langchain_core.tools import BaseTool
-
 from toolguard.buildtime.gen_spec.fn_to_toolinfo import function_to_toolInfo
 from toolguard.buildtime.gen_spec.oas_to_toolinfo import openapi_to_toolinfos
 from toolguard.buildtime.utils.open_api import OpenAPI
 from toolguard.runtime.data_types import ToolGuardSpec, ToolGuardSpecItem
 from toolguard.buildtime.gen_spec.data_types import ToolInfo
-from toolguard.buildtime.langchain_to_oas import langchain_tools_to_openapi
 from toolguard.buildtime.data_types import TOOLS
 from toolguard.buildtime.llm.i_tg_llm import I_TG_LLM
 from toolguard.buildtime.gen_spec.utils import (
@@ -496,19 +493,13 @@ def _tools_to_tool_infos(
         oas = OpenAPI.model_validate(tools)
         return openapi_to_toolinfos(oas)
 
-    # case2: List of Langchain tools
-    if isinstance(tools, list) and all([isinstance(tool, BaseTool) for tool in tools]):
-        oas = langchain_tools_to_openapi(tools)  # type: ignore
-        return openapi_to_toolinfos(oas)
-
     # Case 3: List of functions/ List of methods / List of ToolInfos
     if isinstance(tools, list):
         tools_info = []
         for tool in tools:
             if callable(tool):
-                tools_info.append(function_to_toolInfo(cast(Callable, tool)))
-            elif isinstance(tool, ToolInfo):
-                tools_info.append(tool)
+                info = function_to_toolInfo(cast(Callable, tool))
+                tools_info.append(info)
             else:
                 raise NotImplementedError()
         return tools_info

@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 from typing import Callable, List, Optional, cast
-from langchain_core.tools import BaseTool
 
 from toolguard.buildtime.utils.open_api import OpenAPI
 from toolguard.runtime.data_types import ToolGuardsCodeGenerationResult, ToolGuardSpec
@@ -10,7 +9,6 @@ from toolguard.buildtime.gen_py.gen_toolguards import (
     generate_toolguards_from_functions,
     generate_toolguards_from_openapi,
 )
-from toolguard.buildtime.langchain_to_oas import langchain_tools_to_openapi
 from toolguard.buildtime.data_types import TOOLS
 from toolguard.buildtime.gen_spec.spec_generator import extract_toolguard_specs
 
@@ -31,7 +29,7 @@ async def generate_guard_specs(
 
     Args:
         policy_text: The policy text describing the guard rules.
-        tools: The tools to generate guards for (OpenAPI spec, Langchain tools, or functions).
+        tools: The tools to generate guards for (OpenAPI spec, or functions).
         llm: The LLM instance to use for generation.
         work_dir: The working directory for intermediate files.
         tools2guard: Optional list of specific tool names to generate guards for.
@@ -62,7 +60,7 @@ async def generate_guards_code(
     """Generate guard code from tool specifications.
 
     Args:
-        tools: The tools to generate guards for (OpenAPI spec, Langchain tools, or functions).
+        tools: The tools to generate guards for (OpenAPI spec, or functions).
         tool_specs: List of ToolGuardSpec objects containing the guard specifications.
         work_dir: The working directory for intermediate files.
         llm: The LLM instance to use for generation.
@@ -84,21 +82,14 @@ async def generate_guards_code(
     work_dir = Path(work_dir)
     os.makedirs(work_dir, exist_ok=True)
     logger.debug("Step2 folder created")
-    # case1: path to OpenAPI spec
+    # OpenAPI spec
     if isinstance(tools, dict):
         oas = OpenAPI.model_validate(tools, strict=False)
         return await generate_toolguards_from_openapi(
             app_name, tool_specs, work_dir, oas, llm
         )
 
-    # case2: List of Langchain tools
-    if isinstance(tools, list) and all([isinstance(tool, BaseTool) for tool in tools]):
-        oas = langchain_tools_to_openapi(tools)  # type: ignore
-        return await generate_toolguards_from_openapi(
-            app_name, tool_specs, work_dir, oas, llm
-        )
-
-    # Case 3: List of functions/ List of methods
+    # List of functions
     if isinstance(tools, list):
         funcs = [cast(Callable, tool) for tool in tools]
         return await generate_toolguards_from_functions(

@@ -1,7 +1,6 @@
 from typing import Any, Callable, Dict, List
 
-from langchain_core.tools import BaseTool
-
-
-OPEN_API = Dict[str, Any]
-TOOLS = List[Callable] | List[BaseTool] | OPEN_API
+# Type alias for tool definitions that can be provided in two formats:
+# - List[Callable]: A list of Python callable functions
+# - Dict[str, Any]: An OpenAPI specification dictionary
+TOOLS = List[Callable] | Dict[str, Any]

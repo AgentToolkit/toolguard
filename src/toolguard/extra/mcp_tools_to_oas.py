@@ -2,75 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Dict
 import httpx
 
-from toolguard.buildtime.utils.open_api import OpenAPI
 
-
-@dataclass(frozen=True)
-class ExportConfig:
-    gateway_url: str  # e.g. http://127.0.0.1:4444
-    bearer_token: str  # MCPGATEWAY_BEARER_TOKEN
-    server_uuid: str  # MCPGATEWAY_SERVER_UUID (virtual server)
-    out_path: str = "mcp_tools_openapi.json"
-    title: str = "MCP Gateway Tools"
-    version: str = "0.1.0"
-
-
-def _auth_headers(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
-
-
-def _pick_mcp_tool_original_name(tool: dict[str, Any]) -> str:
-    return tool.get("originalName") or "unknown-tool"
-
-
-def _pick_mcp_tool_name(tool: dict[str, Any]) -> str:
-    # Different gateway versions may use id/name fields.
-    return tool.get("name") or "unknown-tool"
-
-
-def _pick_tool_name(tool: dict[str, Any]) -> str:
-    # Different gateway versions may use id/name fields.
-    return tool.get("customName") or "unknown-tool"
-
-
-def _pick_tool_id(tool: dict[str, Any]) -> str:
-    # Different gateway versions may use id/name fields.
-    return tool.get("id") or "unknown-tool"
-
-
-def _pick_tool_display_name(tool: dict[str, Any]) -> str:
-    # Different gateway versions may use id/name fields.
-    return tool.get("displayName") or "unknown-tool"
-
-
-def _pick_tool_description(tool: dict[str, Any]) -> str:
-    return tool.get("description") or tool.get("summary") or ""
-
-
-def _pick_input_schema(tool: dict[str, Any]) -> dict[str, Any]:
-    """
-    Try common fields. Gateways often expose one of:
-      - inputSchema
-      - input_schema
-      - parameters (JSONSchema-ish)
-      - schema
-    If nothing exists, default to free-form object.
-    """
-    for key in ("inputSchema", "input_schema", "parameters", "schema"):
-        schema = tool.get(key)
-        if isinstance(schema, dict) and schema:
-            # Ensure it looks like JSON Schema
-            if "type" not in schema:
-                schema = {"type": "object", **schema}
-            return schema
-
-    return {"type": "object", "additionalProperties": True}
-
-
-def export_gateway_tools_as_openapi(cfg: ExportConfig) -> OpenAPI:
+def export_mcp_tools_as_openapi(cfg: ExportConfig) -> Dict[str, Any]:
     """
     Returns an OpenAPI 3.1 spec where each MCP tool becomes:
       POST /tools/{tool_id}
@@ -177,4 +113,66 @@ def export_gateway_tools_as_openapi(cfg: ExportConfig) -> OpenAPI:
         },
     }
 
-    return OpenAPI.model_validate(spec)
+    return spec
+
+
+@dataclass(frozen=True)
+class ExportConfig:
+    gateway_url: str  # e.g. http://127.0.0.1:4444
+    bearer_token: str  # MCPGATEWAY_BEARER_TOKEN
+    server_uuid: str  # MCPGATEWAY_SERVER_UUID (virtual server)
+    out_path: str = "mcp_tools_openapi.json"
+    title: str = "MCP Gateway Tools"
+    version: str = "0.1.0"
+
+
+def _auth_headers(token: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _pick_mcp_tool_original_name(tool: dict[str, Any]) -> str:
+    return tool.get("originalName") or "unknown-tool"
+
+
+def _pick_mcp_tool_name(tool: dict[str, Any]) -> str:
+    # Different gateway versions may use id/name fields.
+    return tool.get("name") or "unknown-tool"
+
+
+def _pick_tool_name(tool: dict[str, Any]) -> str:
+    # Different gateway versions may use id/name fields.
+    return tool.get("customName") or "unknown-tool"
+
+
+def _pick_tool_id(tool: dict[str, Any]) -> str:
+    # Different gateway versions may use id/name fields.
+    return tool.get("id") or "unknown-tool"
+
+
+def _pick_tool_display_name(tool: dict[str, Any]) -> str:
+    # Different gateway versions may use id/name fields.
+    return tool.get("displayName") or "unknown-tool"
+
+
+def _pick_tool_description(tool: dict[str, Any]) -> str:
+    return tool.get("description") or tool.get("summary") or ""
+
+
+def _pick_input_schema(tool: dict[str, Any]) -> dict[str, Any]:
+    """
+    Try common fields. Gateways often expose one of:
+      - inputSchema
+      - input_schema
+      - parameters (JSONSchema-ish)
+      - schema
+    If nothing exists, default to free-form object.
+    """
+    for key in ("inputSchema", "input_schema", "parameters", "schema"):
+        schema = tool.get(key)
+        if isinstance(schema, dict) and schema:
+            # Ensure it looks like JSON Schema
+            if "type" not in schema:
+                schema = {"type": "object", **schema}
+            return schema
+
+    return {"type": "object", "additionalProperties": True}

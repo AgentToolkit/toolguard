@@ -2,14 +2,24 @@ from typing import Any, Dict, List
 from langchain_core.tools import BaseTool
 
 from toolguard.buildtime.utils.dict import substitute_refs
-from toolguard.buildtime.utils.open_api import OpenAPI
 
 
 def langchain_tools_to_openapi(
     tools: List[BaseTool],
     title: str = "LangChain Tools API",
     version: str = "1.0.0",
-) -> OpenAPI:
+) -> Dict[str, Any]:
+    """Convert LangChain tools to OpenAPI specification.
+
+    Args:
+        tools: List of LangChain BaseTool instances to convert.
+        title: Title for the OpenAPI specification. Defaults to "LangChain Tools API".
+        version: Version string for the API. Defaults to "1.0.0".
+
+    Returns:
+        Dictionary containing the OpenAPI 3.1.0 specification with paths and components
+        for all provided tools.
+    """
     paths = {}
     components: Dict[str, Dict[str, Any]] = {"schemas": {}}
 
@@ -57,11 +67,9 @@ def langchain_tools_to_openapi(
             }
         }
 
-    return OpenAPI.model_validate(
-        {
-            "openapi": "3.1.0",
-            "info": {"title": title, "version": version},
-            "paths": paths,
-            "components": components,
-        }
-    )
+    return {
+        "openapi": "3.1.0",
+        "info": {"title": title, "version": version},
+        "paths": paths,
+        "components": components,
+    }
