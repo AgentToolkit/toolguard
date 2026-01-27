@@ -4,7 +4,7 @@ from toolguard.buildtime.utils.open_api import OpenAPI
 from toolguard.buildtime.gen_spec.oas_to_toolinfo import openapi_to_toolinfos
 
 
-def test_gen_oas_appointment_tool_info():
+def test_oas_appointment_tool_info():
     oas_path = Path("tests/examples/appointments/appointments_oas.json")
     oas = OpenAPI.load_from(oas_path)
 
