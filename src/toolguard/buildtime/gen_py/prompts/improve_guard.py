@@ -29,7 +29,7 @@ def improve_tool_guard(
             str: The improved implementation of the tool-call check.
 
         Implementation Rules:
-            - Never modify the function signature. Do not add, remove or change the parameters, or their type annotations.
+            - Never modify the function signature. Do not add, remove or change the parameters, their type annotations, async modifier of the function .
             - All policy requirements must be validated.
             - Keep the implementation simple and well-documented.
             - Only validate the tool-call arguments; never call the tool itself.
