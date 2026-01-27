@@ -68,7 +68,6 @@ async def generate_guards_code(
         )
 
     # Case 3: List of functions/ List of methods
-    # TODO List of ToolInfo is not implemented
     if isinstance(tools, list):
         funcs = [cast(Callable, tool) for tool in tools]
         return await generate_toolguards_from_functions(

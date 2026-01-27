@@ -211,7 +211,7 @@ async def test_tools_openapi_spec():
     oas_path = "tests/examples/calculator/inputs/oas.json"
     oas = OpenAPI.load_from(oas_path)
     gen_result = await _build_toolguards(
-        work_dir, tools=oas.model_dump(by_alias=True), app_sufix="_oas", short=True
+        work_dir, tools=oas.model_dump(), app_sufix="_oas", short=True
     )
     gen_result = ToolGuardsCodeGenerationResult.load(work_dir / model / STEP2)
 

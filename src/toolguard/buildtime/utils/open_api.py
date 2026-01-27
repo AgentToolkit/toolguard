@@ -183,6 +183,11 @@ class OpenAPI(BaseModel):
             return object_type.model_validate(tmp)
         return obj
 
+    def model_dump(self, *args, **kwargs):
+        # Force by_alias=True unless explicitly provided
+        kwargs.setdefault("by_alias", True)
+        return super().model_dump(*args, **kwargs)
+
     def save(self, file_name: str | Path) -> None:
         file_path = Path(file_name)
         suffix = file_path.suffix.lower()
