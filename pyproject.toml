@@ -62,3 +62,13 @@ include = [
     "README.md",
     "LICENSE",
 ]
+
+[tool.pytest.ini_options]
+# Cleaner than "-s": shows output live AND still captures it for failures
+addopts = "--capture=tee-sys"
+
+filterwarnings = [
+  "ignore::DeprecationWarning",
+]
+
+asyncio_mode = "auto"

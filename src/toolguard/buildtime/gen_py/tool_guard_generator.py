@@ -2,7 +2,6 @@ from importlib import import_module
 import inspect
 import os
 import asyncio
-import logging
 from pathlib import Path
 import re
 from types import ModuleType
@@ -32,8 +31,7 @@ from toolguard.buildtime.gen_py import prompts
 from toolguard.buildtime.gen_py.templates import load_template
 from toolguard.buildtime.utils import pytest
 from toolguard.buildtime.utils import pyright
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 MAX_TOOL_IMPROVEMENTS = 5
 MAX_TEST_GEN_TRIALS = 3

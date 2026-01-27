@@ -3,7 +3,6 @@ import json
 import os
 from pathlib import Path
 from typing import List, Optional, Tuple
-from logging import getLogger
 
 from toolguard.runtime.data_types import ToolGuardSpec, ToolGuardSpecItem
 from toolguard.buildtime.data_types import ToolInfo
@@ -15,7 +14,7 @@ from toolguard.buildtime.gen_spec.utils import (
     find_mismatched_references,
 )
 
-logger = getLogger(__name__)
+from loguru import logger
 
 
 class ToolGuardSpecGenerator:
