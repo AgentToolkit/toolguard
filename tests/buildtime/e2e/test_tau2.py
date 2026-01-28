@@ -53,6 +53,30 @@ async def test_tau2_simple():
         llm=llm(),
         short=True,
     )
+    assert len(specs) == len(tool_fns)
+
+    book_spec = specs.pop(
+        next(i for i, spec in enumerate(specs) if spec.tool_name == "book_reservation")
+    )
+    assert len(book_spec.policy_items) == 1
+    item0 = book_spec.policy_items[0]
+    assert len(item0.compliance_examples) > 1
+    assert len(item0.violation_examples) > 1
+
+    update_spec = specs.pop(
+        next(
+            i
+            for i, spec in enumerate(specs)
+            if spec.tool_name == "update_reservation_passengers"
+        )
+    )
+    assert len(update_spec.policy_items) == 1
+    item0 = update_spec.policy_items[0]
+    assert len(item0.compliance_examples) > 1
+    assert len(item0.violation_examples) > 1
+
+    assert all([not spec.policy_items for spec in specs])
+
     # spec = ToolGuardSpec.load("/Users/davidboaz/Documents/GitHub/toolguard/tests/tmp/e2e/calculator/tool_functions_short/GCP/claude-4-sonnet/step1/divide_tool.json")
     # specs = [spec]
     await generate_guards_code(

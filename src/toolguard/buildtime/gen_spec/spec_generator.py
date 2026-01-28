@@ -3,21 +3,21 @@ import json
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple, cast
 
+from loguru import logger
+
+from toolguard.buildtime.data_types import TOOLS
+from toolguard.buildtime.gen_spec.data_types import ToolInfo
 from toolguard.buildtime.gen_spec.fn_to_toolinfo import function_to_toolInfo
 from toolguard.buildtime.gen_spec.oas_to_toolinfo import openapi_to_toolinfos
+from toolguard.buildtime.gen_spec.utils import (
+    find_mismatched_references,
+    generate_messages,
+    read_prompt_file,
+    save_output,
+)
+from toolguard.buildtime.llm.i_tg_llm import I_TG_LLM
 from toolguard.buildtime.utils.open_api import OpenAPI
 from toolguard.runtime.data_types import ToolGuardSpec, ToolGuardSpecItem
-from toolguard.buildtime.gen_spec.data_types import ToolInfo
-from toolguard.buildtime.data_types import TOOLS
-from toolguard.buildtime.llm.i_tg_llm import I_TG_LLM
-from toolguard.buildtime.gen_spec.utils import (
-    read_prompt_file,
-    generate_messages,
-    save_output,
-    find_mismatched_references,
-)
-
-from loguru import logger
 
 
 async def extract_toolguard_specs(
