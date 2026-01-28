@@ -151,7 +151,7 @@ async def test_tool_functions_short():
     await assert_toolgurards_run(gen_result, ToolFunctionsInvoker(funcs))
 
 
-@pytest.skip()
+@pytest.mark.skip()
 @pytest.mark.asyncio
 async def test_tool_functions_long():
     work_dir = Path("tests/tmp/e2e/calculator/tool_functions_long")
