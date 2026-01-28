@@ -1,15 +1,8 @@
-from abc import ABC, abstractmethod
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional, Type, Callable, TypeVar
 from {{ types_module }} import *
 from {{ api_module }} import *
-
-class IToolInvoker(ABC):
-    T = TypeVar("T")
-    @abstractmethod
-    async def invoke(self, toolname: str, arguments: Dict[str, Any], return_type: Type[T])->T:
-        ...
-
+from toolguard.runtime import IToolInvoker
 
 class {{ class_name }}({{ api_cls_name }}):
 
