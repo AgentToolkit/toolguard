@@ -1,6 +1,6 @@
-from flask import Flask, jsonify, request
 import json
 
+from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 POLICIES_FILE = "/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final copy 4/BookReservation.json"

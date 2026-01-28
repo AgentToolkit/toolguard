@@ -3,21 +3,20 @@ from pathlib import Path
 from typing import Callable, List, Optional
 
 import mellea
+from loguru import logger
 
+from toolguard.buildtime.gen_py.domain_from_funcs import generate_domain_from_functions
+from toolguard.buildtime.gen_py.domain_from_openapi import generate_domain_from_openapi
+from toolguard.buildtime.gen_py.mellea_simple import SimpleBackend
+from toolguard.buildtime.gen_py.tool_guard_generator import ToolGuardGenerator
+from toolguard.buildtime.llm.i_tg_llm import I_TG_LLM
+from toolguard.buildtime.utils import py, pyright, pytest
 from toolguard.buildtime.utils.open_api import OpenAPI
 from toolguard.runtime.data_types import (
     RuntimeDomain,
-    ToolGuardSpec,
     ToolGuardsCodeGenerationResult,
+    ToolGuardSpec,
 )
-from toolguard.buildtime.llm.i_tg_llm import I_TG_LLM
-from toolguard.buildtime.utils import py, pytest, pyright
-from toolguard.buildtime.gen_py.mellea_simple import SimpleBackend
-from toolguard.buildtime.gen_py.domain_from_funcs import generate_domain_from_functions
-from toolguard.buildtime.gen_py.domain_from_openapi import generate_domain_from_openapi
-from toolguard.buildtime.gen_py.tool_guard_generator import ToolGuardGenerator
-
-from loguru import logger
 
 
 async def generate_toolguards_from_functions(

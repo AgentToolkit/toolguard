@@ -1,7 +1,8 @@
 from pathlib import Path
+
 from toolguard.buildtime.gen_spec.fn_to_toolinfo import function_to_toolInfo
-from toolguard.buildtime.utils.open_api import OpenAPI
 from toolguard.buildtime.gen_spec.oas_to_toolinfo import openapi_to_toolinfos
+from toolguard.buildtime.utils.open_api import OpenAPI
 
 
 def test_oas_appointment_tool_info():

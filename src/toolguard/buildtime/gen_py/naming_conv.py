@@ -1,5 +1,5 @@
-from toolguard.runtime.data_types import ToolGuardSpec, ToolGuardSpecItem
 from toolguard.buildtime.utils import py
+from toolguard.runtime.data_types import ToolGuardSpec, ToolGuardSpecItem
 
 
 def guard_fn_name(tool_policy: ToolGuardSpec) -> str:

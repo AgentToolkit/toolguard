@@ -1,4 +1,5 @@
 from typing import Any, Callable, Dict, List, Type, TypeVar
+
 from toolguard.runtime.data_types import IToolInvoker
 
 

@@ -1,7 +1,7 @@
-from typing import Dict, Any, Callable
 import hashlib
 import json
 from collections import deque
+from typing import Any, Callable, Dict
 
 
 def dict_deep_merge(trg_dct: Dict, merge_dct: Dict):

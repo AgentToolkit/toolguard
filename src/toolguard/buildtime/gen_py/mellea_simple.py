@@ -1,9 +1,10 @@
 """This module holds shim backends used for smoke tests."""
 
 from mellea.backends import Backend, BaseModelSubclass
-from mellea.core import CBlock, Component, Context, ModelOutputThunk, GenerateLog
+from mellea.core import CBlock, Component, Context, GenerateLog, ModelOutputThunk
 from mellea.formatters import Formatter
 from mellea.formatters.template_formatter import TemplateFormatter
+
 from toolguard.buildtime.llm.i_tg_llm import I_TG_LLM
 
 

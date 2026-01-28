@@ -1,34 +1,30 @@
 import os
+import shutil
 from os.path import join
 from pathlib import Path
-import shutil
 from typing import Any, Dict, Type, TypeVar
 
 import markdown  # type: ignore[import]
-
 import pytest
+from examples.calculator.inputs import tool_functions as fn_tools
+from examples.calculator.inputs import tool_langchain as lg_tools
+from examples.calculator.inputs import tool_methods as mtd_tools
+
+from toolguard.buildtime import LitellmModel, generate_guard_specs, generate_guards_code
 from toolguard.buildtime.data_types import TOOLS
-from toolguard.buildtime import (
-    generate_guard_specs,
-    generate_guards_code,
-    LitellmModel,
-)
 from toolguard.buildtime.llm.i_tg_llm import I_TG_LLM
 from toolguard.buildtime.utils.open_api import OpenAPI
-from toolguard.extra.langchain_to_oas import langchain_tools_to_openapi
 from toolguard.extra.api_to_functions import api_cls_to_functions
+from toolguard.extra.langchain_to_oas import langchain_tools_to_openapi
 from toolguard.runtime import (
-    LangchainToolInvoker,
     IToolInvoker,
-    ToolMethodsInvoker,
-    ToolFunctionsInvoker,
-    load_toolguards,
-    ToolGuardsCodeGenerationResult,
+    LangchainToolInvoker,
     PolicyViolationException,
+    ToolFunctionsInvoker,
+    ToolGuardsCodeGenerationResult,
+    ToolMethodsInvoker,
+    load_toolguards,
 )
-from examples.calculator.inputs import tool_langchain as lg_tools
-from examples.calculator.inputs import tool_functions as fn_tools
-from examples.calculator.inputs import tool_methods as mtd_tools
 
 wiki_path = "tests/examples/calculator/inputs/policy_doc.md"
 model = os.getenv("MODEL_NAME") or "gpt-4o-2024-08-06"

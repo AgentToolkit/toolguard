@@ -1,9 +1,10 @@
+import json
 from enum import StrEnum
 from pathlib import Path
-from pydantic import BaseModel, Field, HttpUrl
-from typing import List, Dict, Optional, Any, TypeVar, Union
-import json
+from typing import Any, Dict, List, Optional, TypeVar, Union
+
 import yaml  # type: ignore[import]
+from pydantic import BaseModel, Field, HttpUrl
 
 from .dict import find_ref
 from .http import MEDIA_TYPE_APP_JSON

@@ -1,17 +1,17 @@
 from pathlib import Path
 from typing import Callable, List, Optional, cast
 
-from toolguard.buildtime.utils.open_api import OpenAPI
-from toolguard.runtime.data_types import ToolGuardsCodeGenerationResult, ToolGuardSpec
-from toolguard.buildtime.llm.i_tg_llm import I_TG_LLM
+from loguru import logger
+
+from toolguard.buildtime.data_types import TOOLS
 from toolguard.buildtime.gen_py.gen_toolguards import (
     generate_toolguards_from_functions,
     generate_toolguards_from_openapi,
 )
-from toolguard.buildtime.data_types import TOOLS
 from toolguard.buildtime.gen_spec.spec_generator import extract_toolguard_specs
-
-from loguru import logger
+from toolguard.buildtime.llm.i_tg_llm import I_TG_LLM
+from toolguard.buildtime.utils.open_api import OpenAPI
+from toolguard.runtime.data_types import ToolGuardsCodeGenerationResult, ToolGuardSpec
 
 
 # Step1 only

@@ -1,23 +1,15 @@
-from importlib import import_module
-import inspect
 import asyncio
-from pathlib import Path
+import inspect
 import re
+from importlib import import_module
+from pathlib import Path
 from types import ModuleType
 from typing import Callable, List, Optional, Tuple, Type
 
+from loguru import logger
 from mellea import MelleaSession
 
-from toolguard.runtime.data_types import (
-    FileTwin,
-    RuntimeDomain,
-    ToolGuardSpec,
-    ToolGuardSpecItem,
-    ToolGuardCodeResult,
-)
-from toolguard.buildtime.utils import py
-from toolguard.buildtime.utils.llm_py import get_code_content
-from toolguard.buildtime.utils.py_doc_str import extract_docstr_args
+from toolguard.buildtime.gen_py import prompts
 from toolguard.buildtime.gen_py.naming_conv import (
     guard_fn_module_name,
     guard_fn_name,
@@ -25,12 +17,18 @@ from toolguard.buildtime.gen_py.naming_conv import (
     guard_item_fn_name,
     test_fn_module_name,
 )
-from toolguard.buildtime.gen_py.tool_dependencies import tool_dependencies
-from toolguard.buildtime.gen_py import prompts
 from toolguard.buildtime.gen_py.templates import load_template
-from toolguard.buildtime.utils import pytest
-from toolguard.buildtime.utils import pyright
-from loguru import logger
+from toolguard.buildtime.gen_py.tool_dependencies import tool_dependencies
+from toolguard.buildtime.utils import py, pyright, pytest
+from toolguard.buildtime.utils.llm_py import get_code_content
+from toolguard.buildtime.utils.py_doc_str import extract_docstr_args
+from toolguard.runtime.data_types import (
+    FileTwin,
+    RuntimeDomain,
+    ToolGuardCodeResult,
+    ToolGuardSpec,
+    ToolGuardSpecItem,
+)
 
 MAX_TOOL_IMPROVEMENTS = 5
 MAX_TEST_GEN_TRIALS = 3

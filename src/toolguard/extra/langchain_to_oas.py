@@ -1,4 +1,5 @@
 from typing import Any, Dict, List
+
 from langchain_core.tools import BaseTool
 
 from toolguard.buildtime.utils.dict import substitute_refs

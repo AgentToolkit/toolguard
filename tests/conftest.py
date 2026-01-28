@@ -1,5 +1,6 @@
 import os
 import sys
+
 import pytest
 from dotenv import load_dotenv
 from loguru import logger

@@ -1,13 +1,13 @@
 import argparse
+import json
 import os
 import re
 from collections import defaultdict
 from typing import Dict, List
 
-from flask import Flask, render_template, request
-import json
 import markdown  # type: ignore[import]
 from bs4 import BeautifulSoup
+from flask import Flask, render_template, request
 from unidecode import unidecode
 
 app = Flask(__name__)

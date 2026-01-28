@@ -1,8 +1,10 @@
 # mypy: ignore-errors
 
 from typing import List
-from toolguard.runtime.data_types import Domain, FileTwin, ToolGuardSpecItem
+
 from mellea import generative
+
+from toolguard.runtime.data_types import Domain, FileTwin, ToolGuardSpecItem
 
 
 @generative

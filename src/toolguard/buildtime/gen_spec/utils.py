@@ -1,10 +1,10 @@
+import os
 from functools import cache
 from pathlib import Path
-from typing import Dict
-import os
+from typing import Dict, List
 
-from typing import List
 from pydantic import BaseModel
+
 from toolguard.runtime.data_types import ToolGuardSpec
 
 RETURN_JSON_SUFFIX = """

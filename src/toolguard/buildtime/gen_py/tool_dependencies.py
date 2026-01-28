@@ -1,8 +1,10 @@
 import re
 from typing import Any, Dict, Set
+
 from mellea import MelleaSession
-from toolguard.runtime.data_types import Domain
+
 from toolguard.buildtime.gen_py import prompts
+from toolguard.runtime.data_types import Domain
 
 MAX_TRIALS = 3
 

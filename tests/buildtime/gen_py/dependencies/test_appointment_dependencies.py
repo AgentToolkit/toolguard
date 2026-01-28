@@ -1,10 +1,12 @@
 import os
 from pathlib import Path
+
 import mellea
 import pytest
+
+from toolguard.buildtime.gen_py.domain_from_openapi import generate_domain_from_openapi
 from toolguard.buildtime.gen_py.mellea_simple import SimpleBackend
 from toolguard.buildtime.gen_py.tool_dependencies import tool_dependencies
-from toolguard.buildtime.gen_py.domain_from_openapi import generate_domain_from_openapi
 from toolguard.buildtime.llm.i_tg_llm import I_TG_LLM
 from toolguard.buildtime.llm.tg_litellm import LitellmModel
 from toolguard.buildtime.utils.open_api import OpenAPI

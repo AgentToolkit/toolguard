@@ -1,4 +1,5 @@
 from typing import TypeVar
+
 from pydantic import BaseModel, Field
 
 from .dict import find_ref

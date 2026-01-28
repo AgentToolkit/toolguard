@@ -1,5 +1,5 @@
-from pathlib import Path
 import asyncio
+from pathlib import Path
 
 
 async def run(oas_file: Path) -> str:

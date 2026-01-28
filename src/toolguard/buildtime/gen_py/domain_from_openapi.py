@@ -1,13 +1,12 @@
 from pathlib import Path
 from typing import List, Optional, Set, Tuple
 
-from toolguard.buildtime.utils.str import to_camel_case, to_pascal_case
-from toolguard.runtime.data_types import FileTwin, RuntimeDomain, ARGS_PARAM
-from toolguard.buildtime.utils.array import find
-from toolguard.buildtime.utils import py
 from toolguard.buildtime.gen_py.templates import load_template
+from toolguard.buildtime.utils import py
+from toolguard.buildtime.utils.array import find
 from toolguard.buildtime.utils.datamodel_codegen import run as dm_codegen
 from toolguard.buildtime.utils.open_api import (
+    JSchema,
     OpenAPI,
     Operation,
     Parameter,
@@ -16,8 +15,9 @@ from toolguard.buildtime.utils.open_api import (
     Reference,
     RequestBody,
     Response,
-    JSchema,
 )
+from toolguard.buildtime.utils.str import to_camel_case, to_pascal_case
+from toolguard.runtime.data_types import ARGS_PARAM, FileTwin, RuntimeDomain
 
 
 async def generate_domain_from_openapi(

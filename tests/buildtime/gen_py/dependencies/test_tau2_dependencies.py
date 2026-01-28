@@ -1,16 +1,17 @@
 import inspect
 import os
 from pathlib import Path
+
 import mellea
 import pytest
-
-from toolguard.buildtime.gen_py.tool_dependencies import tool_dependencies
-from toolguard.buildtime.gen_py.domain_from_funcs import generate_domain_from_functions
-from toolguard.buildtime.gen_py.mellea_simple import SimpleBackend
-from toolguard.buildtime.llm.tg_litellm import LitellmModel
+from tau2.domains.airline.data_model import FlightBase
 from tau2.domains.airline.tools import AirlineTools
 from tau2.environment.toolkit import ToolType, is_tool
-from tau2.domains.airline.data_model import FlightBase
+
+from toolguard.buildtime.gen_py.domain_from_funcs import generate_domain_from_functions
+from toolguard.buildtime.gen_py.mellea_simple import SimpleBackend
+from toolguard.buildtime.gen_py.tool_dependencies import tool_dependencies
+from toolguard.buildtime.llm.tg_litellm import LitellmModel
 
 current_dir = str(Path(__file__).parent)
 # from programmatic_ai.config import settings

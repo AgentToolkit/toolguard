@@ -1,17 +1,19 @@
 import os
-from pathlib import Path
 import shutil
 import unittest
+from pathlib import Path
 from unittest.mock import MagicMock
+
 import pytest
 from tau2.domains.airline.data_model import Passenger
+from tau2.domains.airline.tools import AirlineTools
+
 from toolguard.buildtime import I_TG_LLM, generate_guard_specs, generate_guards_code
 from toolguard.buildtime.llm.tg_litellm import LitellmModel
 from toolguard.extra import api_cls_to_functions
 from toolguard.runtime import load_toolguards
 from toolguard.runtime.data_types import PolicyViolationException
 from toolguard.runtime.tool_invokers.methods import ToolMethodsInvoker
-from tau2.domains.airline.tools import AirlineTools
 
 model = os.getenv("MODEL_NAME") or "gpt-4o-2024-08-06"
 llm_provider = "azure"

@@ -1,7 +1,6 @@
-import tkinter as tk
-from tkinter import ttk, simpledialog, messagebox
 import json
-
+import tkinter as tk
+from tkinter import messagebox, simpledialog, ttk
 
 jsonpath = "/Users/naamazwerdling/Documents/OASB/policy_validation/airline/final copy 4/BookReservation.json"
 with open(jsonpath, "r") as file:

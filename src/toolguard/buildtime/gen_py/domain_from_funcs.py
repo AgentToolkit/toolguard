@@ -1,11 +1,13 @@
-from pathlib import Path
-from dataclasses import is_dataclass
-from enum import Enum
 import inspect
 import textwrap
-from types import UnionType
 import types
+from collections import defaultdict, deque
+from dataclasses import is_dataclass
+from enum import Enum
+from pathlib import Path
+from types import UnionType
 from typing import (
+    Annotated,
     Any,
     Callable,
     DefaultDict,
@@ -15,17 +17,15 @@ from typing import (
     Optional,
     Set,
     Tuple,
-    get_type_hints,
-    get_origin,
-    get_args,
-    Annotated,
     Union,
+    get_args,
+    get_origin,
+    get_type_hints,
 )
-from collections import defaultdict, deque
-from toolguard.runtime.data_types import FileTwin, RuntimeDomain
-from toolguard.buildtime.utils import py
 
+from toolguard.buildtime.utils import py
 from toolguard.buildtime.utils.py import module_to_path
+from toolguard.runtime.data_types import FileTwin, RuntimeDomain
 
 Dependencies = DefaultDict[type, Set[type]]
 

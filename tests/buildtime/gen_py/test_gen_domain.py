@@ -1,16 +1,16 @@
 import importlib
 import inspect
-from pathlib import Path
 import re
 import sys
+from pathlib import Path
 from typing import Dict
 
 import pytest
-from toolguard.buildtime.gen_py.domain_from_funcs import generate_domain_from_functions
-from toolguard.buildtime.utils import py
-from toolguard.buildtime.gen_py.domain_from_openapi import generate_domain_from_openapi
-from toolguard.buildtime.utils import pyright
 from tau2.domains.airline.tools import AirlineTools
+
+from toolguard.buildtime.gen_py.domain_from_funcs import generate_domain_from_functions
+from toolguard.buildtime.gen_py.domain_from_openapi import generate_domain_from_openapi
+from toolguard.buildtime.utils import py, pyright
 from toolguard.buildtime.utils.open_api import OpenAPI
 
 

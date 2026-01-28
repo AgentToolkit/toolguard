@@ -1,6 +1,6 @@
-from typing import Callable, Dict, get_type_hints
 import inspect
 import re
+from typing import Callable, Dict, get_type_hints
 
 from toolguard.buildtime.gen_spec.data_types import ToolInfo, ToolInfoParam
 

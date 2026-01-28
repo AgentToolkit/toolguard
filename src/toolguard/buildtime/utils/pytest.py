@@ -1,7 +1,8 @@
-from enum import StrEnum
 import json
+from enum import StrEnum
 from pathlib import Path
-from typing import Any, List, Dict, Optional
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 from toolguard.buildtime.utils.safe_py import run_safe_python

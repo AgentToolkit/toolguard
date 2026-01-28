@@ -1,8 +1,9 @@
 # mypy: ignore-errors
 
 
-from toolguard.runtime.data_types import FileTwin
 from mellea import generative
+
+from toolguard.runtime.data_types import FileTwin
 
 
 @generative
