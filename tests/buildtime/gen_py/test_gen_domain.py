@@ -34,7 +34,9 @@ async def test_generate_domain_from_appointment_oas():
     trg_path = Path("tests/tmp/appointments")
     pyright.config(trg_path)
 
-    domain = generate_domain_from_openapi(py_path=trg_path, app_name="My-ApP", oas=oas)
+    domain = await generate_domain_from_openapi(
+        py_path=trg_path, app_name="My-ApP", oas=oas
+    )
 
     report = await pyright.run(trg_path, domain.app_api.file_name)
     assert report.summary.errorCount == 0  # no syntax errors
@@ -75,7 +77,9 @@ async def test_generate_domain_from_calculator_oas():
     trg_path = Path("tests/tmp/calc")
     pyright.config(trg_path)
 
-    domain = generate_domain_from_openapi(py_path=trg_path, app_name="calc", oas=oas)
+    domain = await generate_domain_from_openapi(
+        py_path=trg_path, app_name="calc", oas=oas
+    )
 
     report = await pyright.run(trg_path, domain.app_api.file_name)
     assert report.summary.errorCount == 0  # no syntax errors

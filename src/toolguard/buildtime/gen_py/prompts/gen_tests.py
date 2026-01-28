@@ -6,7 +6,7 @@ from mellea import generative
 
 
 @generative
-def generate_init_tests(
+async def generate_init_tests(
     fn_src: FileTwin,
     policy_item: ToolGuardSpecItem,
     domain: Domain,
@@ -112,7 +112,7 @@ def generate_init_tests(
 
 
 @generative
-def improve_tests(
+async def improve_tests(
     prev_impl: str,
     domain: Domain,
     policy_item: ToolGuardSpecItem,

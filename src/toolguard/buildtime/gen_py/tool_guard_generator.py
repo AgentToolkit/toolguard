@@ -165,7 +165,7 @@ class ToolGuardGenerator:
             domain = self.domain.get_definitions_only()  # remove runtime fields
             first_time = trial_no == "a"
             if first_time:
-                res = prompts.generate_init_tests(
+                res = await prompts.generate_init_tests(
                     self.m,
                     fn_src=guard,
                     policy_item=item,
@@ -174,7 +174,7 @@ class ToolGuardGenerator:
                 )
             else:
                 assert test_file
-                res = prompts.improve_tests(
+                res = await prompts.improve_tests(
                     self.m,
                     prev_impl=test_file.content,  # noqa: B023
                     domain=domain,  # noqa: B023
@@ -263,7 +263,7 @@ class ToolGuardGenerator:
             )
             domain = self.domain.get_definitions_only()  # omit runtime fields
             prev_python = get_code_content(prev_guard.content)
-            res = prompts.improve_tool_guard(
+            res = await prompts.improve_tool_guard(
                 self.m,
                 prev_impl=prev_python,  # noqa: B023
                 policy_txt=item.description,

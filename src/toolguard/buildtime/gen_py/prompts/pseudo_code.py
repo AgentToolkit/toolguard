@@ -6,7 +6,7 @@ from mellea import generative
 
 
 @generative
-def tool_policy_pseudo_code(
+async def tool_policy_pseudo_code(
     policy_txt: str, fn_to_analyze: str, data_types: FileTwin, api: FileTwin
 ) -> str:
     """

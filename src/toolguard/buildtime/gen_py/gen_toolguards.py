@@ -53,7 +53,7 @@ async def generate_toolguards_from_openapi(
     logger.debug(f"Starting... will save into {py_root}")
 
     # Domain from OpenAPI
-    domain = generate_domain_from_openapi(py_root, app_name, oas)
+    domain = await generate_domain_from_openapi(py_root, app_name, oas)
     return await generate_toolguards_from_domain(
         app_name, tool_policies, py_root, domain, llm
     )

@@ -1,11 +1,9 @@
-import asyncio
 from enum import StrEnum
 import json
 from pathlib import Path
 from typing import Any, List, Dict, Optional
 from pydantic import BaseModel, Field
 
-from toolguard.buildtime.utils.multi_process import run_in_process
 from toolguard.buildtime.utils.safe_py import run_safe_python
 from toolguard.runtime.data_types import FileTwin
 
@@ -130,29 +128,22 @@ async def run(folder: Path, test_file: Path, report_file: Path) -> TestReport:
 async def run_tests_in_safe_python_separate_process(
     folder: Path, test_file: Path, report_file: Path
 ):
+    """Run pytest tests in a safe Python environment within a separate process.
+
+    Args:
+        folder: Working directory for the test execution.
+        test_file: Path to the test file to run.
+        report_file: Path where the JSON test report will be saved.
+
+    Returns:
+        Result from the test execution process.
+    """
+
     code = f"""
 import pytest
 pytest.main(["{folder / test_file}", "--quiet", "--json-report", "--json-report-file={folder / report_file}"])
 """
-    return await asyncio.to_thread(
-        lambda: run_in_process(run_safe_python, code, ["pytest"])
-    )
-
-
-# def _run_in_subprocess(folder:str, test_file:str, report_file:str):
-#     subprocess.run([
-#             "pytest",
-#             test_file,
-#             # "--verbose",
-#             "--quiet",
-#             "--json-report",
-#             f"--json-report-file={report_file}"
-#         ],
-#         env={
-#             **os.environ,
-#             "PYTHONPATH": "."
-#         },
-#         cwd=folder)
+    return await run_safe_python(code, ["pytest"])
 
 
 def configure(folder: Path):

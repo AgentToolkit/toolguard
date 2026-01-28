@@ -20,7 +20,7 @@ from toolguard.buildtime.utils.open_api import (
 )
 
 
-def generate_domain_from_openapi(
+async def generate_domain_from_openapi(
     py_path: Path, app_name: str, oas: OpenAPI
 ) -> RuntimeDomain:
     openapi_file = py_path / "oas.json"
@@ -31,8 +31,9 @@ def generate_domain_from_openapi(
 
     types_name = py.to_py_module_name(f"{app_name}_types")
     types_module_name = f"{py.to_py_module_name(app_name)}.{types_name}"
+    typed_code = await dm_codegen(openapi_file)
     types = FileTwin(
-        file_name=py.module_to_path(types_module_name), content=dm_codegen(openapi_file)
+        file_name=py.module_to_path(types_module_name), content=typed_code
     ).save(py_path)
     type_names = py.top_level_types(py_path / types.file_name)
 

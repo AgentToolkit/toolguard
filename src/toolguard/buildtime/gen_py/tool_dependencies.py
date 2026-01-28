@@ -15,7 +15,7 @@ async def tool_dependencies(
     trial=0,
 ) -> Set[str]:
     model_options: Dict[str, Any] = {}  # {ModelOption.TEMPERATURE: 0.8}
-    pseudo_code = prompts.tool_policy_pseudo_code(
+    pseudo_code = await prompts.tool_policy_pseudo_code(
         m,
         policy_txt=policy_txt,
         fn_to_analyze=tool_signature,

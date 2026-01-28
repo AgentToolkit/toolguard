@@ -1,10 +1,10 @@
 import asyncio
 import json
-from pathlib import Path
 import sys
-import subprocess
-from pydantic import BaseModel
+from pathlib import Path
 from typing import List, Optional
+
+from pydantic import BaseModel
 
 from toolguard.runtime.data_types import FileTwin
 
@@ -76,26 +76,31 @@ def get_text_by_range(file_content: str, rng: Range) -> str:
 
 
 async def run(folder: Path, py_file: Path) -> DiagnosticsReport:
-    py_path = sys.executable
-    res = await asyncio.to_thread(
-        lambda: subprocess.run(
-            [
-                "pyright",
-                # "--venv-path", venv_path,
-                "--pythonpath",
-                py_path,
-                "--outputjson",
-                py_file,
-            ],
-            cwd=folder,
-            capture_output=True,
-            text=True,
-        )
-    )
-    # if res.returncode !=0:
-    #     raise Exception(res.stderr)
+    """Run pyright type checker asynchronously on a Python file.
 
-    data = json.loads(res.stdout)
+    Args:
+        folder: Working directory for the pyright process.
+        py_file: Path to the Python file to check.
+
+    Returns:
+        DiagnosticsReport: Parsed pyright diagnostics output.
+    """
+    py_path = sys.executable
+
+    process = await asyncio.create_subprocess_exec(
+        "pyright",
+        "--pythonpath",
+        py_path,
+        "--outputjson",
+        str(py_file),
+        cwd=folder,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+
+    stdout, stderr = await process.communicate()
+
+    data = json.loads(stdout.decode())
     return DiagnosticsReport.model_validate(data)
 
 

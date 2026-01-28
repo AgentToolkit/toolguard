@@ -6,7 +6,7 @@ from mellea import generative
 
 
 @generative
-def improve_tool_guard(
+async def improve_tool_guard(
     prev_impl: str,
     policy_txt: str,
     dependent_tool_names: List[str],
