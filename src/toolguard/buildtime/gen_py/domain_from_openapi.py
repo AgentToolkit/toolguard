@@ -1,7 +1,5 @@
-import os
 from pathlib import Path
 from typing import List, Optional, Set, Tuple
-from os.path import join
 
 from toolguard.buildtime.utils.str import to_camel_case, to_pascal_case
 from toolguard.runtime.data_types import FileTwin, RuntimeDomain, ARGS_PARAM
@@ -29,7 +27,7 @@ def generate_domain_from_openapi(
     oas.save(openapi_file)
 
     # APP Types
-    os.makedirs(join(py_path, py.to_py_module_name(app_name)), exist_ok=True)
+    (py_path / py.to_py_module_name(app_name)).mkdir(parents=True, exist_ok=True)
 
     types_name = py.to_py_module_name(f"{app_name}_types")
     types_module_name = f"{py.to_py_module_name(app_name)}.{types_name}"

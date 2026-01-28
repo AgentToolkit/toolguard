@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from typing import Callable, List, Optional, cast
 
@@ -39,7 +38,7 @@ async def generate_guard_specs(
         List of ToolGuardSpec objects containing the generated specifications.
     """
     work_dir = Path(work_dir)
-    os.makedirs(work_dir, exist_ok=True)
+    work_dir.mkdir(parents=True, exist_ok=True)
     logger.debug("Step1 folder created")
     return await extract_toolguard_specs(
         policy_text, tools, work_dir, llm, tools2guard, short
@@ -80,7 +79,7 @@ async def generate_guards_code(
         if (not tool_names) or (policy.tool_name in tool_names)
     ]
     work_dir = Path(work_dir)
-    os.makedirs(work_dir, exist_ok=True)
+    work_dir.mkdir(parents=True, exist_ok=True)
     logger.debug("Step2 folder created")
     # OpenAPI spec
     if isinstance(tools, dict):

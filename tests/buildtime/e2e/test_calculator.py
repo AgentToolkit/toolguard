@@ -58,7 +58,7 @@ async def _build_toolguards(
 ):
     policy_text = markdown.markdown(open(wiki_path, "r", encoding="utf-8").read())
 
-    run_dir = os.path.join(work_dir, model)  # todo: add timestemp
+    run_dir = work_dir / model
     shutil.rmtree(run_dir, ignore_errors=True)
     os.makedirs(run_dir, exist_ok=True)
     step1_out_dir = join(run_dir, STEP1)

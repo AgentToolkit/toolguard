@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from dataclasses import is_dataclass
 from enum import Enum
@@ -35,7 +34,7 @@ def generate_domain_from_functions(
     py_path: Path, app_name: str, funcs: List[Callable], include_module_roots: List[str]
 ) -> RuntimeDomain:
     # APP init and Types
-    os.makedirs(py_path / py.to_py_module_name(app_name), exist_ok=True)
+    (py_path / py.to_py_module_name(app_name)).mkdir(parents=True, exist_ok=True)
     FileTwin(
         file_name=Path(py.to_py_module_name(app_name)) / "__init__.py", content=""
     ).save(py_path)
@@ -82,7 +81,7 @@ class APIExtractor:
     ) -> Tuple[FileTwin, FileTwin, FileTwin]:
         assert all([_is_global_or_class_function(func) for func in funcs])
 
-        os.makedirs(self.py_path, exist_ok=True)
+        self.py_path.mkdir(parents=True, exist_ok=True)
 
         # used types
         types = FileTwin(
@@ -128,7 +127,7 @@ class APIExtractor:
         interface_module_name = interface_module_name or f"I_{class_name}".lower()
         types_module_name = types_module_name or f"{class_name}_types".lower()
 
-        os.makedirs(self.py_path, exist_ok=True)
+        self.py_path.mkdir(parents=True, exist_ok=True)
 
         # Types
         collected, dependencies = self._collect_all_types_from_class(typ)

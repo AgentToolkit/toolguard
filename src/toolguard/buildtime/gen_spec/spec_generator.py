@@ -1,6 +1,5 @@
 import asyncio
 import json
-import os
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple, cast
 
@@ -31,12 +30,10 @@ async def extract_toolguard_specs(
 ) -> List[ToolGuardSpec]:
     tool_infos = _tools_to_tool_infos(tools)
 
-    if not os.path.isdir(step1_output_dir):
-        os.makedirs(step1_output_dir)
+    step1_output_dir.mkdir(parents=True, exist_ok=True)
 
     process_dir = step1_output_dir / "process"
-    if not os.path.isdir(process_dir):
-        os.makedirs(process_dir)
+    process_dir.mkdir(parents=True, exist_ok=True)
     generator = ToolGuardSpecGenerator(llm, policy_text, tool_infos, process_dir)
 
     async def do_one_tool(tool_name: str) -> ToolGuardSpec:

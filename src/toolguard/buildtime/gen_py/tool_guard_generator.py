@@ -1,6 +1,5 @@
 from importlib import import_module
 import inspect
-import os
 import asyncio
 from pathlib import Path
 import re
@@ -63,20 +62,20 @@ class ToolGuardGenerator:
 
     def _create_dirs(self):
         app_path = self.py_path / py.to_py_module_name(self.app_name)
-        os.makedirs(app_path, exist_ok=True)
-        os.makedirs(
-            app_path / py.to_py_module_name(self.tool_policy.tool_name), exist_ok=True
+        app_path.mkdir(parents=True, exist_ok=True)
+        (app_path / py.to_py_module_name(self.tool_policy.tool_name)).mkdir(
+            parents=True, exist_ok=True
         )
         debug_path = self.py_path / DEBUG_DIR
-        os.makedirs(debug_path, exist_ok=True)
+        debug_path.mkdir(parents=True, exist_ok=True)
         debug_tool_path = debug_path / py.to_py_module_name(self.tool_policy.tool_name)
-        os.makedirs(debug_tool_path, exist_ok=True)
+        debug_tool_path.mkdir(parents=True, exist_ok=True)
         for item in self.tool_policy.policy_items:
             debug_tool_item_path = debug_tool_path / py.to_py_module_name(item.name)
-            os.makedirs(debug_tool_item_path, exist_ok=True)
+            debug_tool_item_path.mkdir(parents=True, exist_ok=True)
 
         tests_path = self.py_path / TESTS_DIR
-        os.makedirs(tests_path, exist_ok=True)
+        tests_path.mkdir(parents=True, exist_ok=True)
 
     def _setup_files(self):
         self._create_dirs()

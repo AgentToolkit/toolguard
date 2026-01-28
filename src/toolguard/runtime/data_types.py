@@ -1,6 +1,5 @@
 from typing import Any, Dict, List, Type, TypeVar
 import json
-import os
 from pathlib import Path
 from pydantic import BaseModel, Field, ValidationError
 from abc import ABC, abstractmethod
@@ -18,7 +17,7 @@ class FileTwin(BaseModel):
     def save(self, folder: str | Path) -> "FileTwin":
         full_path = Path(folder) / self.file_name
         parent = full_path.parent
-        os.makedirs(parent, exist_ok=True)
+        parent.mkdir(parents=True, exist_ok=True)
         with open(full_path, "w") as file:
             file.write(self.content)
         return self
