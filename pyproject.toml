@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "toolguard"
-version = "0.2.6"
+version = "0.2.7"
 description = "Policy adherence code generation for guarding AI agent tools"
 readme = "README.md"
 
@@ -27,7 +27,7 @@ dependencies = [
     "pytest-json-report>=1.5.0",
     "pyright>=1.1.408",
     "smolagents>=1.21.3",
-    "fastmcp==2.14.3",
+    "fastmcp>=2.13.0",
     "loguru"
 ]
 

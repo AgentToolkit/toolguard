@@ -4268,7 +4268,7 @@ wheels = [
 
 [[package]]
 name = "toolguard"
-version = "0.2.6"
+version = "0.2.7"
 source = { editable = "." }
 dependencies = [
     { name = "datamodel-code-generator" },
@@ -4296,7 +4296,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "datamodel-code-generator", specifier = ">=0.52.2" },
-    { name = "fastmcp", specifier = "==2.14.3" },
+    { name = "fastmcp", specifier = ">=2.13.0" },
     { name = "langchain-core", specifier = ">=0.3.72" },
     { name = "litellm", specifier = "<2.0.0" },
     { name = "loguru" },
