@@ -4268,13 +4268,14 @@ wheels = [
 
 [[package]]
 name = "toolguard"
-version = "0.2.5"
+version = "0.2.6"
 source = { editable = "." }
 dependencies = [
     { name = "datamodel-code-generator" },
     { name = "fastmcp" },
     { name = "langchain-core" },
     { name = "litellm" },
+    { name = "loguru" },
     { name = "markdown" },
     { name = "mellea" },
     { name = "pydantic" },
@@ -4298,6 +4299,7 @@ requires-dist = [
     { name = "fastmcp", specifier = "==2.14.3" },
     { name = "langchain-core", specifier = ">=0.3.72" },
     { name = "litellm", specifier = "<2.0.0" },
+    { name = "loguru" },
     { name = "markdown", specifier = ">=3.7" },
     { name = "mellea", specifier = ">=0.3.0" },
     { name = "pydantic", specifier = ">=2.11.0" },
