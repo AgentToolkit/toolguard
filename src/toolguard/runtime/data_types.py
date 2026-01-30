@@ -152,10 +152,31 @@ class PolicyViolationException(Exception):
         return self._msg
 
 
-class IToolInvoker(ABC):
+class IToolInvoker(ABC):  # pylint: disable=too-few-public-methods
+    """Abstract base class for tool invokers.
+
+    This interface defines the contract for invoking tools with type-safe returns.
+    Implementations should handle the actual tool invocation logic for different
+    tool frameworks (e.g., functions, methods, LangChain tools, MCP server, OpenAPI...).
+    """
+
     T = TypeVar("T")
 
     @abstractmethod
     async def invoke(
         self, toolname: str, arguments: Dict[str, Any], return_type: Type[T]
-    ) -> T: ...
+    ) -> T:
+        """Invoke a tool with the given name and arguments.
+
+        Args:
+            toolname: The name of the tool to invoke.
+            arguments: A dictionary of arguments to pass to the tool.
+            return_type: The expected return type for type-safe deserialization.
+
+        Returns:
+            The result of the tool invocation, typed as T.
+
+        Raises:
+            Exception: Implementation-specific exceptions may be raised during invocation.
+        """
+        ...
