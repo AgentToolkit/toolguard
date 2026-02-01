@@ -31,12 +31,14 @@ async def improve_tool_guard(
             str: The improved implementation of the tool-call check.
 
         Implementation Rules:
-            - Never modify the function signature. Do not add, remove or change the parameters, their type annotations, async modifier of the function .
+            - Never modify the function signature. Do not add, remove or change the parameters, their type annotations.
             - All policy requirements must be validated.
             - Keep the implementation simple and well-documented.
             - Only validate the tool-call arguments; never call the tool itself.
+            - Generate code that enforces the given policy only.
+            - Do not generate any additional logic that is not explicitly mentioned in the policy.
             - If additional information is needed beyond the function arguments, use only the APIs of tools listed in `dependent_tool_names`.
-            - Generate code that enforces the given policy only, do not generate any additional logic that is not explicitly mentioned in the policy.
+            - Remote API calls are slow. Prefer using simple logic, before calling remote APIs.Remote API calls are costly in latency. Apply simple logic locally before invoking remote APIs.
 
         **Example: **
     prev_impl = ```python
