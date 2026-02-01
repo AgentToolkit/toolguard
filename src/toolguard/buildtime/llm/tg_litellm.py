@@ -97,4 +97,18 @@ class LitellmModel(LanguageModelBase):
             extra_headers=extra_headers,
             **call_kwargs,
         )
-        return response.choices[0].message.content
+        choice0 = response.choices[0]
+        chunk = choice0.message.content
+        if choice0.finish_reason == "length":  # max tokesn reached
+            next_messages = (
+                messages
+                + [choice0.message]
+                + [
+                    {
+                        "role": "user",
+                        "content": "Continue the previous answer starting from the last incomplete sentence.",
+                    }
+                ]
+            )
+            return chunk + await self.generate(next_messages)
+        return chunk

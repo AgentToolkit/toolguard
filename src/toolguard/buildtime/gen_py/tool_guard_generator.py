@@ -181,9 +181,10 @@ class ToolGuardGenerator:
                     dependent_tool_names=dep_tools,
                 )
 
-            test_file = FileTwin(
-                file_name=test_file_name, content=get_code_content(res)
-            ).save(self.py_path)
+            test_content = get_code_content(res)
+            test_file = FileTwin(file_name=test_file_name, content=test_content).save(
+                self.py_path
+            )
             test_file.save_as(
                 self.py_path, self.debug_file(item, f"test_{trial_no}.py")
             )
