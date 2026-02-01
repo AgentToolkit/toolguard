@@ -106,7 +106,7 @@ class LitellmModel(LanguageModelBase):
                 + [
                     {
                         "role": "user",
-                        "content": "Continue the previous answer starting from the last incomplete sentence.",
+                        "content": "Continue the previous answer starting exactly from the last incomplete sentence. Do not repeat anything.  Do not add any prefix.",
                     }
                 ]
             )
