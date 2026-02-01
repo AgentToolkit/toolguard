@@ -374,12 +374,18 @@ class APIExtractor:
 
                 # Check if we have a description for this field
                 description = field_descriptions.get(field_name)
+
+                # Add default value for Optional fields
+                default_value = " = None" if is_optional else ""
+
                 if description:
                     # Add description as comment for non-Pydantic classes
-                    lines.append(f"{indent}{field_name}: {type_str}  # {description}")
+                    lines.append(
+                        f"{indent}{field_name}: {type_str}{default_value}  # {description}"
+                    )
                 else:
                     # No description available
-                    lines.append(f"{indent}{field_name}: {type_str}")
+                    lines.append(f"{indent}{field_name}: {type_str}{default_value}")
 
         # Enum
         elif issubclass(typ, Enum):
