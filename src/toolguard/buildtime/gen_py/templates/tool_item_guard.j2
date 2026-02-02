@@ -2,9 +2,11 @@ from typing import *
 {% for imp in extra_imports %}{{ imp }}
 {% endfor %}
 from toolguard.runtime import PolicyViolationException
+from toolguard.runtime.rules import ORLogic, rule
 from {{ path_to_module(domain.app_types.file_name) }} import *
 from {{ path_to_module(domain.app_api.file_name) }} import {{ domain.app_api_class_name }}
 
+@rule("{{method.rule_name}}")
 async def {{ method.name }}(api: {{ domain.app_api_class_name }}, {{ method.signature }}):
     """
     Policy to check: {{ policy }}

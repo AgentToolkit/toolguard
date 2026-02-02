@@ -361,6 +361,7 @@ class ToolGuardGenerator:
                 domain=self.domain,
                 method={
                     "name": guard_fn_name(self.tool_policy),
+                    "rule_name": self.tool_policy.tool_name,
                     "signature": sig_str,
                     "args_call": args_call,
                     "args_doc_str": args_doc_str,
@@ -399,6 +400,7 @@ class ToolGuardGenerator:
                 domain=self.domain,
                 method={
                     "name": guard_item_fn_name(tool_item),
+                    "rule_name": tool_item.name,
                     "signature": sig_str,
                     "args_doc_str": args_doc_str,
                 },
