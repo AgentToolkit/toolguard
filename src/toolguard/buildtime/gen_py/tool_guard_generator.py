@@ -264,9 +264,9 @@ class ToolGuardGenerator:
             prev_python = get_code_content(prev_guard.content)
             res = await prompts.improve_tool_guard(
                 self.m,
-                prev_impl=prev_python,  # noqa: B023
                 policy_txt=item.description,
                 dependent_tool_names=dep_tools,
+                prev_impl=prev_python,  # noqa: B023
                 review_comments=review_comments + errors,
                 api=domain.app_api,
                 data_types=domain.app_types,
