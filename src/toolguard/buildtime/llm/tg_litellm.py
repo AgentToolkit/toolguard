@@ -99,16 +99,17 @@ class LitellmModel(LanguageModelBase):
         )
         choice0 = response.choices[0]
         chunk = choice0.message.content
-        if choice0.finish_reason == "length":  # max tokesn reached
-            next_messages = (
-                messages
-                + [choice0.message]
-                + [
-                    {
-                        "role": "user",
-                        "content": "Continue the previous answer starting exactly from the last incomplete sentence. Do not repeat anything.  Do not add any prefix.",
-                    }
-                ]
-            )
+        if choice0.finish_reason == "length":  # max tokens reached
+            next_messages = [
+                *messages,
+                choice0.message,
+                {
+                    "role": "user",
+                    "content": (
+                        "Continue the previous answer starting exactly from the last incomplete sentence.",
+                        "Do not repeat anything.  Do not add any prefix.",
+                    ),
+                },
+            ]
             return chunk + await self.generate(next_messages)
         return chunk
