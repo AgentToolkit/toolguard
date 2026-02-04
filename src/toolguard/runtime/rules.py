@@ -1,8 +1,7 @@
 import inspect
-from typing import Any, Callable, Awaitable
+from typing import Any
 from contextvars import ContextVar
 from functools import wraps
-from loguru import logger
 
 
 #: Context variable that maintains the current stack of rule names being evaluated.
@@ -76,31 +75,3 @@ def rule(name: str):
         return async_wrapper if inspect.iscoroutinefunction(fn) else sync_wrapper
 
     return decorator
-
-
-async def any_check_passes(*checks: Callable[[], bool | Awaitable[bool]]):
-    """
-    Evaluate checks left-to-right.
-    Return True on first truthy result.
-    Exceptions are treated as False.
-    """
-    for check in checks:
-        try:
-            result = check()
-            if inspect.isawaitable(result):
-                result = await result
-
-            if result:
-                return True
-
-        except Exception as e:
-            logger.warning(
-                "OR condition failed, ignoring",
-                extra={
-                    "check": getattr(check, "__name__", repr(check)),
-                    "error": str(e),
-                },
-            )
-            continue
-
-    return False

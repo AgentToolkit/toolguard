@@ -39,7 +39,7 @@ async def improve_tool_guard(
                 - Do not generate any additional logic that is not explicitly mentioned in the policy.
                 - If additional information is needed beyond the function arguments, use only the APIs of tools listed in `dependent_tool_names`.
                 - API calls are slow. Prefer using simple logic, before calling APIs. API calls are costly in latency. Apply simple logic locally before invoking APIs.
-                - If the validation is composed of of multiple disjunctive checks, use the `any_check_passes` function and pass the check functions as parameters.
+                - If the validation is composed of of multiple disjunctive checks, use the `assert_any_condition_met` function and pass the check functions as parameters.
 
         **Simple Example: **
         policy_txt = "Limit to five passengers per reservation"
@@ -47,8 +47,7 @@ async def improve_tool_guard(
         review_comments=[]
 
         prev_impl = ```python
-    from toolguard.runtime import PolicyViolationException
-    from toolguard.runtime.rules import rule
+    from toolguard.runtime import PolicyViolationException, assert_any_condition_met, rule
     from airline.airline_types import *
     from airline.i_airline import IAirline
 
@@ -77,8 +76,7 @@ async def improve_tool_guard(
         The function should return something like:
 
         ```python
-    from toolguard.runtime import PolicyViolationException
-    from toolguard.runtime.rules import any_check_passes, rule
+    from toolguard.runtime import PolicyViolationException, assert_any_condition_met, rule
     from airline.airline_types import *
     from airline.i_airline import IAirline
 
@@ -114,8 +112,7 @@ async def improve_tool_guard(
 
     prev_impl = ```python
     from typing import *
-    from toolguard.runtime import PolicyViolationException
-    from toolguard.runtime.rules import any_check_passes, rule
+    from toolguard.runtime import PolicyViolationException, assert_any_condition_met, rule
     from airline.airline_types import *
     from airline.i_airline import I_Airline
 
@@ -131,8 +128,7 @@ async def improve_tool_guard(
 
         ```python
     from typing import *
-    from toolguard.runtime import PolicyViolationException
-    from toolguard.runtime.rules import any_check_passes, rule
+    from toolguard.runtime import PolicyViolationException, assert_any_condition_met, rule
     from datetime import datetime, timedelta
     from airline.airline_types import *
     from airline.i_airline import I_Airline
@@ -164,13 +160,8 @@ async def improve_tool_guard(
                     return True
             return False
 
-        @rule("business_class")
-        def business_class():
-            return reservation.cabin == "business"
-
-        if not await any_check_passes(
+        if not await assert_any_condition_met(
             within_24h,
-            business_class,
             airline_cancelled,
         ):
             raise PolicyViolationException("Cancellation policy not met.")

@@ -1,8 +1,9 @@
+import inspect
 import json
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Type, TypeVar
-
+from typing import Any, Awaitable, Callable, Dict, List, Type, TypeVar
+from loguru import logger
 from pydantic import BaseModel, Field, ValidationError
 
 from toolguard.runtime.rules import current_rule
@@ -41,6 +42,39 @@ class PolicyViolationException(Exception):
 
     def __str__(self):
         return self._msg + (f" (rule: {self._rule})" if self._rule else "")
+
+
+class PotentialPolicyViolationExcepetion(PolicyViolationException):
+    pass
+
+
+async def assert_any_condition_met(*checks: Callable[[], bool | Awaitable[bool]]):
+    collected_exceptions = []
+    for check in checks:
+        try:
+            result = check()
+            if inspect.isawaitable(result):
+                result = await result
+
+            if result:
+                return
+
+        except Exception as ex:
+            collected_exceptions.append(ex)
+            logger.warning(
+                "Condition failed, ignoring",
+                extra={
+                    "check": getattr(check, "__name__", repr(check)),
+                    "error": str(ex),
+                },
+            )
+            continue
+
+    if collected_exceptions:
+        raise collected_exceptions[0]
+
+    msg = "No conditions met"
+    raise PolicyViolationException(msg)
 
 
 class IToolInvoker(ABC):  # pylint: disable=too-few-public-methods
