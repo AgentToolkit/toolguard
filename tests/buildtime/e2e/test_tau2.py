@@ -137,7 +137,7 @@ async def test_tau2_complex_api():
     tool_fns = [fn for fn in fns if hasattr(fn, "__tool__")]
 
     run_dir = work_dir / model
-    # shutil.rmtree(run_dir, ignore_errors=True)
+    shutil.rmtree(run_dir, ignore_errors=True)
     run_dir.mkdir(parents=True, exist_ok=True)
     step1_out_dir = run_dir / STEP1
     step2_out_dir = run_dir / STEP2

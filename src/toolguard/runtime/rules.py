@@ -78,7 +78,7 @@ def rule(name: str):
     return decorator
 
 
-async def ORLogic(*checks: Callable[[], bool | Awaitable[bool]]):
+async def any_check_passes(*checks: Callable[[], bool | Awaitable[bool]]):
     """
     Evaluate checks left-to-right.
     Return True on first truthy result.
