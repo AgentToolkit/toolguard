@@ -44,7 +44,7 @@ class PolicyViolationException(Exception):
         return self._msg + (f" (rule: {self._rule})" if self._rule else "")
 
 
-class PotentialPolicyViolationExcepetion(PolicyViolationException):
+class PotentialPolicyViolationException(PolicyViolationException):
     pass
 
 
