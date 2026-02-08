@@ -27,14 +27,16 @@ async def extract_toolguard_specs(
     llm: I_TG_LLM,
     tools2guard: Optional[List[str]] = None,  # None==all tools
     short=False,
+    step=None,
+    examples=None
 ) -> List[ToolGuardSpec]:
     tool_infos = _tools_to_tool_infos(tools)
-
     step1_output_dir.mkdir(parents=True, exist_ok=True)
-
+    curr_step = step
+    curr_examples = examples
     process_dir = step1_output_dir / "process"
     process_dir.mkdir(parents=True, exist_ok=True)
-    generator = ToolGuardSpecGenerator(llm, policy_text, tool_infos, process_dir)
+    generator = ToolGuardSpecGenerator(llm, policy_text, tool_infos, process_dir,curr_step,curr_examples)
 
     async def do_one_tool(tool_name: str) -> ToolGuardSpec:
         spec = (
@@ -60,13 +62,15 @@ async def extract_toolguard_specs(
 
 class ToolGuardSpecGenerator:
     def __init__(
-        self, llm: I_TG_LLM, policy_document: str, tools: List[ToolInfo], out_dir: Path
+        self, llm: I_TG_LLM, policy_document: str, tools: List[ToolInfo], out_dir: Path,step=None,examples=None
     ) -> None:
         self.llm = llm
         self.policy_document = policy_document
         self.tools_descriptions = {tool.name: tool.description for tool in tools}
         self.tools_details = {tool.name: tool for tool in tools}
         self.out_dir = out_dir
+        self.step = step
+        self.examples = examples
 
     async def generate_minimal_policy(self, tool_name: str) -> ToolGuardSpec:
         spec = await self.create_spec(tool_name)
@@ -77,25 +81,57 @@ class ToolGuardSpecGenerator:
         return spec
 
     async def generate_policy(self, tool_name: str) -> ToolGuardSpec:
-        spec = await self.create_spec(tool_name)
-        for i in range(3):
-            await self.add_items(tool_name, spec, i)
-        if not spec.policy_items:
-            return spec
-
-        await self.split(tool_name, spec)
-        if len(spec.policy_items) > 1:
-            await self.merge(tool_name, spec)
-        await self.review_policy(tool_name, spec)
+        if self.step and self.step>=1:
+            spec = await self.create_spec(tool_name)
+        if self.step and self.step>=2:
+            for i in range(3):
+                await self.add_items(tool_name, spec, i)
+            if not spec.policy_items:
+                return spec
+        # if self.step and self.step>=3:
+        #     await self.split(tool_name, spec)
+        # if self.step and self.step>=4:
+        #     if len(spec.policy_items) > 1:
+        #         await self.merge(tool_name, spec)
+        if self.step and self.step>=5:
+            await self.review_policy(tool_name, spec)
+      
         await self.add_references(tool_name, spec)
         self.reference_correctness(tool_name, spec)
-
-        await self.example_creator(tool_name, spec)
-        for i in range(5):
-            await self.add_examples(tool_name, spec, i)
-        await self.merge_examples(tool_name, spec)
-        # spec = self.fix_examples(tool_name, spec)
-        await self.review_examples(tool_name, spec)
+            
+        
+        if self.step is None:
+            spec = await self.create_spec(tool_name)
+            for i in range(3):
+                await self.add_items(tool_name, spec, i)
+            if not spec.policy_items:
+                return spec
+    
+            await self.split(tool_name, spec)
+            if len(spec.policy_items) > 1:
+                await self.merge(tool_name, spec)
+            await self.review_policy(tool_name, spec)
+            await self.add_references(tool_name, spec)
+            self.reference_correctness(tool_name, spec)
+            
+            
+        if self.examples and self.examples>=1:
+            await self.example_creator(tool_name, spec)
+        if self.examples and self.examples >= 2:
+            for i in range(5):
+                await self.add_examples(tool_name, spec, i)
+        if self.examples and self.examples >= 3:
+            await self.merge_examples(tool_name, spec)
+            # spec = self.fix_examples(tool_name, spec)
+        if self.examples and self.examples >= 4:
+            await self.review_examples(tool_name, spec)
+        if self.examples is None:
+            await self.example_creator(tool_name, spec)
+            for i in range(5):
+                await self.add_examples(tool_name, spec, i)
+            await self.merge_examples(tool_name, spec)
+            # spec = self.fix_examples(tool_name, spec)
+            await self.review_examples(tool_name, spec)
         return spec
 
     async def create_spec(self, tool_name: str) -> ToolGuardSpec:
@@ -133,7 +169,7 @@ spec: {spec.model_dump_json(indent=2)}"""
             else response["policy_items"]
         )
 
-        spec._debug["iteration"] = iteration
+        spec.debug["iteration"] = iteration
         for item_d in item_ds:
             spec.policy_items.append(ToolGuardSpecItem.model_validate(item_d))
 
@@ -184,7 +220,7 @@ spec: {spec.model_dump_json(indent=2)}"""
             "is_relevant": 0,
             "is_tool_specific": 0,
             "can_be_validated": 0,
-            "is_actionable": 0,
+            #"is_actionable": 0,
         }
 
         for r in reviews:
@@ -199,7 +235,7 @@ spec: {spec.model_dump_json(indent=2)}"""
             counts["can_be_validated"] += (
                 r["can_be_validated"] if "can_be_validated" in r else 0
             )
-            counts["is_actionable"] += r["is_actionable"] if "is_actionable" in r else 0
+            # counts["is_actionable"] += r["is_actionable"] if "is_actionable" in r else 0
 
             if not all(
                 e in r
@@ -207,13 +243,13 @@ spec: {spec.model_dump_json(indent=2)}"""
                     "is_relevant",
                     "is_tool_specific",
                     "can_be_validated",
-                    "is_actionable",
+                    #"is_actionable",
                 ]
             ) or not (
                 r["is_relevant"]
                 and r["is_tool_specific"]
                 and r["can_be_validated"]
-                and r["is_actionable"]
+                #and r["is_actionable"]
             ):
                 comments += r["comments"] + "\n"
 
@@ -221,7 +257,8 @@ spec: {spec.model_dump_json(indent=2)}"""
 
     async def review_policy(self, tool_name: str, spec: ToolGuardSpec):
         logger.debug(f"review_policy({tool_name})")
-        system_prompt = read_prompt_file("policy_reviewer")
+        #system_prompt = read_prompt_file("policy_reviewer")
+        system_prompt = read_prompt_file("review_policy_relevance")
         all_tool_descs = json.dumps(self.tools_descriptions)
         tool_desc = self.tools_descriptions[tool_name]
 
@@ -251,9 +288,10 @@ policy: {item.model_dump_json(indent=2)}"""
             archive, comments = self.move2archive(reviews)
             logger.debug(archive)
             if archive:
-                if "archive" not in spec._debug:
-                    spec._debug["archive"] = []
-                spec._debug["archive"].append(item)
+                if "archive" not in spec.debug:
+                    spec.debug["archive"] = []
+                item.debug["comments"] = comments
+                spec.debug["archive"].append(item)
                 spec.policy_items.remove(item)
 
         await asyncio.gather(*[analyze_item(item) for item in spec.policy_items])

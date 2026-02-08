@@ -23,6 +23,8 @@ async def generate_guard_specs(
     *,
     tools2guard: List[str] | None = None,
     short: bool = False,
+    step = None,
+    examples = None,
 ) -> List[ToolGuardSpec]:
     """Generate guard specifications from policy text and tools.
 
@@ -41,7 +43,7 @@ async def generate_guard_specs(
     work_dir.mkdir(parents=True, exist_ok=True)
     logger.debug("Step1 folder created")
     return await extract_toolguard_specs(
-        policy_text, tools, work_dir, llm, tools2guard, short
+        policy_text, tools, work_dir, llm, tools2guard, short, step, examples
     )
 
 
