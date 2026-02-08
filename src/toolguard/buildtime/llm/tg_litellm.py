@@ -1,11 +1,12 @@
+import asyncio
 import json
 import re
-import time
 from abc import ABC
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from litellm import acompletion
 from litellm.exceptions import RateLimitError
+from loguru import logger
 
 from .i_tg_llm import I_TG_LLM
 
@@ -21,19 +22,19 @@ class LanguageModelBase(I_TG_LLM, ABC):
                 res = self.extract_json_from_string(response)
                 if res is None:
                     wait_time = backoff_factor**retries
-                    print(
+                    logger.warning(
                         f"Error: not json format. Retrying in {wait_time:.1f} seconds... (attempt {retries + 1}/{max_retries})"
                     )
-                    time.sleep(wait_time)
+                    await asyncio.sleep(wait_time)
                     retries += 1
                 else:
                     return res
             except RateLimitError:
                 wait_time = backoff_factor**retries
-                print(
+                logger.warning(
                     f"Rate limit hit. Retrying in {wait_time:.1f} seconds... (attempt {retries + 1}/{max_retries})"
                 )
-                time.sleep(wait_time)
+                await asyncio.sleep(wait_time)
                 retries += 1
             except Exception as e:
                 raise RuntimeError(
@@ -49,42 +50,39 @@ class LanguageModelBase(I_TG_LLM, ABC):
             try:
                 return json.loads(json_str)
             except json.JSONDecodeError as e:
-                print(f"Failed to decode JSON: {e}")
+                logger.warning(f"Failed to decode JSON: {e}")
                 return None
         else:
-            ## for rits?
+            # Fallback: try to extract any JSON object from the string
             match = re.search(r"(\{[\s\S]*\})", s)
             if match:
                 json_str = match.group(1)
                 try:
                     return json.loads(json_str)
                 except json.JSONDecodeError as e:
-                    print("response:")
-                    print(s)
-                    print("match:")
-                    print(match.group(1))
-                    print("Failed to parse JSON:", e)
+                    logger.warning(f"Failed to parse JSON: {e}")
                     return None
 
-            print("No JSON found in the string.")
-            print(s)
+            logger.debug("No JSON found in the string.")
+            logger.debug(s)
             return None
 
 
 class LitellmModel(LanguageModelBase):
-    def __init__(self, model_name: str, provider: str, kw_args: Dict[str, Any] = {}):
+    def __init__(
+        self,
+        model_name: str,
+        provider: str,
+        kw_args: Optional[Dict[str, Any]] = None,
+    ):
         self.model_name = model_name
         self.provider = provider
-        self.kw_args = kw_args
+        self.kw_args = kw_args or {}
 
     async def generate(self, messages: List[Dict]) -> str:
         provider = self.provider
         base_url = None
         extra_headers = {"Content-Type": "application/json"}
-        # if self.provider and self.provider.upper() == RITS:
-        #     provider = "openai"
-        #     base_url = rits_model_to_endpoint[self.model_name]
-        #     extra_headers["RITS_API_KEY"] = os.getenv("RITS_API_KEY") or ""
 
         call_kwargs = {
             **self.kw_args,  # copy existing provider config
@@ -98,18 +96,20 @@ class LitellmModel(LanguageModelBase):
             **call_kwargs,
         )
         choice0 = response.choices[0]
-        chunk = choice0.message.content
-        if choice0.finish_reason == "length":  # max tokens reached
+        resp_msg = choice0.message
+        chunk = resp_msg.content
+        if choice0.finish_reason == "length":  # max output tokens reached
+            continue_msg = {
+                "role": "user",
+                "content": (
+                    "Continue the previous answer starting exactly from the last incomplete sentence. "
+                    "Do not repeat anything. Do not add any prefix."
+                ),
+            }
             next_messages = [
                 *messages,
-                choice0.message,
-                {
-                    "role": "user",
-                    "content": (
-                        "Continue the previous answer starting exactly from the last incomplete sentence.",
-                        "Do not repeat anything.  Do not add any prefix.",
-                    ),
-                },
+                resp_msg,
+                continue_msg,
             ]
             return chunk + await self.generate(next_messages)
         return chunk
