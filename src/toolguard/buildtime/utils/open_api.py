@@ -1,11 +1,11 @@
 import json
-from enum import StrEnum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, TypeVar, Union
 
 import yaml  # type: ignore[import]
 from pydantic import BaseModel, Field, HttpUrl
 
+from toolguard.buildtime.compat.strenum import StrEnum
 from .dict import find_ref
 from .http import MEDIA_TYPE_APP_JSON
 from .jschema import JSchema
@@ -171,7 +171,10 @@ class OpenAPI(BaseModel):
 
     def get_operation_by_operationId(self, operationId: str) -> Operation | None:
         for path_item in self.paths.values():
-            for op in path_item.operations.values():
+            path = self.resolve_ref(path_item, PathItem)
+            if path is None:
+                continue
+            for op in path.operations.values():
                 if op.operationId == operationId:
                     return op
         return None

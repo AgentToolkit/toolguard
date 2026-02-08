@@ -1,10 +1,10 @@
 import json
-from enum import StrEnum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
+from toolguard.buildtime.compat.strenum import StrEnum
 from toolguard.buildtime.utils.safe_py import run_safe_python
 from toolguard.runtime.data_types import FileTwin
 
