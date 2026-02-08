@@ -160,11 +160,10 @@ async def improve_tool_guard(
                     return True
             return False
 
-        if not await assert_any_condition_met(
+        assert_any_condition_met(
             within_24h,
             airline_cancelled,
-        ):
-            raise PolicyViolationException("Cancellation policy not met.")
+        )
 
         ```
     """
