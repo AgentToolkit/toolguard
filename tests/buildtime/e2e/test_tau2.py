@@ -131,8 +131,8 @@ async def test_tau2_simple():
 
 
 @pytest.mark.asyncio
-async def test_tau2_postpone_api():
-    work_dir = Path("tests/tmp/e2e/tau2_airline_api")
+async def test_tau2_complex_api():
+    work_dir = Path("tests/tmp/e2e/tau2_complex_api")
     fns = api_cls_to_functions(AirlineTools)
     tool_fns = [fn for fn in fns if hasattr(fn, "__tool__")]
 
@@ -178,7 +178,7 @@ async def test_tau2_postpone_api():
         app_name="tau2_api",
     )
 
-    # Runtime
+    # Positive Example
     api = MagicMock()
     with load_toolguards(step2_out_dir) as toolguard:
         from tau2_api.i_tau2_api import ITau2Api
@@ -210,7 +210,6 @@ async def test_tau2_postpone_api():
             insurance="no",
         )
 
-        api: ITau2Api = MagicMock()
         api.get_reservation_details = AsyncMock()
         api.get_reservation_details.side_effect = (
             lambda reservation_id: reservation if reservation_id == "ZFA04Y" else None
@@ -224,5 +223,63 @@ async def test_tau2_postpone_api():
 
         # Should not raise exception - business class can be cancelled anytime
         await toolguard.guard_toolcall(
-            "cancel_flight", args={"reservation_id": "ZFA04Y"}, delegate=api
+            "cancel_reservation",
+            args={"reservation_id": "ZFA04Y"},
+            delegate=ToolMethodsInvoker(api),
         )
+
+    # Negative Example
+    with load_toolguards(step2_out_dir) as toolguard:
+        from tau2_api.i_tau2_api import ITau2Api
+
+        created_at = (datetime.now() - timedelta(days=14)).strftime("%Y-%m-%dT%H:%M:%S")
+        reservation = Reservation(
+            reservation_id="ZFA04Y",
+            user_id="sara_doe_496",
+            origin="SFO",
+            destination="JFK",
+            flight_type="round_trip",
+            cabin="basic_economy",
+            flights=[
+                ReservationFlight(
+                    flight_number="HAT001",
+                    origin="SFO",
+                    destination="JFK",
+                    date="2024-06-15",
+                    price=1200,
+                )
+            ],
+            passengers=[
+                Passenger(first_name="John", last_name="Doe", dob="1990-01-01")
+            ],
+            payment_history=[Payment(payment_id="pay_001", amount=1200)],
+            created_at=created_at,
+            total_baggages=1,
+            nonfree_baggages=0,
+            insurance="no",
+        )
+
+        api: ITau2Api = MagicMock()
+
+        async def get_reservation_side_effect(reservation_id: str):
+            return reservation if reservation_id == "ZFA04Y" else None
+
+        api.get_reservation_details = AsyncMock(side_effect=get_reservation_side_effect)
+        api.get_flight_status = AsyncMock()
+        api.get_flight_status.side_effect = (
+            lambda flight_number, date: "scheduled"
+            if flight_number == "HAT001"
+            else None
+        )
+
+        try:
+            await toolguard.guard_toolcall(
+                "cancel_reservation",
+                args={"reservation_id": "ZFA04Y"},
+                delegate=ToolMethodsInvoker(api),
+            )
+            assert False
+        except PolicyViolationException as ex:
+            assert ex.message
+            assert len(ex.rule) == 2
+            assert ex.rule[0] == "cancel_reservation"

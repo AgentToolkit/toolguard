@@ -1,7 +1,8 @@
-from enum import StrEnum
 from typing import Any, Dict, List, Optional, Union
 
 from pydantic import Field
+
+from toolguard.buildtime.compat.strenum import StrEnum
 
 from .ref import DocumentWithRef, Reference
 

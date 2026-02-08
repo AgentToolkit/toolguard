@@ -29,7 +29,7 @@ Uses the output from Step 1 and the OpenAPI spec to generate Python code that en
 
 ## 🐍 Requirements
 
-- Python 3.12+
+- Python 3.10+
 
 ---
 

@@ -1,13 +1,110 @@
+import inspect
 import json
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Type, TypeVar
-
+from typing import Any, Awaitable, Callable, Dict, List, Type, TypeVar
+from loguru import logger
 from pydantic import BaseModel, Field, ValidationError
+
+from toolguard.runtime.rules import current_rule
 
 API_PARAM = "api"
 ARGS_PARAM = "args"
 RESULTS_FILENAME = Path("result.json")
+
+
+class PolicyViolationException(Exception):
+    """Exception raised when a policy violation is detected.
+
+    This exception captures both the violation message and the rule(s) that were violated.
+    The rule information is automatically captured from the current execution context.
+
+    Attributes:
+        _msg: The error message describing the policy violation.
+        _rule: Tuple of rule identifiers that were violated (empty tuple if no rules).
+    """
+
+    _msg: str
+    _rule: tuple[str, ...]
+
+    def __init__(self, message: str):
+        super().__init__(message)
+        self._msg = message
+        self._rule = current_rule.get()
+
+    @property
+    def message(self):
+        return self._msg + (f" (rule: {self._rule})" if self._rule else "")
+
+    @property
+    def rule(self):
+        return self._rule
+
+    def __str__(self):
+        return self._msg + (f" (rule: {self._rule})" if self._rule else "")
+
+
+class PotentialPolicyViolationException(PolicyViolationException):
+    pass
+
+
+async def assert_any_condition_met(*checks: Callable[[], bool | Awaitable[bool]]):
+    collected_exceptions = []
+    for check in checks:
+        try:
+            result = check()
+            if inspect.isawaitable(result):
+                result = await result
+
+            if result:
+                return
+
+        except Exception as ex:
+            collected_exceptions.append(ex)
+            logger.warning(
+                "Condition failed, ignoring",
+                extra={
+                    "check": getattr(check, "__name__", repr(check)),
+                    "error": str(ex),
+                },
+            )
+            continue
+
+    if collected_exceptions:
+        raise collected_exceptions[0]
+
+    msg = "No conditions met"
+    raise PolicyViolationException(msg)
+
+
+class IToolInvoker(ABC):  # pylint: disable=too-few-public-methods
+    """Abstract base class for tool invokers.
+
+    This interface defines the contract for invoking tools with type-safe returns.
+    Implementations should handle the actual tool invocation logic for different
+    tool frameworks (e.g., functions, methods, LangChain tools, MCP server, OpenAPI...).
+    """
+
+    T = TypeVar("T")
+
+    @abstractmethod
+    async def invoke(
+        self, toolname: str, arguments: Dict[str, Any], return_type: Type[T]
+    ) -> T:
+        """Invoke a tool with the given name and arguments.
+
+        Args:
+            toolname: The name of the tool to invoke.
+            arguments: A dictionary of arguments to pass to the tool.
+            return_type: The expected return type for type-safe deserialization.
+
+        Returns:
+            The result of the tool invocation, typed as T.
+
+        Raises:
+            Exception: Implementation-specific exceptions may be raised during invocation.
+        """
+        ...
 
 
 class FileTwin(BaseModel):
@@ -138,45 +235,3 @@ class ToolGuardsCodeGenerationResult(BaseModel):
             return ToolGuardsCodeGenerationResult.model_validate(d)  # load deep
         except ValidationError as e:
             raise ValueError(f"Invalid tool spec in {full_path}") from e
-
-
-class PolicyViolationException(Exception):
-    _msg: str
-
-    def __init__(self, message: str):
-        super().__init__(message)
-        self._msg = message
-
-    @property
-    def message(self):
-        return self._msg
-
-
-class IToolInvoker(ABC):  # pylint: disable=too-few-public-methods
-    """Abstract base class for tool invokers.
-
-    This interface defines the contract for invoking tools with type-safe returns.
-    Implementations should handle the actual tool invocation logic for different
-    tool frameworks (e.g., functions, methods, LangChain tools, MCP server, OpenAPI...).
-    """
-
-    T = TypeVar("T")
-
-    @abstractmethod
-    async def invoke(
-        self, toolname: str, arguments: Dict[str, Any], return_type: Type[T]
-    ) -> T:
-        """Invoke a tool with the given name and arguments.
-
-        Args:
-            toolname: The name of the tool to invoke.
-            arguments: A dictionary of arguments to pass to the tool.
-            return_type: The expected return type for type-safe deserialization.
-
-        Returns:
-            The result of the tool invocation, typed as T.
-
-        Raises:
-            Exception: Implementation-specific exceptions may be raised during invocation.
-        """
-        ...

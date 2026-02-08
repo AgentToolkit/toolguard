@@ -14,4 +14,4 @@ class ToolMethodsInvoker(IToolInvoker):
     ) -> T:
         mtd = getattr(self._obj, toolname)
         assert callable(mtd), f"Tool {toolname} was not found"
-        return mtd(**arguments)
+        return await mtd(**arguments)
