@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from toolguard.buildtime.llm.i_tg_llm import I_TG_LLM
+from toolguard.buildtime.llm import I_TG_LLM
 from toolguard.buildtime.llm.tg_litellm import LitellmModel
 
 

@@ -15,7 +15,7 @@ from toolguard.buildtime.gen_spec.utils import (
     read_prompt_file,
     save_output,
 )
-from toolguard.buildtime.llm.i_tg_llm import I_TG_LLM
+from toolguard.buildtime.llm import I_TG_LLM
 from toolguard.buildtime.utils.open_api import OpenAPI
 from toolguard.runtime.data_types import ToolGuardSpec, ToolGuardSpecItem
 

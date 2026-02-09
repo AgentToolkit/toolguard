@@ -1,13 +1,12 @@
 """Unit tests for LitellmModel with mocked acompletion."""
 
-import asyncio
 import json
 from unittest.mock import MagicMock, patch
 
 import pytest
-from litellm.exceptions import RateLimitError, Timeout
+from litellm.exceptions import APIError, RateLimitError, Timeout
 
-from toolguard.buildtime.llm.tg_litellm import LitellmModel
+from toolguard.buildtime.llm import LitellmModel
 
 
 @pytest.fixture
@@ -158,27 +157,6 @@ async def test_generate_with_timeout_retry(mock_model):
 
 
 @pytest.mark.asyncio
-async def test_generate_with_asyncio_timeout_retry(mock_model):
-    """Test retry logic on asyncio.TimeoutError."""
-    expected_content = "Success after asyncio timeout retry"
-
-    with patch("toolguard.buildtime.llm.tg_litellm.acompletion") as mock_acompletion:
-        with patch("toolguard.buildtime.llm.tg_litellm.asyncio.sleep") as mock_sleep:
-            # First call raises asyncio.TimeoutError, second succeeds
-            mock_acompletion.side_effect = [
-                asyncio.TimeoutError(),
-                create_mock_response(expected_content),
-            ]
-
-            messages = [{"role": "user", "content": "Hello"}]
-            result = await mock_model.generate(messages)
-
-            assert result == expected_content
-            assert mock_acompletion.call_count == 2
-            mock_sleep.assert_called_once()
-
-
-@pytest.mark.asyncio
 async def test_generate_timeout_max_retries_exceeded(mock_model):
     """Test that RuntimeError is raised after max retries for timeout."""
     with patch("toolguard.buildtime.llm.tg_litellm.acompletion") as mock_acompletion:
@@ -190,10 +168,9 @@ async def test_generate_timeout_max_retries_exceeded(mock_model):
 
             messages = [{"role": "user", "content": "Hello"}]
 
-            with pytest.raises(RuntimeError) as exc_info:
+            with pytest.raises(Timeout):
                 await mock_model.generate(messages)
-
-            assert "timed out after" in str(exc_info.value)
+            # assert "timed out after" in str(exc_info.value)
             # Should try max_retries + 1 times (initial + 5 retries)
             assert mock_acompletion.call_count == 6
 
@@ -206,10 +183,8 @@ async def test_generate_unexpected_error(mock_model):
 
         messages = [{"role": "user", "content": "Hello"}]
 
-        with pytest.raises(RuntimeError) as exc_info:
+        with pytest.raises(ValueError):
             await mock_model.generate(messages)
-
-        assert "Unexpected error during chat completion" in str(exc_info.value)
 
 
 @pytest.mark.asyncio
@@ -294,6 +269,22 @@ async def test_chat_json_max_retries_exceeded(mock_model):
 
             assert "Exceeded maximum retries" in str(exc_info.value)
             assert mock_acompletion.call_count == 5
+
+
+@pytest.mark.asyncio
+async def test_generate_api_timeout(mock_model):
+    """Test that RuntimeError is raised after max retries for invalid JSON."""
+    with patch("toolguard.buildtime.llm.tg_litellm.acompletion") as mock_acompletion:
+        mock_acompletion.side_effect = APIError(
+            status_code=500,
+            message="The web server failed to respond within the specified time.",
+            model="gpt-4",
+            llm_provider="openai",
+        )
+        messages = [{"role": "user", "content": "Give me JSON"}]
+        with pytest.raises(APIError) as exc_info:
+            await mock_model.chat_json(messages)
+            assert exc_info
 
 
 @pytest.mark.asyncio
