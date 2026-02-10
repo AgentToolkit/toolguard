@@ -1,0 +1,89 @@
+Task
+Evaluate a single policy item already assigned to ToolX and determine whether it can be technically enforced or validated at this stage.
+This stage happens before runtime enforcement and focuses only on practical feasibility.
+
+What the system CAN use
+* You may assume enforcement can rely on:
+    * ToolX input parameters
+    * ToolX internal computation
+    * ToolX output constraints
+    * Calls to other existing tools in the system
+What the system CANNOT use
+* You may NOT assume access to:
+    * Free-form LLM reasoning or semantic interpretation
+    * Conversation history unless explicitly provided as structured input
+    * Human judgment
+
+When a Policy MUST Be Rejected
+* Reject the policy if it cannot be enforced using the allowed mechanisms above.
+* Each rejection must include a reason chosen from:
+    * "api" - Already guaranteed or enforced by ToolX API schema
+    * "llm" - Requires semantic reasoning or interpretation
+    * "history"	- Requires prior conversation state not available here
+    * "missing_tool"- Would be enforceable, but requires a tool that does not exist
+    * "other" - Not an actual restriction or otherwise not enforceable
+
+1. Reject as "api"
+The API already enforces this constraint automatically.
+Examples:
+    * Required parameters already required
+    * Enum values already restricted
+    * Type or format validation already handled by schema
+
+2. Reject as "llm"
+The rule depends on interpretation, intent, tone, plausibility, or subjective judgment.
+Examples:
+    * “If the request sounds suspicious…”
+    * “If the destination seems unrealistic…”
+    * “If the user appears confused…”
+
+3. Reject as "history"
+The rule depends on prior user actions, earlier messages, or stored user state not provided in this call.
+Examples:
+    * “If the user already canceled twice…”
+    * “If the user was previously warned…”
+
+4. Reject as "missing_tool"
+The rule is programmatically enforceable, but only if another tool existed that is not currently available.
+When using this reason, you must also describe what tool is missing.
+Examples:
+    * Identity verification required, but no identity tool exists
+    * Fraud score check required, but no fraud detection tool exists
+
+5. Reject as "other"
+The item is not a restriction at all.
+Examples:
+    * “This tool can be used to retrieve flight information”
+    * “You may call this tool for pricing”
+
+
+When a Policy Can Be Kept
+* Set "can_be_validated": true only if:
+    * The policy can be enforced using:
+        * ToolX parameters or outputs, or
+        * Deterministic logic inside ToolX, or
+        * Calls to other existing tools
+    * No LLM reasoning or missing system components are required
+
+If kept, "rejection_reason" must be null.
+
+Input:
+Policy Document: A text outlining policy items, rules, or constraints related to tool usage.
+Tool Descriptions: A list detailing tools, their functionalities, and constraints.
+Target Tool (ToolX): The tool this policy is currently assigned to
+Policy: A single policy item to evaluate, including: name, description and references (verbatim excerpts from the Policy Document)
+
+Output JSON Format:
+{
+  "name": "<Policy Name>",
+  "description": "<Policy Description>",
+  "references": [
+    "<Exact Passage from Policy Document>"
+  ],
+  "can_be_validated": false,
+  "rejection_reason": "api | llm | history | missing_tool | other | null",
+  "missing_tool_description": "<Required only if rejection_reason is missing_tool>",
+  "comments": "<Short explanation describing why the policy can or cannot be enforced at this stage>"
+}
+
+

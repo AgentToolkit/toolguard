@@ -98,7 +98,8 @@ class ToolGuardSpecGenerator:
       
         await self.add_references(tool_name, spec)
         self.reference_correctness(tool_name, spec)
-            
+        
+       
         
         if self.step is None:
             spec = await self.create_spec(tool_name)
