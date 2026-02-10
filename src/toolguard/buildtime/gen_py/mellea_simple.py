@@ -5,7 +5,7 @@ from mellea.core import CBlock, Component, Context, GenerateLog, ModelOutputThun
 from mellea.formatters import Formatter
 from mellea.formatters.template_formatter import TemplateFormatter
 
-from toolguard.buildtime.llm.i_tg_llm import I_TG_LLM
+from toolguard.buildtime.llm import I_TG_LLM
 
 
 class SimpleBackend(Backend):

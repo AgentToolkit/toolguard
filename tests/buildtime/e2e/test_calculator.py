@@ -12,7 +12,7 @@ from examples.calculator.inputs import tool_methods as mtd_tools
 
 from toolguard.buildtime import LitellmModel, generate_guard_specs, generate_guards_code
 from toolguard.buildtime.data_types import TOOLS
-from toolguard.buildtime.llm.i_tg_llm import I_TG_LLM
+from toolguard.buildtime.llm import I_TG_LLM
 from toolguard.buildtime.utils.open_api import OpenAPI
 from toolguard.extra.api_to_functions import api_cls_to_functions
 from toolguard.extra.langchain_to_oas import langchain_tools_to_openapi
@@ -147,23 +147,6 @@ async def test_tool_functions_short():
     ]
 
     gen_result = await _build_toolguards(work_dir, funcs, "_fns_short", True)
-    gen_result = ToolGuardsCodeGenerationResult.load(work_dir / model / STEP2)
-    await assert_toolgurards_run(gen_result, ToolFunctionsInvoker(funcs))
-
-
-@pytest.mark.skip()
-@pytest.mark.asyncio
-async def test_tool_functions_long():
-    work_dir = Path("tests/tmp/e2e/calculator/tool_functions_long")
-    funcs = [
-        fn_tools.divide_tool,
-        fn_tools.add_tool,
-        fn_tools.subtract_tool,
-        fn_tools.multiply_tool,
-        fn_tools.map_kdi_number,
-    ]
-
-    gen_result = await _build_toolguards(work_dir, funcs, "_fns_long", False)
     gen_result = ToolGuardsCodeGenerationResult.load(work_dir / model / STEP2)
     await assert_toolgurards_run(gen_result, ToolFunctionsInvoker(funcs))
 

@@ -9,7 +9,7 @@ from toolguard.buildtime.gen_py.gen_toolguards import (
     generate_toolguards_from_openapi,
 )
 from toolguard.buildtime.gen_spec.spec_generator import extract_toolguard_specs
-from toolguard.buildtime.llm.i_tg_llm import I_TG_LLM
+from toolguard.buildtime.llm import I_TG_LLM
 from toolguard.buildtime.utils.open_api import OpenAPI
 from toolguard.runtime.data_types import ToolGuardsCodeGenerationResult, ToolGuardSpec
 
