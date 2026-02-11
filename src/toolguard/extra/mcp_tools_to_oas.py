@@ -10,12 +10,11 @@ import httpx
 def export_mcp_tools_as_openapi(cfg: ExportConfig) -> Dict[str, Any]:
     """
     Returns an OpenAPI 3.1 spec where each MCP tool becomes:
-      POST /tools/{tool_id}
+      POST /tools/{tool_name}
 
-    The spec includes vendor extensions:
-      x-mcp-server-uuid: virtual server UUID
-      x-mcp-endpoint: full MCP endpoint URL
-      x-mcp-tool-id: tool id
+    Notes:
+    - Input schema: from tool metadata (inputSchema/parameters/...)
+    - Output schema: only if tool metadata provides it; otherwise exported as "any" ({})
     """
     tools_url = f"{cfg.gateway_url.rstrip('/')}/tools"
     mcp_endpoint = f"{cfg.gateway_url.rstrip('/')}/servers/{cfg.server_uuid}/mcp/"
@@ -32,14 +31,17 @@ def export_mcp_tools_as_openapi(cfg: ExportConfig) -> Dict[str, Any]:
     paths: dict[str, Any] = {}
 
     for tool in tools:
-        tool_name = _pick_mcp_tool_name(tool)
+        tool_name = _pick_mcp_tool_name(tool)  # e.g. "math-upstream-add-tool"
         tool_id = _pick_tool_id(tool)
         desc = _pick_tool_description(tool)
         input_schema = _pick_input_schema(tool)
+
+        # NEW: output schema (if present); else "any"
+        output_schema, output_schema_found = _pick_output_schema(tool)
+
         tool_display_name = _pick_tool_display_name(tool)
         tool_original_name = _pick_mcp_tool_original_name(tool)
-        # Each tool is exported as a REST-like endpoint:
-        # POST /tools/<tool_id>  { ...tool args... }
+
         route = f"/tools/{tool_name}"
 
         paths[route] = {
@@ -55,23 +57,16 @@ def export_mcp_tools_as_openapi(cfg: ExportConfig) -> Dict[str, Any]:
                     "content": {
                         "application/json": {
                             "schema": input_schema,
-                            "examples": {
-                                "example": {
-                                    "value": {"__note__": "Fill with tool arguments"}
-                                }
-                            },
                         }
                     },
                 },
                 "responses": {
                     "200": {
-                        "description": "Tool execution result (MCP CallToolResult-compatible)",
+                        "description": "Tool execution result (schema depends on tool/runtime).",
                         "content": {
                             "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "additionalProperties": True,
-                                }
+                                # CHANGED: no longer hard-coded
+                                "schema": output_schema,
                             }
                         },
                     }
@@ -80,7 +75,8 @@ def export_mcp_tools_as_openapi(cfg: ExportConfig) -> Dict[str, Any]:
                 "x-mcp-server-uuid": cfg.server_uuid,
                 "x-mcp-endpoint": mcp_endpoint,
                 "x-mcp-tool-id": tool_id,
-                "x-mcp-upstream-meta": tool,  # optional: embed full raw tool metadata
+                "x-mcp-upstream-meta": tool,  # embed raw tool metadata
+                "x-mcp-output-schema-found": output_schema_found,
             }
         }
 
@@ -91,20 +87,17 @@ def export_mcp_tools_as_openapi(cfg: ExportConfig) -> Dict[str, Any]:
             "version": cfg.version,
             "description": (
                 "Export of MCP Gateway tools as an OpenAPI contract. "
-                "These paths represent tool invocations; execution should be routed via MCP using x-mcp-* fields."
+                "These paths represent tool invocations; execution should be routed via MCP using x-mcp-* fields.\n"
+                "Input schemas are sourced from tool metadata. Output schemas are included only when the tool metadata provides them; otherwise exported as 'any'."
             ),
         },
-        "servers": [
-            # This is the logical base URL for the exported REST-like paths:
-            {"url": cfg.gateway_url.rstrip("/")},
-        ],
+        "servers": [{"url": cfg.gateway_url.rstrip("/")}],
         "paths": paths,
         "tags": [{"name": "mcp-tools"}],
         "components": {
             "securitySchemes": {"bearerAuth": {"type": "http", "scheme": "bearer"}}
         },
         "security": [{"bearerAuth": []}],
-        # Top-level vendor extensions for convenience
         "x-generated-at": datetime.now(timezone.utc).isoformat(),
         "x-mcp": {
             "gateway_url": cfg.gateway_url.rstrip("/"),
@@ -119,10 +112,9 @@ def export_mcp_tools_as_openapi(cfg: ExportConfig) -> Dict[str, Any]:
 
 @dataclass(frozen=True)
 class ExportConfig:
-    gateway_url: str  # e.g. http://127.0.0.1:4444
-    bearer_token: str  # MCPGATEWAY_BEARER_TOKEN
-    server_uuid: str  # MCPGATEWAY_SERVER_UUID (virtual server)
-    out_path: str = "mcp_tools_openapi.json"
+    gateway_url: str
+    bearer_token: str
+    server_uuid: str
     title: str = "MCP Gateway Tools"
     version: str = "0.1.0"
 
@@ -136,23 +128,20 @@ def _pick_mcp_tool_original_name(tool: dict[str, Any]) -> str:
 
 
 def _pick_mcp_tool_name(tool: dict[str, Any]) -> str:
-    # Different gateway versions may use id/name fields.
     return tool.get("name") or "unknown-tool"
 
 
-def _pick_tool_name(tool: dict[str, Any]) -> str:
-    # Different gateway versions may use id/name fields.
-    return tool.get("customName") or "unknown-tool"
-
-
 def _pick_tool_id(tool: dict[str, Any]) -> str:
-    # Different gateway versions may use id/name fields.
     return tool.get("id") or "unknown-tool"
 
 
 def _pick_tool_display_name(tool: dict[str, Any]) -> str:
-    # Different gateway versions may use id/name fields.
-    return tool.get("displayName") or "unknown-tool"
+    return (
+        tool.get("displayName")
+        or tool.get("customName")
+        or tool.get("name")
+        or "unknown-tool"
+    )
 
 
 def _pick_tool_description(tool: dict[str, Any]) -> str:
@@ -160,20 +149,42 @@ def _pick_tool_description(tool: dict[str, Any]) -> str:
 
 
 def _pick_input_schema(tool: dict[str, Any]) -> dict[str, Any]:
-    """
-    Try common fields. Gateways often expose one of:
-      - inputSchema
-      - input_schema
-      - parameters (JSONSchema-ish)
-      - schema
-    If nothing exists, default to free-form object.
-    """
     for key in ("inputSchema", "input_schema", "parameters", "schema"):
         schema = tool.get(key)
         if isinstance(schema, dict) and schema:
-            # Ensure it looks like JSON Schema
-            if "type" not in schema:
-                schema = {"type": "object", **schema}
+            schema = dict(schema)
+            schema.pop("$schema", None)
+            if "type" not in schema and "properties" in schema:
+                schema["type"] = "object"
             return schema
 
     return {"type": "object", "additionalProperties": True}
+
+
+def _pick_output_schema(tool: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    """
+    Output schema is NOT standardized by MCP/Gateways.
+    If present in metadata, use it. Otherwise return OpenAPI 3.1 'any' schema: {}.
+
+    We check common keys used across systems.
+    """
+    for key in (
+        "outputSchema",
+        "output_schema",
+        "responseSchema",
+        "response_schema",
+        "returnSchema",
+        "return_schema",
+        "resultSchema",
+        "result_schema",
+    ):
+        schema = tool.get(key)
+        if isinstance(schema, dict) and schema:
+            schema = dict(schema)
+            schema.pop("$schema", None)
+            if "type" not in schema and "properties" in schema:
+                schema["type"] = "object"
+            return schema, True
+
+    # OpenAPI 3.1: empty schema means "any type"
+    return {}, False
