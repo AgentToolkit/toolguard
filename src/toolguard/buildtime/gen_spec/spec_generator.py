@@ -22,12 +22,28 @@ from toolguard.runtime.data_types import ToolGuardSpec, ToolGuardSpecItem
 
 
 class PolicySpecStep(StrEnum):
+    """Policy specification generation steps.
+
+    Each step represents a phase in the policy generation pipeline.
+    """
+
     CREATE_POLICIES = "CREATE_POLICIES"
+    """Extract initial policy specifications from the policy document."""
+
     ADD_POLICIES = "ADD_POLICIES"
+    """Iteratively refine and extend generated policies."""
+
     REVIEW_POLICIES = "REVIEW_POLICIES"
+    """Review generated policies for correctness."""
+
     REVIEW_POLICIES_FEASIBILITY = "REVIEW_POLICIES_FEASIBILITY"
+    """Validate that each policy can be deterministically enforced."""
+
     CORRECT_REFERENCES = "CORRECT_REFERENCES"
+    """Ensure references correctly map to the original policy document."""
+
     REVIEW_POLICIES_SELF_CONTAINED = "REVIEW_POLICIES_SELF_CONTAINED"
+    """Ensure each policy description is fully self-contained and unambiguous."""
 
 
 # --- Options container ---
