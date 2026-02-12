@@ -160,7 +160,7 @@
       "post": {
         "operationId": "divide_tool",
         "summary": "Divide one number by another",
-        "description": "Divide one number by another. The divisor must not be zero.",
+        "description": "Divide one number by another.",
         "x-input-examples": [
           "divide_tool(10.0, 2.0)",
           "divide_tool(3.0, 0.5)",
@@ -182,7 +182,7 @@
                   },
                   "h": {
                     "type": "number",
-                    "description": "The divisor (must not be zero).",
+                    "description": "The divisor.",
                     "example": 2.0
                   }
                 },
@@ -199,22 +199,6 @@
                 "schema": {
                   "type": "number",
                   "example": 5.0
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Division by zero is not allowed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "example": "Division by zero is not allowed."
-                    }
-                  }
                 }
               }
             }

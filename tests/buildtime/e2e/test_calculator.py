@@ -159,6 +159,22 @@ async def test_tool_functions_short():
 
 
 @pytest.mark.asyncio
+async def test_tool_functions_long():
+    work_dir = Path("tests/tmp/e2e/calculator/tool_functions_long")
+    funcs = [
+        fn_tools.divide_tool,
+        fn_tools.add_tool,
+        fn_tools.subtract_tool,
+        fn_tools.multiply_tool,
+        fn_tools.map_kdi_number,
+    ]
+
+    gen_result = await _build_toolguards(work_dir, funcs, "_fns_long")
+    gen_result = ToolGuardsCodeGenerationResult.load(work_dir / model / STEP2)
+    await assert_toolgurards_run(gen_result, ToolFunctionsInvoker(funcs))
+
+
+@pytest.mark.asyncio
 async def test_tool_methods():
     work_dir = Path("tests/tmp/e2e/calculator/tool_methods")
     fns = api_cls_to_functions(mtd_tools.CalculatorTools)

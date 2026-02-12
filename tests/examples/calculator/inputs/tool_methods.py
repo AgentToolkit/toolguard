@@ -6,13 +6,10 @@ class CalculatorTools:
 
         Args:
             g (float): The dividend.
-            h (float): The divisor (must not be zero).
+            h (float): The divisor.
 
         Returns:
             float: The result of g divided by h.
-
-        Raises:
-            ZeroDivisionError: If h is zero.
         """
         return g / h
 
