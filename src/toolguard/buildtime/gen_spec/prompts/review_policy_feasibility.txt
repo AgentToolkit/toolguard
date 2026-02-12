@@ -1,6 +1,8 @@
 Task
 Evaluate a single policy item already assigned to ToolX and determine whether it can be technically enforced or validated at this stage.
 This stage happens before runtime enforcement and focuses only on practical feasibility.
+The purpose of this evaluation is to determine whether the policy would result in concrete guard logic being implemented in code for ToolX.
+If no validation, rejection, transformation, or output constraint would be generated from the policy, it must be rejected.
 
 What the system CAN use
 * You may assume enforcement can rely on:
@@ -50,12 +52,16 @@ Examples:
     * Identity verification required, but no identity tool exists
     * Fraud score check required, but no fraud detection tool exists
 
-5. Reject as "other"
-The item is not a restriction at all.
-Examples:
-    * “This tool can be used to retrieve flight information”
-    * “You may call this tool for pricing”
+5. Reject as "other" — No Guard Logic Produced
+Reject the policy if it does not require ToolX to perform any of the following in code:
+    * Validate an input parameter
+    * Enforce a limit or constraint
+    * Modify or compute an output value
+    * Block, reject, or alter a request
+    * Call another tool to verify something
+If the policy only removes restrictions, grants unconditional permission, or describes a business rule without requiring system behavior, then there is no guard code to generate, and the policy must be rejected.
 
+These policies are informational or business guidance, not enforceable validation rules.
 
 When a Policy Can Be Kept
 * Set "can_be_validated": true only if:

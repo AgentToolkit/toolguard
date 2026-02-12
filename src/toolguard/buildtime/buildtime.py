@@ -8,7 +8,7 @@ from toolguard.buildtime.gen_py.gen_toolguards import (
     generate_toolguards_from_functions,
     generate_toolguards_from_openapi,
 )
-from toolguard.buildtime.gen_spec.spec_generator import extract_toolguard_specs
+from toolguard.buildtime.gen_spec.spec_generator import extract_toolguard_specs,PolicySpecOptions
 from toolguard.buildtime.llm import I_TG_LLM
 from toolguard.buildtime.utils.open_api import OpenAPI
 from toolguard.runtime.data_types import ToolGuardsCodeGenerationResult, ToolGuardSpec
@@ -22,9 +22,7 @@ async def generate_guard_specs(
     work_dir: str | Path,
     *,
     tools2guard: List[str] | None = None,
-    short: bool = False,
-    step = None,
-    examples = None,
+    options: Optional[PolicySpecOptions] = None
 ) -> List[ToolGuardSpec]:
     """Generate guard specifications from policy text and tools.
 
@@ -34,7 +32,7 @@ async def generate_guard_specs(
         llm: The LLM instance to use for generation.
         work_dir: The working directory for intermediate files.
         tools2guard: Optional list of specific tool names to generate guards for.
-        short: Whether to use a short generation process, less accurate (default: False).
+        
 
     Returns:
         List of ToolGuardSpec objects containing the generated specifications.
@@ -43,7 +41,7 @@ async def generate_guard_specs(
     work_dir.mkdir(parents=True, exist_ok=True)
     logger.debug("Step1 folder created")
     return await extract_toolguard_specs(
-        policy_text, tools, work_dir, llm, tools2guard, short, step, examples
+        policy_text, tools, work_dir, llm, tools2guard,options
     )
 
 
