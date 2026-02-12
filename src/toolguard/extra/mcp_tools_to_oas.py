@@ -122,7 +122,6 @@ class ExportConfig:
     gateway_url: str  # e.g. http://127.0.0.1:4444
     bearer_token: str  # MCPGATEWAY_BEARER_TOKEN
     server_uuid: str  # MCPGATEWAY_SERVER_UUID (virtual server)
-    out_path: str = "mcp_tools_openapi.json"
     title: str = "MCP Gateway Tools"
     version: str = "0.1.0"
 
