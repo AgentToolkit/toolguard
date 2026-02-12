@@ -2,9 +2,10 @@ import asyncio
 import json
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple, cast, Set
-from enum import Enum, auto
 from loguru import logger
+from pydantic import BaseModel, Field
 
+from toolguard.buildtime.compat.strenum import StrEnum
 from toolguard.buildtime.data_types import TOOLS
 from toolguard.buildtime.gen_spec.data_types import ToolInfo
 from toolguard.buildtime.gen_spec.fn_to_toolinfo import function_to_toolInfo
@@ -20,34 +21,33 @@ from toolguard.buildtime.utils.open_api import OpenAPI
 from toolguard.runtime.data_types import ToolGuardSpec, ToolGuardSpecItem
 
 
-class PolicySpecStep(Enum):
-    CREATE_POLICIES = auto()
-    ADD_POLICIES = auto()
-    REVIEW_POLICIES = auto()
-    REVIEW_POLICIES_FEASIBILITY = auto()
-    CORRECT_REFERENCES = auto()
-    REVIEW_POLICIES_SELF_CONTAINED = auto()
+class PolicySpecStep(StrEnum):
+    CREATE_POLICIES = "CREATE_POLICIES"
+    ADD_POLICIES = "ADD_POLICIES"
+    REVIEW_POLICIES = "REVIEW_POLICIES"
+    REVIEW_POLICIES_FEASIBILITY = "REVIEW_POLICIES_FEASIBILITY"
+    CORRECT_REFERENCES = "CORRECT_REFERENCES"
+    REVIEW_POLICIES_SELF_CONTAINED = "REVIEW_POLICIES_SELF_CONTAINED"
 
 
 # --- Options container ---
-class PolicySpecOptions:
-    def __init__(
-        self,
-        spec_steps: Optional[Set[PolicySpecStep]] = None,
-        add_iterations: int = 3,
-        example_number: Optional[
-            int
-        ] = None,  # None = as many as LLM wants, 0 = no examples, >0 = that many
-    ):
-        # Default: run all steps if nothing passed
-        all_steps = set(item for item in PolicySpecStep)
-        self.spec_steps: Set[PolicySpecStep] = spec_steps or all_steps
-        self.add_iterations: int = add_iterations
-        self.example_number: Optional[int] = example_number
+class PolicySpecOptions(BaseModel):
+    spec_steps: Set[PolicySpecStep] = Field(
+        default_factory=lambda: set(PolicySpecStep),
+        description="Set of policy spec steps to run. Defaults to all steps.",
+    )
+    add_iterations: int = Field(
+        default=3, description="Number of iterations for adding policies"
+    )
+    example_number: Optional[int] = Field(
+        default=None,
+        description="Number of examples: None = as many as LLM wants, 0 = no examples, >0 = that many",
+    )
 
     def param_description(self) -> str:
         parts = []
-        if self.spec_steps != set(PolicySpecStep):
+        all_steps = set(PolicySpecStep)
+        if self.spec_steps != all_steps:
             step_names = ",".join(sorted(step.name for step in self.spec_steps))
             parts.append(f"steps=[{step_names}]")
         else:
