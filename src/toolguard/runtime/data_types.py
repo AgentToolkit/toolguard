@@ -143,7 +143,7 @@ class ToolGuardSpecItem(BaseModel):
         default_factory=list, description="Example of cases that violate the policy"
     )
     skip: bool = False
-    _debug: Dict = {}
+    debug: Dict = {}
 
     def to_md_bulltets(self, items: List[str]) -> str:
         s = ""
@@ -167,7 +167,7 @@ class ToolGuardSpec(BaseModel):
         ...,
         description="Policy items. All (And logic) policy items must hold whehn invoking the tool.",
     )
-    _debug: Dict = {}
+    debug: Dict = {}
 
     @classmethod
     def load(cls, file_path: str | Path) -> "ToolGuardSpec":

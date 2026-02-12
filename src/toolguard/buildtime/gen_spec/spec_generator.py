@@ -1,10 +1,11 @@
 import asyncio
 import json
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple, cast
-
+from typing import Callable, List, Optional, Tuple, cast, Set
 from loguru import logger
+from pydantic import BaseModel, Field
 
+from toolguard.buildtime.compat.strenum import StrEnum
 from toolguard.buildtime.data_types import TOOLS
 from toolguard.buildtime.gen_spec.data_types import ToolInfo
 from toolguard.buildtime.gen_spec.fn_to_toolinfo import function_to_toolInfo
@@ -20,31 +21,91 @@ from toolguard.buildtime.utils.open_api import OpenAPI
 from toolguard.runtime.data_types import ToolGuardSpec, ToolGuardSpecItem
 
 
+class PolicySpecStep(StrEnum):
+    """Policy specification generation steps.
+
+    Each step represents a phase in the policy generation pipeline.
+    """
+
+    CREATE_POLICIES = "CREATE_POLICIES"
+    """Extract initial policy specifications from the policy document."""
+
+    ADD_POLICIES = "ADD_POLICIES"
+    """Iteratively refine and extend generated policies."""
+
+    REVIEW_POLICIES = "REVIEW_POLICIES"
+    """Review generated policies for correctness."""
+
+    REVIEW_POLICIES_FEASIBILITY = "REVIEW_POLICIES_FEASIBILITY"
+    """Validate that each policy can be deterministically enforced."""
+
+    CORRECT_REFERENCES = "CORRECT_REFERENCES"
+    """Ensure references correctly map to the original policy document."""
+
+    REVIEW_POLICIES_SELF_CONTAINED = "REVIEW_POLICIES_SELF_CONTAINED"
+    """Ensure each policy description is fully self-contained and unambiguous."""
+
+
+# --- Options container ---
+class PolicySpecOptions(BaseModel):
+    spec_steps: Set[PolicySpecStep] = Field(
+        default_factory=lambda: set(PolicySpecStep),
+        description="Set of policy spec steps to run. Defaults to all steps.",
+    )
+    add_iterations: int = Field(
+        default=3, description="Number of iterations for adding policies"
+    )
+    example_number: Optional[int] = Field(
+        default=None,
+        description="Number of examples: None = as many as LLM wants, 0 = no examples, >0 = that many",
+    )
+
+    def param_description(self) -> str:
+        parts = []
+        all_steps = set(PolicySpecStep)
+        if self.spec_steps != all_steps:
+            step_names = ",".join(sorted(step.name for step in self.spec_steps))
+            parts.append(f"steps=[{step_names}]")
+        else:
+            parts.append("steps=ALL")
+
+        # Iterations (only mention if not default)
+        if self.add_iterations != 3:
+            parts.append(f"add_iter={self.add_iterations}")
+
+        # Examples handling
+        if self.example_number is None:
+            parts.append("examples=auto")
+        elif self.example_number == 0:
+            parts.append("examples=none")
+        else:
+            parts.append(f"examples={self.example_number}")
+
+        return "_".join(parts)
+
+
 async def extract_toolguard_specs(
     policy_text: str,
     tools: TOOLS,
     step1_output_dir: Path,
     llm: I_TG_LLM,
     tools2guard: Optional[List[str]] = None,  # None==all tools
-    short=False,
+    options: Optional[PolicySpecOptions] = None,
 ) -> List[ToolGuardSpec]:
     tool_infos = _tools_to_tool_infos(tools)
-
     step1_output_dir.mkdir(parents=True, exist_ok=True)
-
+    # Use options if provided, otherwise default behavior (all steps, example_number=None)
+    options = options or PolicySpecOptions()
     process_dir = step1_output_dir / "process"
     process_dir.mkdir(parents=True, exist_ok=True)
-    generator = ToolGuardSpecGenerator(llm, policy_text, tool_infos, process_dir)
+    generator = ToolGuardSpecGenerator(
+        llm, policy_text, tool_infos, process_dir, options
+    )
 
     async def do_one_tool(tool_name: str) -> ToolGuardSpec:
-        spec = (
-            await generator.generate_minimal_policy(tool_name)
-            if short
-            else await generator.generate_policy(tool_name)
-        )
+        spec = await generator.generate_policy(tool_name)
         if spec.policy_items:
             save_output(step1_output_dir, tool_name + ".json", spec)
-
         return spec
 
     specs = await asyncio.gather(
@@ -60,42 +121,59 @@ async def extract_toolguard_specs(
 
 class ToolGuardSpecGenerator:
     def __init__(
-        self, llm: I_TG_LLM, policy_document: str, tools: List[ToolInfo], out_dir: Path
+        self,
+        llm: I_TG_LLM,
+        policy_document: str,
+        tools: List[ToolInfo],
+        out_dir: Path,
+        options: Optional[PolicySpecOptions] = None,
     ) -> None:
         self.llm = llm
         self.policy_document = policy_document
         self.tools_descriptions = {tool.name: tool.description for tool in tools}
         self.tools_details = {tool.name: tool for tool in tools}
         self.out_dir = out_dir
+        self.options = options or PolicySpecOptions()
 
-    async def generate_minimal_policy(self, tool_name: str) -> ToolGuardSpec:
-        spec = await self.create_spec(tool_name)
-        if not spec.policy_items:
-            return spec
+    def _effective_steps(self) -> Set[PolicySpecStep]:
+        """Return the set of steps that should actually run."""
+        return self.options.spec_steps
 
-        await self.example_creator(tool_name, spec, 4)
-        return spec
+    def _add_iterations(self) -> int:
+        """Return the set of steps that should actually run."""
+        return self.options.add_iterations
+
+    def _effective_example_number(self) -> Optional[int]:
+        """
+        Return number of examples to generate:
+        None = let LLM decide,
+        0 = no examples,
+        int >0 = generate that many examples.
+        """
+        return self.options.example_number
 
     async def generate_policy(self, tool_name: str) -> ToolGuardSpec:
-        spec = await self.create_spec(tool_name)
-        for i in range(3):
-            await self.add_items(tool_name, spec, i)
-        if not spec.policy_items:
-            return spec
+        if PolicySpecStep.CREATE_POLICIES in self._effective_steps():
+            spec = await self.create_spec(tool_name)
+        if PolicySpecStep.ADD_POLICIES in self._effective_steps():
+            for i in range(self._add_iterations()):
+                await self.add_items(tool_name, spec, i)
+            if not spec.policy_items:
+                return spec
+        if PolicySpecStep.REVIEW_POLICIES in self._effective_steps():
+            await self.review_policy(tool_name, spec)
 
-        await self.split(tool_name, spec)
-        if len(spec.policy_items) > 1:
-            await self.merge(tool_name, spec)
-        await self.review_policy(tool_name, spec)
-        await self.add_references(tool_name, spec)
-        self.reference_correctness(tool_name, spec)
+        if PolicySpecStep.CORRECT_REFERENCES in self._effective_steps():
+            await self.add_references(tool_name, spec)
+            self.reference_correctness(tool_name, spec)
 
-        await self.example_creator(tool_name, spec)
-        for i in range(5):
-            await self.add_examples(tool_name, spec, i)
-        await self.merge_examples(tool_name, spec)
-        # spec = self.fix_examples(tool_name, spec)
-        await self.review_examples(tool_name, spec)
+        if PolicySpecStep.REVIEW_POLICIES_SELF_CONTAINED in self._effective_steps():
+            await self.ensure_self_contained(tool_name, spec)
+
+        if PolicySpecStep.REVIEW_POLICIES_FEASIBILITY in self._effective_steps():
+            await self.review_policy_feasibility(tool_name, spec)
+
+        await self.example_creator(tool_name, spec, self._effective_example_number())
         return spec
 
     async def create_spec(self, tool_name: str) -> ToolGuardSpec:
@@ -133,7 +211,7 @@ spec: {spec.model_dump_json(indent=2)}"""
             else response["policy_items"]
         )
 
-        spec._debug["iteration"] = iteration
+        spec.debug["iteration"] = iteration
         for item_d in item_ds:
             spec.policy_items.append(ToolGuardSpecItem.model_validate(item_d))
 
@@ -184,7 +262,7 @@ spec: {spec.model_dump_json(indent=2)}"""
             "is_relevant": 0,
             "is_tool_specific": 0,
             "can_be_validated": 0,
-            "is_actionable": 0,
+            # "is_actionable": 0,
         }
 
         for r in reviews:
@@ -199,7 +277,7 @@ spec: {spec.model_dump_json(indent=2)}"""
             counts["can_be_validated"] += (
                 r["can_be_validated"] if "can_be_validated" in r else 0
             )
-            counts["is_actionable"] += r["is_actionable"] if "is_actionable" in r else 0
+            # counts["is_actionable"] += r["is_actionable"] if "is_actionable" in r else 0
 
             if not all(
                 e in r
@@ -207,13 +285,11 @@ spec: {spec.model_dump_json(indent=2)}"""
                     "is_relevant",
                     "is_tool_specific",
                     "can_be_validated",
-                    "is_actionable",
+                    # "is_actionable",
                 ]
             ) or not (
-                r["is_relevant"]
-                and r["is_tool_specific"]
-                and r["can_be_validated"]
-                and r["is_actionable"]
+                r["is_relevant"] and r["is_tool_specific"] and r["can_be_validated"]
+                # and r["is_actionable"]
             ):
                 comments += r["comments"] + "\n"
 
@@ -221,7 +297,8 @@ spec: {spec.model_dump_json(indent=2)}"""
 
     async def review_policy(self, tool_name: str, spec: ToolGuardSpec):
         logger.debug(f"review_policy({tool_name})")
-        system_prompt = read_prompt_file("policy_reviewer")
+        # system_prompt = read_prompt_file("policy_reviewer")
+        system_prompt = read_prompt_file("review_policy_relevance")
         all_tool_descs = json.dumps(self.tools_descriptions)
         tool_desc = self.tools_descriptions[tool_name]
 
@@ -229,6 +306,95 @@ spec: {spec.model_dump_json(indent=2)}"""
             user_content = f"""Policy Document: {self.policy_document}
 Tools Descriptions: {all_tool_descs}
 Target Tool: {tool_desc}
+policy: {item.model_dump_json(indent=2)}"""
+            response = await self.llm.chat_json(
+                generate_messages(system_prompt, user_content)
+            )
+            return response
+
+        async def analyze_item(item: ToolGuardSpecItem):
+            reviews = await asyncio.gather(*[review_item(item) for i in range(5)])
+            archive, comments = self.move2archive(reviews)
+            logger.debug(archive)
+            if archive:
+                if "archive" not in spec.debug:
+                    spec.debug["archive"] = []
+                item.debug["comments"] = comments
+                spec.debug["archive"].append(item)
+                spec.policy_items.remove(item)
+
+        await asyncio.gather(*[analyze_item(item) for item in spec.policy_items])
+
+        save_output(self.out_dir, f"{tool_name}_rev.json", spec)
+
+    async def review_policy_feasibility(self, tool_name: str, spec: ToolGuardSpec):
+        logger.debug(f"review_policy_feasibility({tool_name})")
+        system_prompt = read_prompt_file("review_policy_feasibility")
+        all_tool_descs = json.dumps(self.tools_descriptions)
+        tool_desc = self.tools_descriptions[tool_name]
+
+        async def review_item_feasibility(item: ToolGuardSpecItem):
+            user_content = f"""Policy Document: {self.policy_document}
+Tools Descriptions: {all_tool_descs}
+Target Tool: {tool_desc}
+policy: {item.model_dump_json(indent=2)}"""
+            response = await self.llm.chat_json(
+                generate_messages(system_prompt, user_content)
+            )
+            return response
+
+        async def analyze_item_feasibility(item: ToolGuardSpecItem):
+            repeat = 3
+            reviews = await asyncio.gather(
+                *[review_item_feasibility(item) for i in range(repeat)]
+            )
+            validated_count = 0
+            reasons = []
+            comments = []
+            missing_tool_description = None
+            for response in reviews:
+                if "can_be_validated" in response:
+                    if response["can_be_validated"]:
+                        validated_count += 1
+                    else:
+                        if "rejection_reason" in response:
+                            reason = response["rejection_reason"]
+                            if reason == "missing_tool":
+                                missing_tool_description = response[
+                                    "missing_tool_description"
+                                ]
+                            reasons.append(reason)
+                        if "comments" in response:
+                            comments.append(response["comments"])
+
+            if validated_count / repeat < 0.5:
+                spec.policy_items.remove(item)
+
+                if not hasattr(item, "debug") or item.debug is None:
+                    item.debug = {}
+
+                item.debug["feasibility_reasons"] = reasons
+                item.debug["missing_tool_description"] = missing_tool_description
+                item.debug["feasibility_comments"] = comments
+
+                if "archive" not in spec.debug:
+                    spec.debug["archive"] = []
+                spec.debug["archive"].append(item)
+
+        items = list(spec.policy_items)
+        await asyncio.gather(*[analyze_item_feasibility(item) for item in items])
+
+        save_output(self.out_dir, f"{tool_name}_rev_feasibility.json", spec)
+
+    async def ensure_self_contained(self, tool_name: str, spec: ToolGuardSpec):
+        logger.debug(f"self_containe({tool_name})")
+        system_prompt = read_prompt_file("policy_reviewer_self_contained")
+        tool = self.tools_details[tool_name]
+
+        async def ensure_item_contained(item: ToolGuardSpecItem):
+            user_content = f"""Policy Document: {self.policy_document}
+Tools Descriptions: {json.dumps(self.tools_descriptions)}
+Target Tool: {tool.model_dump_json(indent=2)}
 policy: {item.model_dump_json(indent=2)}"""
             response = await self.llm.chat_json(
                 generate_messages(system_prompt, user_content)
@@ -246,19 +412,10 @@ policy: {item.model_dump_json(indent=2)}"""
                 logger.error("Error: review did not provide is_self_contained.")
             return response
 
-        async def analyze_item(item: ToolGuardSpecItem):
-            reviews = await asyncio.gather(*[review_item(item) for i in range(5)])
-            archive, comments = self.move2archive(reviews)
-            logger.debug(archive)
-            if archive:
-                if "archive" not in spec._debug:
-                    spec._debug["archive"] = []
-                spec._debug["archive"].append(item)
-                spec.policy_items.remove(item)
-
-        await asyncio.gather(*[analyze_item(item) for item in spec.policy_items])
-
-        save_output(self.out_dir, f"{tool_name}_rev.json", spec)
+        await asyncio.gather(
+            *[ensure_item_contained(item) for item in spec.policy_items]
+        )
+        save_output(self.out_dir, f"{tool_name}_self_contained.json", spec)
 
     async def add_references(self, tool_name: str, spec: ToolGuardSpec):
         logger.debug(f"add_ref({tool_name})")
@@ -322,164 +479,6 @@ Policy: {item.model_dump_json(indent=2)}"""
             *[create_item_examples(item) for item in spec.policy_items]
         )
         save_output(self.out_dir, f"{tool_name}_examples.json", spec)
-
-    async def add_examples(self, tool_name: str, spec: ToolGuardSpec, iteration: int):
-        logger.debug(f"add_examples({tool_name})")
-        system_prompt = read_prompt_file("add_examples")
-        system_prompt = system_prompt.replace("ToolX", tool_name)
-        tool = self.tools_details[tool_name]
-
-        async def add_item_examples(item: ToolGuardSpecItem):
-            user_content = f"""Tools Descriptions: {json.dumps(self.tools_descriptions)}
-Target Tool: {tool.model_dump_json(indent=2)}
-Policy: {item}"""
-            response = await self.llm.chat_json(
-                generate_messages(system_prompt, user_content)
-            )
-            if "violation_examples" in response:
-                for vexample in response["violation_examples"]:
-                    item.violation_examples.append(vexample)
-            if "compliance_examples" in response:
-                for cexample in response["compliance_examples"]:
-                    item.compliance_examples.append(cexample)
-
-        await asyncio.gather(*[add_item_examples(item) for item in spec.policy_items])
-        save_output(self.out_dir, f"{tool_name}_ADD_examples{iteration}.json", spec)
-
-    async def merge_examples(self, tool_name: str, spec: ToolGuardSpec):
-        logger.debug(f"merge_examples({tool_name})")
-        system_prompt = read_prompt_file("merge_examples")
-        system_prompt = system_prompt.replace("ToolX", tool_name)
-        tool = self.tools_details[tool_name]
-
-        async def merge_item_examples(item: ToolGuardSpecItem):
-            user_content = f"""Tools Descriptions: {json.dumps(self.tools_descriptions)}
-Target Tool: {tool.model_dump_json(indent=2)}
-Policy Name: {item.name}
-Policy Description: {item.description}"""
-            user_content += f"\n\nViolation Examples: {item.violation_examples}"
-            user_content += f"\n\nCompliance Examples: {item.compliance_examples}"
-            response = await self.llm.chat_json(
-                generate_messages(system_prompt, user_content)
-            )
-            item.violation_examples = response["violation_examples"]
-            item.compliance_examples = response["compliance_examples"]
-
-        await asyncio.gather(*[merge_item_examples(item) for item in spec.policy_items])
-        save_output(self.out_dir, f"{tool_name}_merge_examples.json", spec)
-
-    #     async def fix_item_examples(self, tool_name: str, spec: ToolGuardSpec, item: ToolGuardSpecItem):
-    #         orig_prompt = read_prompt_file("fix_example")
-    #         tool = self.tools_details[tool_name]
-
-    #         for etype in ["violation", "compliance"]:
-    #             fixed_examples = []
-    #             for example in item[etype + "_examples"]:
-    #                 system_prompt = orig_prompt.replace("ToolX", tool_name)
-    #                 system_prompt = system_prompt.replace("__EXAMPLE_TYPE__", "")
-    #                 # user_content = f"Policy Document: {state['policy_text']}\nTools Descriptions: {json.dumps(state['tools'])}\nTarget Tool: {json.dumps(state['target_tool_description'])}\nPolicy Name: {policy['name']}\nPolicy Description: {policy['description']}\nExample: {example}"
-    #                 user_content = f"""Tools Descriptions: {json.dumps(self.tools_descriptions)}
-    # Target Tool: {tool.model_dump_json(indent=2)}
-    # Policy Name: {item.name}
-    # Policy Description: {item.description}
-    # Example: {example}"""
-
-    #                 response = await self.llm.chat_json(
-    #                     generate_messages(system_prompt, user_content)
-    #                 )
-    #                 fixed_examples.append(response["revised_example"])
-    #             item[etype + "_examples"] = fixed_examples
-    #         return fixed_examples
-
-    async def fix_spec_examples(self, tool_name: str, spec: ToolGuardSpec):
-        logger.debug(f"fix_examples({tool_name})")
-
-        orig_prompt = read_prompt_file("fix_example")
-        tool = self.tools_details[tool_name]
-
-        async def fix_item_examples(item: ToolGuardSpecItem):
-            async def fix_example(example: str):
-                system_prompt = orig_prompt.replace("ToolX", tool_name)
-                system_prompt = system_prompt.replace("__EXAMPLE_TYPE__", "")
-                user_content = f"""Tools Descriptions: {json.dumps(self.tools_descriptions)}
-Target Tool: {tool.model_dump_json(indent=2)}
-Policy Name: {item.name}
-Policy Description: {item.description}
-Example: {example}"""
-
-                response = await self.llm.chat_json(
-                    generate_messages(system_prompt, user_content)
-                )
-                return response["revised_example"]
-
-            item.compliance_examples = await asyncio.gather(
-                *[fix_example(ex) for ex in item.compliance_examples]
-            )
-            item.violation_examples = await asyncio.gather(
-                *[fix_example(ex) for ex in item.violation_examples]
-            )
-
-        await asyncio.gather(*[fix_item_examples(item) for item in spec.policy_items])
-
-        save_output(self.out_dir, f"{tool_name}_fix_examples.json", spec)
-
-    # todo: change to revew examples, write prompts
-    async def review_examples(self, tool_name: str, spec: ToolGuardSpec):
-        logger.debug(f"review_examples({tool_name})")
-        system_prompt = read_prompt_file("examples_reviewer")
-        tool = self.tools_details[tool_name]
-
-        async def review_item_examples(item: ToolGuardSpecItem):
-            logger.debug(item.name)
-
-            async def keep_example(example: str):
-                reviews = await asyncio.gather(
-                    *[review_example(example) for time in range(5)]
-                )
-                return self.keep_example(reviews)
-
-            async def review_example(example: str):
-                user_content = f"""Tools Descriptions: {json.dumps(self.tools_descriptions)}
-Target Tool: {tool.model_dump_json(indent=2)}
-Policy Name: {item.name}
-Policy Description: {item.description}
-Example: {example}"""
-                return await self.llm.chat_json(
-                    generate_messages(system_prompt, user_content)
-                )
-
-            keeps = await asyncio.gather(
-                *[keep_example(ex) for ex in item.compliance_examples]
-            )
-            item.compliance_examples = [
-                ex for ex, keep in zip(item.compliance_examples, keeps) if keep
-            ]
-
-            keeps = await asyncio.gather(
-                *[keep_example(ex) for ex in item.violation_examples]
-            )
-            item.violation_examples = [
-                ex for ex, keep in zip(item.violation_examples, keeps) if keep
-            ]
-
-        await asyncio.gather(
-            *[review_item_examples(item) for item in spec.policy_items]
-        )
-        save_output(self.out_dir, f"{tool_name}_example_rev.json", spec)
-
-    def keep_example(self, reviews) -> bool:
-        bads = 0
-        totals = 0
-        for r in reviews:
-            for vals in r.values():
-                totals += 1
-                if "value" not in vals:
-                    logger.debug(reviews)
-                elif not vals["value"]:
-                    bads += 1
-        if bads / totals > 0.8:
-            return False
-        return True
 
 
 def _tools_to_tool_infos(

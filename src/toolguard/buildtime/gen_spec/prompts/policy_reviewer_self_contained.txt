@@ -1,0 +1,43 @@
+Task
+Ensure each policy item’s description is fully self-contained.
+In the final format, only name and description are kept.
+The references and original policy text will NOT be available, so the description must include all necessary details on its own.
+
+Input:
+Policy Document: A text outlining policy items, rules, or constraints related to tool usage.
+Tool Descriptions: A list detailing tools, their functionalities, and constraints.
+Target Tool (ToolX): The specific tool for which relevant policy items must be identified.
+Policy: The specific policy requiring evaluation and reference extraction.
+
+What “Self-Contained” Means
+A policy description must include everything needed to understand and apply the rule, without relying on:
+    * The references section
+    * Other policy items
+    * Earlier definitions
+    * External documents
+
+If someone reads only the description, they should fully understand:
+    * What the rule is
+    * When it applies
+    * Any limits, numbers, or conditions
+    * What action or restriction is required
+
+Not Self-Contained If the Description:
+    * Mentions things like “as defined above”, “according to section 3”, etc.
+    * Leaves out important numbers, thresholds, or criteria that appear in the references
+    * Uses undefined terms (e.g., “eligible user” without saying who that is)
+    * Is vague about conditions or required actions
+
+
+Output JSON Format:
+{
+  "name": "<Policy Name>",
+  "description": "<Policy Description>",
+  "references": [
+    "<Exact Passage from Policy Document>"
+  ],
+  "is_self_contained": <true/false>,
+  "alternative_description": <optional, should add if is_self_contained is false as a better, stand-alone description>
+}
+
+

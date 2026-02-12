@@ -13,7 +13,10 @@ from tau2.domains.airline.data_model import (
     Payment,
 )
 from tau2.domains.airline.tools import AirlineTools
-
+from toolguard.buildtime.gen_spec.spec_generator import (
+    PolicySpecOptions,
+    PolicySpecStep,
+)
 from toolguard.buildtime import I_TG_LLM, generate_guard_specs, generate_guards_code
 from toolguard.buildtime.llm.tg_litellm import LitellmModel
 from toolguard.extra import api_cls_to_functions
@@ -59,7 +62,9 @@ async def test_tau2_simple():
         tools=tool_fns,
         work_dir=step1_out_dir,
         llm=llm(),
-        short=True,
+        options=PolicySpecOptions(
+            spec_steps={PolicySpecStep.CREATE_POLICIES},
+        ),
     )
     assert len(specs) == len(tool_fns)
 
@@ -155,7 +160,9 @@ async def test_tau2_complex_api():
         tools=tool_fns,
         work_dir=step1_out_dir,
         llm=llm(),
-        short=True,
+        options=PolicySpecOptions(
+            spec_steps={PolicySpecStep.CREATE_POLICIES},
+        ),
     )
     assert len(specs) == len(tool_fns)
 
