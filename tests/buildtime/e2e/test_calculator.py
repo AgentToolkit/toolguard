@@ -2,14 +2,17 @@ import os
 import shutil
 from os.path import join
 from pathlib import Path
-from typing import Any, Dict, Type, TypeVar
+from typing import Any, Dict, Type, TypeVar, Optional
 
 import markdown  # type: ignore[import]
 import pytest
 from examples.calculator.inputs import tool_functions as fn_tools
 from examples.calculator.inputs import tool_langchain as lg_tools
 from examples.calculator.inputs import tool_methods as mtd_tools
-
+from toolguard.buildtime.gen_spec.spec_generator import (
+    PolicySpecOptions,
+    PolicySpecStep,
+)
 from toolguard.buildtime import LitellmModel, generate_guard_specs, generate_guards_code
 from toolguard.buildtime.data_types import TOOLS
 from toolguard.buildtime.llm import I_TG_LLM
@@ -33,7 +36,9 @@ app_name = "calc"  # dont use "calculator", as it conflicts with example name
 STEP1 = "step1"
 STEP2 = "step2"
 
-short_options=PolicySpecOptions(spec_steps=set(PolicySpecStep.CREATE_POLICIES),)
+short_options = PolicySpecOptions(
+    spec_steps={PolicySpecStep.CREATE_POLICIES},
+)
 
 
 def llm() -> I_TG_LLM:
@@ -52,7 +57,7 @@ async def _build_toolguards(
     work_dir: Path,
     tools: TOOLS,
     app_sufix: str = "",
-    options: Optional[PolicySpecOptions] = None
+    options: Optional[PolicySpecOptions] = None,
 ):
     policy_text = markdown.markdown(open(wiki_path, "r", encoding="utf-8").read())
 

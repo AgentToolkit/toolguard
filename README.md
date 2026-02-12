@@ -126,7 +126,7 @@ async def generate_specs():
         tools=tools,
         work_dir="output/step1",
         llm=llm,
-        short=True  # Use short mode for faster generation
+        options=PolicySpecOptions(spec_steps={PolicySpecStep.CREATE_POLICIES},) # Use short mode for faster generation
     )
 
     return specs
@@ -134,6 +134,42 @@ async def generate_specs():
 # Run generation
 specs = asyncio.run(generate_specs())
 ```
+
+##### Controlling Specification Generation
+generate_guard_specs now accepts a PolicySpecOptions object that controls how specifications are generated.
+```python
+from toolguard.buildtime import PolicySpecOptions, PolicySpecStep
+
+options = PolicySpecOptions(
+    spec_steps={
+        PolicySpecStep.CREATE_POLICIES,
+        PolicySpecStep.ADD_POLICIES,
+        PolicySpecStep.REVIEW_POLICIES
+    },
+    add_iterations=2,
+    example_number=3
+)
+```
+
+
+###### Parameters
+
+| Parameter        | Description                                                                                                                      |
+|------------------|----------------------------------------------------------------------------------------------------------------------------------|
+| `spec_steps`     | Which generation phases to run. Defaults to **all steps**. (see available steps below).                                                                       |
+| `add_iterations` | How many refinement passes to run when adding policies. Default is `3`.                                                          |
+| `example_number` | Controls how many examples are generated per policy:<br>• `None` = model decides<br>• `0` = no examples<br>• `>0` = exact number |
+
+###### Available `PolicySpecStep` Values
+
+The following generation phases can be selected via `spec_steps`:
+
+- `CREATE_POLICIES` – Extract initial policy specifications from the policy document.
+- `ADD_POLICIES` – Iteratively refine and extend generated policies.
+- `REVIEW_POLICIES` – Review generated policies for correctness.
+- `CORRECT_REFERENCES` – Ensure references correctly map to the original policy document.
+- `REVIEW_POLICIES_SELF_CONTAINED` – Ensure each policy description is fully self-contained and unambiguous.
+- `REVIEW_POLICIES_FEASIBILITY` – Validate that each policy can be deterministically enforced.
 
 #### Step 4: Generate Guard Code (Buildtime)
 
