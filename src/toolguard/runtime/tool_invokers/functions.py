@@ -1,4 +1,5 @@
 from typing import Any, Callable, Dict, List, Type, TypeVar
+import inspect
 
 from toolguard.runtime.data_types import IToolInvoker
 
@@ -14,4 +15,8 @@ class ToolFunctionsInvoker(IToolInvoker):
     ) -> T:
         func = self._funcs_by_name.get(toolname)
         assert callable(func), f"Tool {toolname} was not found"
-        return func(**arguments)
+        result = func(**arguments)
+        # Check if the result is awaitable (coroutine)
+        if inspect.iscoroutine(result):
+            return await result  # type: ignore[return-value]
+        return result  # type: ignore[return-value]
