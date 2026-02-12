@@ -33,6 +33,8 @@ app_name = "calc"  # dont use "calculator", as it conflicts with example name
 STEP1 = "step1"
 STEP2 = "step2"
 
+short_options=PolicySpecOptions(spec_steps=set(PolicySpecStep.CREATE_POLICIES),)
+
 
 def llm() -> I_TG_LLM:
     return LitellmModel(
@@ -50,7 +52,7 @@ async def _build_toolguards(
     work_dir: Path,
     tools: TOOLS,
     app_sufix: str = "",
-    short: bool = True,
+    options: Optional[PolicySpecOptions] = None
 ):
     policy_text = markdown.markdown(open(wiki_path, "r", encoding="utf-8").read())
 
@@ -65,7 +67,7 @@ async def _build_toolguards(
         tools=tools,
         work_dir=step1_out_dir,
         llm=llm(),
-        short=short,
+        options=options,
     )
     # spec = ToolGuardSpec.load("/Users/davidboaz/Documents/GitHub/toolguard/tests/tmp/e2e/calculator/tool_functions_short/GCP/claude-4-sonnet/step1/divide_tool.json")
     # specs = [spec]
@@ -146,7 +148,7 @@ async def test_tool_functions_short():
         fn_tools.map_kdi_number,
     ]
 
-    gen_result = await _build_toolguards(work_dir, funcs, "_fns_short", True)
+    gen_result = await _build_toolguards(work_dir, funcs, "_fns_short", short_options)
     gen_result = ToolGuardsCodeGenerationResult.load(work_dir / model / STEP2)
     await assert_toolgurards_run(gen_result, ToolFunctionsInvoker(funcs))
 
@@ -156,7 +158,7 @@ async def test_tool_methods():
     work_dir = Path("tests/tmp/e2e/calculator/tool_methods")
     fns = api_cls_to_functions(mtd_tools.CalculatorTools)
 
-    gen_result = await _build_toolguards(work_dir, fns, "_mtds", True)
+    gen_result = await _build_toolguards(work_dir, fns, "_mtds", short_options)
     gen_result = ToolGuardsCodeGenerationResult.load(work_dir / model / STEP2)
     await assert_toolgurards_run(
         gen_result, ToolMethodsInvoker(mtd_tools.CalculatorTools())
@@ -175,7 +177,7 @@ async def test_tools_langchain():
     ]
     oas = langchain_tools_to_openapi(tools)
 
-    gen_result = await _build_toolguards(work_dir, oas, "_lg", True)
+    gen_result = await _build_toolguards(work_dir, oas, "_lg", short_options)
     gen_result = ToolGuardsCodeGenerationResult.load(work_dir / model / STEP2)
 
     await assert_toolgurards_run(gen_result, LangchainToolInvoker(tools), True)
@@ -187,7 +189,7 @@ async def test_tools_openapi_spec():
     oas_path = "tests/examples/calculator/inputs/oas.json"
     oas = OpenAPI.load_from(oas_path)
     gen_result = await _build_toolguards(
-        work_dir, tools=oas.model_dump(), app_sufix="_oas", short=True
+        work_dir, tools=oas.model_dump(), app_sufix="_oas", options=short_options
     )
     gen_result = ToolGuardsCodeGenerationResult.load(work_dir / model / STEP2)
 
