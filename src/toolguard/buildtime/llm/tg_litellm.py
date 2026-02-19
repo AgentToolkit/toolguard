@@ -1,6 +1,7 @@
 import asyncio
 from random import random
 from typing import Any, Dict, List, Optional, cast
+import warnings
 
 from litellm import acompletion
 from litellm.exceptions import RateLimitError, Timeout
@@ -8,6 +9,9 @@ from litellm.types.utils import ModelResponse
 from loguru import logger
 
 from .llm_base import LanguageModelBase
+
+# Suppress Pydantic serialization warnings from litellm
+warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 
 
 class LitellmModel(LanguageModelBase):
