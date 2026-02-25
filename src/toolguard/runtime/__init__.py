@@ -5,7 +5,7 @@ from .data_types import (
     assert_any_condition_met,
 )
 from .rules import rule, current_rule
-from .runtime import load_toolguards
+from .runtime import load_toolguards, load_toolguards_from_memory
 from .tool_invokers import (
     LangchainToolInvoker,
     ToolFunctionsInvoker,
@@ -14,6 +14,7 @@ from .tool_invokers import (
 
 __all__ = [
     "load_toolguards",
+    "load_toolguards_from_memory",
     "ToolGuardsCodeGenerationResult",
     "PolicyViolationException",
     "IToolInvoker",
