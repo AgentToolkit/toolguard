@@ -59,11 +59,12 @@ def load_toolguards_from_memory(
 
     # Add guard files from all tools
     for tool_result in result.tools.values():
-        file_twins.append(tool_result.guard_file)
-        # Add item guard files if they exist
+        # important, first load the items, then the tool guard
         for item_guard in tool_result.item_guard_files:
             if item_guard is not None:
                 file_twins.append(item_guard)
+
+        file_twins.append(tool_result.guard_file)
 
     return ToolguardRuntime(result, ctx_dir=None, file_twins=file_twins)
 

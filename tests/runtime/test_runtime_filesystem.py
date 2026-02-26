@@ -9,6 +9,7 @@ from toolguard.runtime import (
     PolicyViolationException,
     IToolInvoker,
 )
+from toolguard.runtime.data_types import RESULTS_FILENAME
 
 
 class MockToolInvoker(IToolInvoker):
@@ -138,7 +139,7 @@ async def test_context_manager_restores_path():
 async def test_load_with_custom_filename():
     """Test loading toolguards with custom result filename."""
     # This should work with the default filename
-    runtime = load_toolguards(TEST_DATA_DIR, "result.json")
+    runtime = load_toolguards(TEST_DATA_DIR, RESULTS_FILENAME)
     assert runtime is not None
 
     with runtime:
