@@ -1,0 +1,71 @@
+{
+  "out_dir": "tests/runtime/test_data/calculator",
+  "domain": {
+    "app_name": "TestCalculator",
+    "app_types": {
+      "file_name": "test_api_types.py",
+      "content": "from pydantic import BaseModel\n\nclass CalculatorArgs(BaseModel):\n    a: int\n    b: int\n"
+    },
+    "app_api_class_name": "ITestApi",
+    "app_api": {
+      "file_name": "test_api.py",
+      "content": "from abc import ABC, abstractmethod\nfrom typing import Any, Dict, Type\nfrom test_api_types import CalculatorArgs\n\nclass ITestApi(ABC):\n    @abstractmethod\n    async def add(self, args: CalculatorArgs) -> int:\n        pass\n    \n    @abstractmethod\n    async def divide(self, args: CalculatorArgs) -> float:\n        pass\n"
+    },
+    "app_api_size": 2,
+    "app_api_impl_class_name": "TestApiImpl",
+    "app_api_impl": {
+      "file_name": "test_api_impl.py",
+      "content": "from typing import Any, Dict, Type\nfrom test_api import ITestApi\nfrom test_api_types import CalculatorArgs\n\nclass TestApiImpl(ITestApi):\n    def __init__(self, delegate):\n        self.delegate = delegate\n    \n    async def add(self, args: CalculatorArgs) -> int:\n        return await self.delegate.invoke(\"add_tool\", {\"a\": args.a, \"b\": args.b}, int)\n    \n    async def divide(self, args: CalculatorArgs) -> float:\n        return await self.delegate.invoke(\"divide_tool\", {\"a\": args.a, \"b\": args.b}, float)\n"
+    }
+  },
+  "tools": {
+    "add_tool": {
+      "tool": {
+        "tool_name": "add_tool",
+        "policy_items": [
+          {
+            "name": "positive_numbers",
+            "description": "Only positive numbers are allowed",
+            "references": [],
+            "compliance_examples": ["add(5, 3)", "add(10, 20)"],
+            "violation_examples": ["add(-5, 3)", "add(5, -3)"],
+            "skip": false,
+            "debug": {}
+          }
+        ],
+        "debug": {}
+      },
+      "guard_fn_name": "guard_add_tool",
+      "guard_file": {
+        "file_name": "guard_add.py",
+        "content": "from test_api_types import CalculatorArgs\nfrom toolguard.runtime.data_types import PolicyViolationException\n\nasync def guard_add_tool(args: CalculatorArgs):\n    '''Guard for add tool - ensures positive numbers only.'''\n    if args.a < 0 or args.b < 0:\n        raise PolicyViolationException(\"Only positive numbers are allowed\")\n"
+      },
+      "item_guard_files": [],
+      "test_files": []
+    },
+    "divide_tool": {
+      "tool": {
+        "tool_name": "divide_tool",
+        "policy_items": [
+          {
+            "name": "no_division_by_zero",
+            "description": "Division by zero is not allowed",
+            "references": [],
+            "compliance_examples": ["divide(10, 2)", "divide(20, 5)"],
+            "violation_examples": ["divide(10, 0)"],
+            "skip": false,
+            "debug": {}
+          }
+        ],
+        "debug": {}
+      },
+      "guard_fn_name": "guard_divide_tool",
+      "guard_file": {
+        "file_name": "guard_divide.py",
+        "content": "from test_api_types import CalculatorArgs\nfrom toolguard.runtime.data_types import PolicyViolationException\n\nasync def guard_divide_tool(args: CalculatorArgs):\n    '''Guard for divide tool - prevents division by zero.'''\n    if args.b == 0:\n        raise PolicyViolationException(\"Division by zero is not allowed\")\n"
+      },
+      "item_guard_files": [],
+      "test_files": []
+    }
+  }
+}

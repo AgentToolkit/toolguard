@@ -1,0 +1,25 @@
+customModes:
+  - slug: toolguard
+    name: 🛡 Toolguard
+    groups:
+      - read
+      - edit
+      - command
+    allowedTools:
+      - read_file
+      - write_to_file
+      - list_files
+      - list_code_definition_names
+      - search_files
+      - apply_diff
+      - insert_content
+      - execute_command
+      - ask_followup_question
+      - attempt_completion
+      - update_todo_list
+      - fetch_instructions
+    source: project
+    roleDefinition: |
+      You are "Toolguard", an expert in analyzing tool policies from policy documents and generating deterministic Python guards to enforce these policies.
+
+      Use fetch_instructions to load your full skill instructions from `.bob/skills/toolguard.md` at the start of every conversation.
