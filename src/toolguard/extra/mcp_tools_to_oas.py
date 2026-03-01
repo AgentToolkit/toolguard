@@ -1,138 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
 import os
-from pathlib import Path
 import json
 import re
-from typing import Any, Dict, Tuple, Optional
+from typing import Any, Dict, List, Optional
 
 import httpx
 
 
-# ============================================================
-# Public API
-# ============================================================
-
-
-def export_mcp_tools_as_openapi(cfg: "ExportConfig") -> Dict[str, Any]:
-    """
-    Minimal OpenAPI 3.1 export (your requested variant):
-      ✅ build paths
-      ✅ keep request/response schemas (as returned by MCP/Gateway + your description-enrichment)
-      ✅ lift $defs -> components.schemas ONLY if they exist, and rewrite refs "#/$defs/X" accordingly
-
-    No global schema dedupe / hashing / allOf.
-    No "Root indirection" aliases.
-    """
-    tools = _fetch_tools(cfg)
-
-    paths: dict[str, Any] = {}
-    components_schemas: dict[str, Any] = {}
-
-    for tool in tools:
-        tool_name = _pick_mcp_tool_name(tool)
-        tool_desc = _pick_tool_description(tool)
-        summary = _pick_tool_summary(tool)
-
-        input_schema = _normalize_schema(_pick_input_schema(tool))
-        input_schema = _merge_param_descriptions_into_schema(
-            schema=input_schema, tool=tool
-        )
-
-        output_schema, output_found = _pick_output_schema(tool)
-        if output_found:
-            output_schema = _normalize_schema(output_schema)
-            output_schema = _merge_result_descriptions_into_schema(
-                schema=output_schema, tool=tool
-            )
-        else:
-            output_schema = {}  # OpenAPI 3.1 "any"
-
-        req_schema_name = _schema_name(tool_name, "Request")
-        resp_schema_name = _schema_name(tool_name, "Response")
-
-        components_schemas[req_schema_name] = input_schema
-        components_schemas[resp_schema_name] = output_schema
-
-        route = f"/tools/{tool_name}"
-        paths[route] = {
-            "post": {
-                "operationId": tool_name,
-                "summary": summary or tool_name,
-                "description": (tool_desc or "").strip(),
-                "tags": ["mcp-tools"],
-                "requestBody": {
-                    "required": True,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": f"#/components/schemas/{req_schema_name}"
-                            }
-                        }
-                    },
-                },
-                "responses": {
-                    "200": {
-                        "description": _pick_output_description(tool),
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": f"#/components/schemas/{resp_schema_name}"
-                                }
-                            }
-                        },
-                    }
-                },
-            }
-        }
-
-    # Only do the one normalization step you actually need:
-    # lift local $defs -> components.schemas and rewrite "#/$defs/..." refs.
-    components_schemas = _lift_defs_to_components(components_schemas)
-
-    return {
-        "openapi": "3.1.0",
-        "info": {
-            "title": cfg.title,
-            "version": cfg.version,
-            "description": (
-                "OpenAPI export of MCP tools metadata. "
-                "Contains only operation descriptions and input/output schemas to support code generation."
-            ),
-        },
-        "paths": paths,
-        "tags": [{"name": "mcp-tools"}],
-        "components": {"schemas": components_schemas},
-        "x-generated-at": datetime.now(timezone.utc).isoformat(),
-    }
-
-
-def export_mcp_tools_as_openapi_json_file(
-    cfg: "ExportConfig", out_path: str | Path
-) -> Path:
-    spec = export_mcp_tools_as_openapi(cfg)
-
-    out_path = Path(out_path).expanduser().resolve()
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-
-    out_path.write_text(
-        json.dumps(spec, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
-    return out_path
-
-
-# ============================================================
-# Configuration
-# ============================================================
-
-
 @dataclass(frozen=True)
-class ExportConfig:
-    title: str = "MCP Tools"
-    version: str = "0.1.0"
+class MCPConnectionConfig:
+    """Connection and authentication settings for fetching MCP tools."""
 
     gateway_tools_url: str = ""
     mcp_url: str = ""
@@ -142,11 +21,23 @@ class ExportConfig:
 
 
 # ============================================================
-# Fetch Tools (connection logic kept from your working file)
+# Public API
 # ============================================================
 
 
-def _fetch_tools(cfg: ExportConfig) -> list[dict[str, Any]]:
+def list_mcp_tools(cfg: MCPConnectionConfig) -> List[Dict[str, Any]]:
+    """Fetch and return the raw list of MCP tool descriptors.
+
+    Depending on the configuration, tools are retrieved either from a gateway
+    REST endpoint (``cfg.gateway_tools_url``) or directly from an MCP server
+    (``cfg.mcp_url``).
+
+    Args:
+        cfg: Connection and authentication settings.
+
+    Returns:
+        A list of raw tool descriptor dicts as returned by the server.
+    """
     if cfg.gateway_tools_url:
         return _fetch_tools_from_gateway(
             cfg.gateway_tools_url, cfg.bearer_token, cfg.timeout_s
@@ -154,6 +45,69 @@ def _fetch_tools(cfg: ExportConfig) -> list[dict[str, Any]]:
     if cfg.mcp_url:
         return _fetch_tools_from_mcp(cfg)
     raise ValueError("Provide either gateway_tools_url or mcp_url")
+
+
+def mcp_tools_to_openapi(
+    tools: List[Dict[str, Any]],
+    title: str = "MCP Tools",
+    version: str = "0.1.0",
+) -> Dict[str, Any]:
+    """Map a list of MCP tool descriptors to an OpenAPI 3.1 specification.
+
+    Args:
+        tools: Raw tool descriptor dicts, as returned by :func:`list_mcp_tools`.
+        title: Value for ``info.title`` in the generated spec.
+        version: Value for ``info.version`` in the generated spec.
+
+    Returns:
+        An OpenAPI 3.1 document as a plain Python dict.
+    """
+    paths: dict[str, Any] = {}
+    all_schemas = []
+
+    for tool in tools:
+        tool_name = _pick_mcp_tool_name(tool)
+        tool_desc = _pick_tool_description(tool)
+        summary = _pick_tool_summary(tool)
+
+        input_schema = _normalize_schema(_pick_input_schema(tool))
+        output_schema = _normalize_schema(_pick_output_schema(tool))
+        all_schemas.extend([input_schema, output_schema])
+
+        route = f"/{tool_name}"
+        paths[route] = {
+            "post": {
+                "operationId": tool_name,
+                "summary": summary or tool_name,
+                "description": (tool_desc or "").strip(),
+                "requestBody": {
+                    "required": True,
+                    "content": {"application/json": {"schema": input_schema}},
+                },
+                "responses": {
+                    "200": {
+                        "description": _pick_output_description(tool),
+                        "content": {"application/json": {"schema": output_schema}},
+                    }
+                },
+            }
+        }
+
+    components_schemas = _lift_defs_to_components(all_schemas)
+
+    return {
+        "openapi": "3.1.0",
+        "info": {
+            "title": title,
+            "version": version,
+            "description": (
+                "OpenAPI export of MCP tools metadata. "
+                "Contains only operation descriptions and input/output schemas to support code generation."
+            ),
+        },
+        "paths": paths,
+        "components": {"schemas": components_schemas},
+    }
 
 
 def _fetch_tools_from_gateway(
@@ -174,7 +128,7 @@ def _fetch_tools_from_gateway(
     return payload
 
 
-def _fetch_tools_from_mcp(cfg: ExportConfig) -> list[dict[str, Any]]:
+def _fetch_tools_from_mcp(cfg: MCPConnectionConfig) -> list[dict[str, Any]]:
     session_id = cfg.mcp_session_id or _mcp_initialize(
         cfg.mcp_url, cfg.bearer_token, cfg.timeout_s
     )
@@ -201,7 +155,7 @@ def _fetch_tools_from_mcp(cfg: ExportConfig) -> list[dict[str, Any]]:
             f"Expected result.tools list from MCP tools/list, got {type(tools)}"
         )
 
-    return [_normalize_mcp_tool(t) for t in tools]
+    return tools
 
 
 def _read_first_jsonrpc_envelope(resp: httpx.Response) -> dict[str, Any]:
@@ -292,14 +246,6 @@ def _mcp_initialize(mcp_url: str, bearer_token: str, timeout_s: float) -> str:
             )
 
 
-def _normalize_mcp_tool(t: dict[str, Any]) -> dict[str, Any]:
-    out = dict(t)
-    out.setdefault("displayName", out.get("name"))
-    out.setdefault("originalName", out.get("name"))
-    out.setdefault("id", out.get("name"))
-    return out
-
-
 # ============================================================
 # Metadata pickers
 # ============================================================
@@ -327,7 +273,7 @@ def _pick_input_schema(tool: dict[str, Any]) -> dict[str, Any]:
     return {"type": "object", "additionalProperties": True}
 
 
-def _pick_output_schema(tool: dict[str, Any]) -> Tuple[dict[str, Any], bool]:
+def _pick_output_schema(tool: dict[str, Any]) -> dict[str, Any]:
     for key in (
         "outputSchema",
         "output_schema",
@@ -340,8 +286,8 @@ def _pick_output_schema(tool: dict[str, Any]) -> Tuple[dict[str, Any], bool]:
     ):
         schema = tool.get(key)
         if isinstance(schema, dict) and schema:
-            return dict(schema), True
-    return {}, False
+            return dict(schema)
+    return {}
 
 
 def _pick_tool_summary(tool: dict[str, Any]) -> str:
@@ -356,7 +302,7 @@ def _pick_tool_summary(tool: dict[str, Any]) -> str:
 
 
 # ============================================================
-# Schema normalization & enrichment
+# Schema normalization
 # ============================================================
 
 
@@ -368,233 +314,51 @@ def _normalize_schema(schema: dict[str, Any]) -> dict[str, Any]:
     return s
 
 
-def _merge_param_descriptions_into_schema(
-    schema: dict[str, Any], tool: dict[str, Any]
-) -> dict[str, Any]:
-    s = dict(schema or {})
-    if s.get("type") != "object":
-        return s
-
-    props = s.get("properties")
-    if not isinstance(props, dict):
-        props = {}
-        s["properties"] = props
-
-    candidates = (
-        tool.get("params"),
-        tool.get("parameters"),
-        tool.get("inputParameters"),
-        tool.get("arguments"),
-    )
-
-    for cand in candidates:
-        if isinstance(cand, list):
-            for item in cand:
-                if not isinstance(item, dict):
-                    continue
-                name = item.get("name")
-                if not name:
-                    continue
-
-                prop = props.get(name)
-                if not isinstance(prop, dict):
-                    prop = {}
-                    props[name] = prop
-
-                if "description" not in prop and item.get("description"):
-                    prop["description"] = str(item["description"])
-
-                item_schema = item.get("schema")
-                if isinstance(item_schema, dict) and item_schema:
-                    for k, v in _normalize_schema(item_schema).items():
-                        prop.setdefault(k, v)
-
-        elif isinstance(cand, dict):
-            for name, item in cand.items():
-                if not name:
-                    continue
-
-                prop = props.get(name)
-                if not isinstance(prop, dict):
-                    prop = {}
-                    props[name] = prop
-
-                if isinstance(item, dict):
-                    if "description" not in prop and item.get("description"):
-                        prop["description"] = str(item["description"])
-
-                    item_schema = item.get("schema")
-                    if isinstance(item_schema, dict) and item_schema:
-                        for k, v in _normalize_schema(item_schema).items():
-                            prop.setdefault(k, v)
-
-    return s
-
-
-def _merge_result_descriptions_into_schema(
-    schema: dict[str, Any], tool: dict[str, Any]
-) -> dict[str, Any]:
-    s = dict(schema or {})
-    if s.get("type") != "object":
-        return s
-
-    props = s.get("properties")
-    if not isinstance(props, dict):
-        props = {}
-        s["properties"] = props
-
-    candidates = (
-        tool.get("outputFields"),
-        tool.get("outputParameters"),
-        tool.get("resultFields"),
-        tool.get("result"),
-    )
-
-    for cand in candidates:
-        if isinstance(cand, list):
-            for item in cand:
-                if not isinstance(item, dict):
-                    continue
-                name = item.get("name")
-                if not name:
-                    continue
-
-                prop = props.get(name)
-                if not isinstance(prop, dict):
-                    prop = {}
-                    props[name] = prop
-
-                if "description" not in prop and item.get("description"):
-                    prop["description"] = str(item["description"])
-
-                item_schema = item.get("schema")
-                if isinstance(item_schema, dict) and item_schema:
-                    for k, v in _normalize_schema(item_schema).items():
-                        prop.setdefault(k, v)
-
-        elif isinstance(cand, dict):
-            for name, item in cand.items():
-                if not name:
-                    continue
-
-                prop = props.get(name)
-                if not isinstance(prop, dict):
-                    prop = {}
-                    props[name] = prop
-
-                if isinstance(item, dict):
-                    if "description" not in prop and item.get("description"):
-                        prop["description"] = str(item["description"])
-
-                    item_schema = item.get("schema")
-                    if isinstance(item_schema, dict) and item_schema:
-                        for k, v in _normalize_schema(item_schema).items():
-                            prop.setdefault(k, v)
-
-    return s
-
-
 # ============================================================
-# Minimal $defs lifting (only if present)
+# $defs lifting
 # ============================================================
 
 
-def _lift_defs_to_components(components: dict[str, Any]) -> dict[str, Any]:
+def _lift_defs_to_components(schemas: List[Dict]) -> dict[str, Any]:
     """
-    For each component schema that contains a TOP-LEVEL "$defs":
-      - move each $defs entry into components.schemas as:
-          <Owner>_def_<DefName>
-      - remove "$defs" from the owner schema
-      - rewrite "$ref": "#/$defs/<DefName>" anywhere inside that owner schema
-        to "$ref": "#/components/schemas/<Owner>_def_<DefName>"
+    For each schema that contains a TOP-LEVEL "$defs":
+      - move each $defs entry into components.schemas
+      - remove "$defs" from the schema in-place
+      - recursively rewrite every "$ref": "#/$defs/<Name>" anywhere in the
+        schema tree to "$ref": "#/components/schemas/<Name>"
 
     This is the only manipulation needed when gateway schemas are otherwise fine.
     """
-    out: dict[str, Any] = dict(components)
 
-    # owner -> {defName -> newComponentName}
-    def_map: dict[str, dict[str, str]] = {}
+    def _rewrite_refs(node: Any) -> Any:
+        """Recursively rewrite #/$defs/... refs to #/components/schemas/..."""
+        if isinstance(node, list):
+            return [_rewrite_refs(item) for item in node]
+        if not isinstance(node, dict):
+            return node
+        result = {}
+        for k, v in node.items():
+            if k == "$ref" and isinstance(v, str) and v.startswith("#/$defs/"):
+                def_name = v[len("#/$defs/") :]
+                result[k] = f"#/components/schemas/{def_name}"
+            else:
+                result[k] = _rewrite_refs(v)
+        return result
 
-    # 1) Lift
-    for owner, schema in list(out.items()):
+    out: dict[str, Any] = {}
+    for schema in schemas:
         if not isinstance(schema, dict):
             continue
         defs = schema.get("$defs")
         if not isinstance(defs, dict) or not defs:
             continue
 
-        owner_map: dict[str, str] = {}
-        used = set(out.keys())
-
-        for def_name, def_schema in defs.items():
-            base = f"{owner}_def_{_sanitize_component_name(str(def_name))}"
-            new_name = _unique_component_name(base, used)
-            used.add(new_name)
-            out[new_name] = def_schema
-            owner_map[str(def_name)] = new_name
-
-        def_map[owner] = owner_map
-
-        schema2 = dict(schema)
-        schema2.pop("$defs", None)
-        out[owner] = schema2
-
-    # 2) Rewrite refs within each owner context
-    def rewrite(node: Any, owner: str) -> Any:
-        if isinstance(node, list):
-            return [rewrite(x, owner) for x in node]
-        if not isinstance(node, dict):
-            return node
-
-        ref = node.get("$ref")
-        if isinstance(ref, str) and ref.startswith("#/$defs/"):
-            def_name = ref.split("/", 3)[-1]
-            target = def_map.get(owner, {}).get(def_name)
-            if target:
-                new_node = dict(node)  # preserve siblings like "description"
-                new_node["$ref"] = f"#/components/schemas/{target}"
-                return new_node
-
-        return {k: rewrite(v, owner) for k, v in node.items()}
-
-    for owner, schema in list(out.items()):
-        if owner in def_map:  # only need owner-aware rewriting if it had defs
-            out[owner] = rewrite(schema, owner)
+        out.update(defs)
+        schema.pop("$defs", None)
+        for k in list(schema.keys()):
+            schema[k] = _rewrite_refs(schema[k])
 
     return out
-
-
-# ============================================================
-# Naming helpers
-# ============================================================
-
-
-def _schema_name(tool_name: str, suffix: str) -> str:
-    # e.g. "clinic-upstream-add-user" -> "clinic_upstream_add_userRequest"
-    base = re.sub(r"[^A-Za-z0-9_]+", "_", tool_name).strip("_")
-    return f"{base or 'Tool'}{suffix}"
-
-
-def _sanitize_component_name(name: str) -> str:
-    name = name.strip()
-    name = re.sub(r"\s+", "_", name)
-    name = re.sub(r"[^A-Za-z0-9_]+", "_", name)
-    name = re.sub(r"_+", "_", name).strip("_")
-    return name or "Schema"
-
-
-def _unique_component_name(base: str, used: set[str]) -> str:
-    if base not in used:
-        return base
-    i = 2
-    while f"{base}_{i}" in used:
-        i += 1
-    return f"{base}_{i}"
-
-
-# ============================================================
-# HTTP helpers
-# ============================================================
 
 
 def _auth_headers(token: str) -> dict[str, str]:
@@ -614,18 +378,20 @@ def _mcp_headers(token: str, session_id: Optional[str]) -> dict[str, str]:
     return headers
 
 
-# ============================================================
-# Example usage
-# ============================================================
+def main() -> None:
+    cfg = MCPConnectionConfig(
+        mcp_url="http://localhost:8765/mcp",
+        # gateway_tools_url="http://127.0.0.1:4444/tools",
+        # bearer_token=os.environ.get("TOKEN", ""),
+    )
+    out_path = "./out/gateway_mcp_tools_openapi_direct.json"
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    tools = list_mcp_tools(cfg)
+    oas = mcp_tools_to_openapi(tools, title="My MCP Tools", version="1.0.0")
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(oas, f, indent=2)
+    print(f"Wrote OpenAPI JSON to: {out_path}")
+
 
 if __name__ == "__main__":
-    cfg = ExportConfig(
-        gateway_tools_url="http://127.0.0.1:4444/tools",
-        bearer_token=os.environ.get("TOKEN", ""),
-        title="My MCP Tools",
-        version="1.0.0",
-    )
-    out_file = export_mcp_tools_as_openapi_json_file(
-        cfg, "./out/gateway_mcp_tools_openapi_direct.json"
-    )
-    print(f"Wrote OpenAPI JSON to: {out_file}")
+    main()
