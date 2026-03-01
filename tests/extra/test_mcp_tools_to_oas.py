@@ -21,11 +21,8 @@ from fastmcp import FastMCP
 from tau2.domains.airline.data_model import FlightDB
 from tau2.domains.airline.tools import AirlineTools
 
-from toolguard.extra.mcp_tools_to_oas import (
-    MCPConnectionConfig,
-    list_mcp_tools,
-    mcp_tools_to_openapi,
-)
+from toolguard.extra.list_mcp_tools import MCPConnectionConfig, list_mcp_tools
+from toolguard.extra.mcp_tools_to_oas import mcp_tools_to_openapi
 
 # ---------------------------------------------------------------------------
 # Build the FastMCP server from the real tau2 AirlineTools
