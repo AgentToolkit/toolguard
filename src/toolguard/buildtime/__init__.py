@@ -2,6 +2,10 @@ from toolguard.buildtime.buildtime import generate_guard_specs, generate_guards_
 from toolguard.buildtime.llm import I_TG_LLM, LanguageModelBase, LitellmModel
 from toolguard.buildtime.data_types import TOOLS
 from toolguard.runtime.data_types import ToolGuardsCodeGenerationResult, ToolGuardSpec
+from toolguard.buildtime.gen_spec.spec_generator import (
+    PolicySpecOptions,
+    PolicySpecStep,
+)
 
 __all__ = [
     "generate_guard_specs",
@@ -12,4 +16,6 @@ __all__ = [
     "ToolGuardSpec",
     "ToolGuardsCodeGenerationResult",
     "TOOLS",
+    "PolicySpecOptions",
+    "PolicySpecStep",
 ]

@@ -119,16 +119,14 @@ class ToolGuardGenerator:
         try:
             guard_tests = await self._generate_tests(item, init_guard, dep_tools)
         except Exception as ex:
-            logger.warning(f"Tests generation failed for item {item.name} %s", str(ex))
+            logger.warning(f"Tests generation failed for item {item.name}. {str(ex)}")
             try:
-                logger.warning("try to generate the code without tests... %s", str(ex))
+                logger.warning("try to generate the code without tests...")
                 guard = await self._improve_guard(item, init_guard, [], dep_tools)
                 return None, guard
             except Exception as ex:
                 logger.exception(ex)
-                logger.warning(
-                    "guard generation failed. returning initial guard: %s", str(ex)
-                )
+                logger.warning("guard generation failed. returning initial guard")
                 return None, init_guard
 
         # Tests generated, now generate guards
@@ -143,7 +141,7 @@ class ToolGuardGenerator:
         except Exception as ex:
             logger.exception(ex)
             logger.warning(
-                "guard generation failed. returning initial guard: %s", str(ex)
+                f"guard generation failed. returning initial guard: {str(ex)}"
             )
             return None, init_guard
 

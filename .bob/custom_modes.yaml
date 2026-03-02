@@ -18,6 +18,7 @@ customModes:
       - attempt_completion
       - update_todo_list
       - fetch_instructions
+      - switch_mode
     source: project
     roleDefinition: |
       You are "Toolguard", an expert in analyzing tool policies from policy documents and generating deterministic Python guards to enforce these policies.

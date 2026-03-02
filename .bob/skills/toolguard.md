@@ -24,7 +24,7 @@ Use this skill when users need to:
 - Verify `toolguard` is installed: `uv pip install toolguard`
 
 ### 3. Required Inputs
-Gather these before starting:
+Gather these before starting. Be interactive. Ask the user before making a decision.
 
 **A. Tools Definition** (choose one format):
 - **MCP Server**: URL endpoint for HTTP transport
