@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 from typing import Any, Dict, List, Optional
+import uuid
 
 import httpx
 
@@ -63,7 +64,12 @@ def _fetch_tools_from_mcp(cfg: MCPConnectionConfig) -> list[dict[str, Any]]:
         cfg.mcp_url, cfg.bearer_token, cfg.timeout_s
     )
 
-    req = {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}
+    req = {
+        "jsonrpc": "2.0",
+        "id": str(uuid.uuid4()),
+        "method": "tools/list",
+        "params": {},
+    }
     headers = _mcp_headers(cfg.bearer_token, session_id)
 
     timeout = httpx.Timeout(cfg.timeout_s, connect=cfg.timeout_s)
@@ -117,7 +123,7 @@ def _read_first_jsonrpc_envelope(resp: httpx.Response) -> dict[str, Any]:
 def _mcp_initialize(mcp_url: str, bearer_token: str, timeout_s: float) -> str:
     req = {
         "jsonrpc": "2.0",
-        "id": 1,
+        "id": str(uuid.uuid4()),
         "method": "initialize",
         "params": {
             "protocolVersion": "2025-03-26",

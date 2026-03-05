@@ -17,12 +17,12 @@ from typing import Any
 
 import pytest
 import uvicorn
-from fastmcp import FastMCP
+from fastmcp import Client, FastMCP
+from fastmcp.client import StreamableHttpTransport
 from tau2.domains.airline.data_model import FlightDB
 from tau2.domains.airline.tools import AirlineTools
 
-from toolguard.extra.list_mcp_tools import MCPConnectionConfig, list_mcp_tools
-from toolguard.extra.mcp_tools_to_oas import mcp_tools_to_openapi
+from toolguard.extra.mcp_tools_to_oas import mcp_tools_to_openapi, list_mcp_tools
 
 # ---------------------------------------------------------------------------
 # Build the FastMCP server from the real tau2 AirlineTools
@@ -254,17 +254,18 @@ def _assert_oas_structure(
         )
 
 
-def test_list_mcp_tools(mcp_server_url: str) -> None:
+@pytest.mark.asyncio
+async def test_list_mcp_tools(mcp_server_url) -> None:
     """list_mcp_tools() must return a non-empty list of raw tool dicts,
     one entry per expected tau2 airline tool."""
-    cfg = MCPConnectionConfig(mcp_url=mcp_server_url)
-
-    tools = list_mcp_tools(cfg)
+    transport = StreamableHttpTransport(url=mcp_server_url)
+    mcp_client = Client(transport)
+    tools = await list_mcp_tools(mcp_client)
 
     assert isinstance(tools, list), f"Expected list, got {type(tools)}"
     assert tools, "Expected at least one tool"
 
-    tool_names = {t.get("name") for t in tools}
+    tool_names = {t.name for t in tools}
     for expected_name in EXPECTED_TOOLS:
         assert expected_name in tool_names, (
             f"Tool '{expected_name}' missing from list_mcp_tools() result. "
@@ -272,17 +273,16 @@ def test_list_mcp_tools(mcp_server_url: str) -> None:
         )
 
 
-def test_mcp_tools_to_openapi(mcp_server_url: str) -> None:
+@pytest.mark.asyncio
+async def test_mcp_tools_to_openapi(mcp_server_url) -> None:
     """mcp_tools_to_openapi() must produce a valid OpenAPI 3.1 document from
     a pre-fetched tool list, with the correct title and version."""
-    cfg = MCPConnectionConfig(mcp_url=mcp_server_url)
-    tools = list_mcp_tools(cfg)
+    transport = StreamableHttpTransport(url=mcp_server_url)
+    mcp_client = Client(transport)
+    tools = await list_mcp_tools(mcp_client)
 
     oas: dict[str, Any] = mcp_tools_to_openapi(
         tools, title="Tau2 Airline", version="0.1.0"
     )
 
     _assert_oas_structure(oas, title="Tau2 Airline", version="0.1.0")
-
-
-# Made with Bob

@@ -2,21 +2,25 @@ from __future__ import annotations
 
 import json
 import os
-import re
 from typing import Any, Dict, List
+from mcp.types import Tool
+from fastmcp.client import Client
 
-from toolguard.extra.list_mcp_tools import MCPConnectionConfig, list_mcp_tools
+
+async def list_mcp_tools(client: Client) -> list[Tool]:
+    async with client:
+        return await client.list_tools()
 
 
 def mcp_tools_to_openapi(
-    tools: List[Dict[str, Any]],
+    tools: List[Tool],
     title: str = "MCP Tools",
     version: str = "0.1.0",
 ) -> Dict[str, Any]:
     """Map a list of MCP tool descriptors to an OpenAPI 3.1 specification.
 
     Args:
-        tools: Raw tool descriptor dicts, as returned by :func:`list_mcp_tools`.
+        tools: List of MCP Tool objects, as returned by :func:`list_mcp_tools`.
         title: Value for ``info.title`` in the generated spec.
         version: Value for ``info.version`` in the generated spec.
 
@@ -27,27 +31,29 @@ def mcp_tools_to_openapi(
     all_schemas = []
 
     for tool in tools:
-        tool_name = _pick_mcp_tool_name(tool)
-        tool_desc = _pick_tool_description(tool)
-        summary = _pick_tool_summary(tool)
+        # Extract first sentence from description for summary
+        summary = (
+            tool.description.split(". ")[0]
+            if tool.description and ". " in tool.description
+            else tool.description
+        )
 
-        input_schema = _normalize_schema(_pick_input_schema(tool))
-        output_schema = _normalize_schema(_pick_output_schema(tool))
+        input_schema = _normalize_schema(tool.inputSchema)
+        output_schema = _normalize_schema(tool.outputSchema or {})
         all_schemas.extend([input_schema, output_schema])
 
-        route = f"/{tool_name}"
+        route = f"/{tool.name}"
         paths[route] = {
             "post": {
-                "operationId": tool_name,
-                "summary": summary or tool_name,
-                "description": (tool_desc or "").strip(),
+                "operationId": tool.name,
+                "summary": summary or tool.name,
+                "description": tool.description,
                 "requestBody": {
                     "required": True,
                     "content": {"application/json": {"schema": input_schema}},
                 },
                 "responses": {
                     "200": {
-                        "description": _pick_output_description(tool),
                         "content": {"application/json": {"schema": output_schema}},
                     }
                 },
@@ -69,61 +75,6 @@ def mcp_tools_to_openapi(
         "paths": paths,
         "components": {"schemas": components_schemas},
     }
-
-
-# ============================================================
-# Metadata pickers
-# ============================================================
-
-
-def _pick_mcp_tool_name(tool: dict[str, Any]) -> str:
-    return tool.get("name") or "unknown-tool"
-
-
-def _pick_tool_description(tool: dict[str, Any]) -> str:
-    return tool.get("description") or tool.get("summary") or ""
-
-
-def _pick_output_description(tool: dict[str, Any]) -> str:
-    return (
-        tool.get("outputDescription") or tool.get("resultDescription") or "Tool result"
-    )
-
-
-def _pick_input_schema(tool: dict[str, Any]) -> dict[str, Any]:
-    for key in ("inputSchema", "input_schema", "parameters", "schema"):
-        schema = tool.get(key)
-        if isinstance(schema, dict) and schema:
-            return dict(schema)
-    return {"type": "object", "additionalProperties": True}
-
-
-def _pick_output_schema(tool: dict[str, Any]) -> dict[str, Any]:
-    for key in (
-        "outputSchema",
-        "output_schema",
-        "responseSchema",
-        "response_schema",
-        "returnSchema",
-        "return_schema",
-        "resultSchema",
-        "result_schema",
-    ):
-        schema = tool.get(key)
-        if isinstance(schema, dict) and schema:
-            return dict(schema)
-    return {}
-
-
-def _pick_tool_summary(tool: dict[str, Any]) -> str:
-    text = (tool.get("description") or tool.get("summary") or "").strip()
-    if not text:
-        return ""
-    text = re.sub(r"\s+", " ", text)
-    m = re.search(r"[.!?]\s", text)
-    if not m:
-        return text
-    return text[: m.end() - 1].strip()
 
 
 # ============================================================
@@ -178,22 +129,24 @@ def _lift_defs_to_components(schemas: List[Dict]) -> dict[str, Any]:
     return out
 
 
-def main() -> None:
-    cfg = MCPConnectionConfig(
-        mcp_url="http://localhost:8765/mcp",
-        # gateway_tools_url="http://127.0.0.1:4444/tools",
-        # bearer_token=os.environ.get("TOKEN", ""),
-    )
-    out_path = "./out/gateway_mcp_tools_openapi_direct.json"
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    tools = list_mcp_tools(cfg)
+async def main() -> None:
+    from fastmcp.client import StreamableHttpTransport
+
+    transport = StreamableHttpTransport(url="http://127.0.0.1:8765/mcp")
+    mcp_client = Client(transport)
+    tools = await list_mcp_tools(mcp_client)
     oas = mcp_tools_to_openapi(tools, title="My MCP Tools", version="1.0.0")
+
+    out_path = "./output/mcp_tools_openapi_direct.json"
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(oas, f, indent=2)
     print(f"Wrote OpenAPI JSON to: {out_path}")
 
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+
+    asyncio.run(main())
 
 # Made with Bob
