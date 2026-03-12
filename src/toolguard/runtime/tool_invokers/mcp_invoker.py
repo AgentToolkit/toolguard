@@ -22,5 +22,6 @@ class MCPToolInvoker(IToolInvoker):  # pylint: disable=too-few-public-methods
     async def invoke(
         self, toolname: str, arguments: Dict[str, Any], return_type: Type[T]
     ) -> T:
-        result = await self._client.call_tool(name=toolname, arguments=arguments)
-        return cast(T, result.data)
+        async with self._client:
+            result = await self._client.call_tool(name=toolname, arguments=arguments)
+            return cast(T, result.data)
