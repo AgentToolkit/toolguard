@@ -57,16 +57,28 @@ llm = LitellmModel(
 
 ### MCP Server Tools
 ```python
-from toolguard.extra import export_mcp_tools_as_openapi
-from toolguard.extra.mcp_tools_to_oas import ExportConfig
+import asyncio
+from fastmcp.client import Client, StreamableHttpTransport
+from toolguard.extra.mcp_tools_to_oas import list_mcp_tools, mcp_tools_to_openapi
 
-# Export MCP tools as OpenAPI spec
-config = ExportConfig(
-    gateway_url="http://127.0.0.1:4444",
-    bearer_token=os.getenv("MCPGATEWAY_BEARER_TOKEN"),
-    server_uuid=os.getenv("MCPGATEWAY_SERVER_UUID"),
-)
-openapi_spec = export_mcp_tools_as_openapi(config)
+async def export_mcp_tools():
+    # Create HTTP transport for MCP server
+    transport = StreamableHttpTransport(url="http://127.0.0.1:8765/mcp")
+    mcp_client = Client(transport)
+
+    # List tools from MCP server
+    tools = await list_mcp_tools(mcp_client)
+
+    # Convert to OpenAPI spec
+    openapi_spec = mcp_tools_to_openapi(
+        tools,
+        title="My MCP Tools",
+        version="1.0.0"
+    )
+    return openapi_spec
+
+# Run the async function
+openapi_spec = asyncio.run(export_mcp_tools())
 ```
 
 ### LangChain Tools
