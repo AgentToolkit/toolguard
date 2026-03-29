@@ -1,4 +1,5 @@
 import asyncio
+import sys
 from pathlib import Path
 
 
@@ -16,7 +17,9 @@ async def run(oas_file: Path) -> str:
     """
     # see https://github.com/koxudaxi/datamodel-code-generator
     process = await asyncio.create_subprocess_exec(
-        "datamodel-codegen",
+        sys.executable,  # = Python executable
+        "-m",
+        "datamodel_code_generator",
         "--use-field-description",
         "--use-schema-description",
         "--output-model-type",

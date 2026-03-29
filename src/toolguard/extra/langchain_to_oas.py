@@ -27,9 +27,10 @@ def langchain_tools_to_openapi(
     for tool in tools:
         # Get JSON schema from the args model
         if tool.get_input_schema():
-            components["schemas"][tool.name + "Args"] = (
-                tool.get_input_schema().model_json_schema()
-            )
+            in_schema = tool.get_input_schema().model_json_schema()
+            in_schema = substitute_refs(in_schema)
+            in_schema.pop("$defs", None)
+            components["schemas"][tool.name + "Args"] = in_schema
 
             request_body = {
                 "description": tool.description,

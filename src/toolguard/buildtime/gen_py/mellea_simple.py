@@ -16,7 +16,7 @@ class SimpleBackend(Backend):
         self.llm = llm
         self.formatter = TemplateFormatter(model_id="")
 
-    async def generate_from_context(
+    async def _generate_from_context(
         self,
         action: Component | CBlock,
         ctx: Context,
