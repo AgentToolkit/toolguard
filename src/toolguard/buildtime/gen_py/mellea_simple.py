@@ -16,7 +16,8 @@ class SimpleBackend(Backend):
         self.llm = llm
         self.formatter = TemplateFormatter(model_id="")
 
-    async def _generate_from_context(
+    # _generate_from_context() for mellea > 0.4.0
+    async def generate_from_context(
         self,
         action: Component | CBlock,
         ctx: Context,
