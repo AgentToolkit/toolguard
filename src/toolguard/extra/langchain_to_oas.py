@@ -1,3 +1,4 @@
+import copy
 from typing import Any, Dict, List
 
 from langchain_core.tools import BaseTool
@@ -27,7 +28,8 @@ def langchain_tools_to_openapi(
     for tool in tools:
         # Get JSON schema from the args model
         if tool.get_input_schema():
-            in_schema = tool.get_input_schema().model_json_schema()
+            # Create a deep copy to avoid circular reference issues during serialization
+            in_schema = copy.deepcopy(tool.get_input_schema().model_json_schema())
             in_schema = substitute_refs(in_schema)
             in_schema.pop("$defs", None)
             components["schemas"][tool.name + "Args"] = in_schema
@@ -45,12 +47,13 @@ def langchain_tools_to_openapi(
             # Tools without args → empty schema
             request_body = None
 
-        out_schema: Dict = tool.get_output_jsonschema()
+        out_schema: Dict = copy.deepcopy(tool.get_output_jsonschema())
         if tool.metadata and tool.metadata.get(
             "output_schema"
         ):  # Langflow metadata.output_schema overrides
             out_schema = tool.metadata.get("output_schema", {})
         out_schema = substitute_refs(out_schema)
+        out_schema.pop("$defs", None)
 
         if out_schema.get("x-fastmcp-wrap-result"):  # a 'result' MCP wrapper
             out_schema = out_schema.get("properties", {}).get("result", {})

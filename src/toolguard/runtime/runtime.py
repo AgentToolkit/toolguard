@@ -237,7 +237,8 @@ class ToolguardRuntime:
         guard_fn = self._guards.get(tool_name)
         if guard_fn is None:  # No guard assigned to this tool
             return
-        await guard_fn(**self._make_args(guard_fn, args, delegate))
+        guard_args = self._make_args(guard_fn, args, delegate)
+        await guard_fn(**guard_args)
 
 
 def _file_to_module_name(file_path: str | Path):
