@@ -11,6 +11,8 @@ from toolguard.buildtime.gen_py.gen_toolguards import (
 from toolguard.buildtime.gen_spec.spec_generator import (
     extract_toolguard_specs,
     PolicySpecOptions,
+    ToolGuardSpecGenerator,
+    _tools_to_tool_infos,
 )
 from toolguard.buildtime.llm import I_TG_LLM
 from toolguard.buildtime.utils.open_api import OpenAPI
@@ -104,3 +106,50 @@ async def generate_guards_code(
         )
 
     raise NotImplementedError()
+
+
+# Generate examples for existing specs
+async def generate_guard_examples(
+    tools: TOOLS,
+    tool_specs: List[ToolGuardSpec],
+    llm: I_TG_LLM,
+    work_dir: str | Path,
+    *,
+    example_number: Optional[int] = None,
+) -> List[ToolGuardSpec]:
+    """Generate examples for existing tool guard specifications.
+
+    Args:
+        tools: The tools to generate examples for (OpenAPI spec, or functions).
+        tool_specs: List of ToolGuardSpec objects to generate examples for.
+        llm: The LLM instance to use for generation.
+        work_dir: The working directory for intermediate files.
+        example_number: Number of examples to generate per policy item.
+            None = let LLM decide, 0 = no examples, >0 = that many examples.
+
+    Returns:
+        List of ToolGuardSpec objects with generated examples added.
+    """
+    work_dir = Path(work_dir)
+    work_dir.mkdir(parents=True, exist_ok=True)
+
+    # Convert tools to tool infos
+    tool_infos = _tools_to_tool_infos(tools)
+
+    # Create a generator instance (we don't need policy_document for examples)
+    generator = ToolGuardSpecGenerator(
+        llm=llm,
+        policy_document="",  # Not needed for example generation
+        tools=tool_infos,
+        out_dir=work_dir,
+    )
+
+    # Generate examples for each spec
+    for spec in tool_specs:
+        await generator.example_creator(
+            tool_name=spec.tool_name,
+            spec=spec,
+            fixed_examples=example_number,
+        )
+
+    return tool_specs
