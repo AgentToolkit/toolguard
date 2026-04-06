@@ -1,39 +1,31 @@
 Task Overview:
-Your task is to generate **exactly EX_FIX_NUM violating examples and exactly EX_FIX_NUM compliance examples**, written in natural language, for a given policy.
-The policy defines constraints and rules that must be validated before calling a specific tool, referred to as **“ToolX.”**
+Your task is to generate violating examples and compliance examples for a tool use according to a policy.
+All examples MUST involve an attempt to use ToolX (either correctly or incorrectly).
+Each example should be a natural language description of a tool usage scenario, including enough detail (parameters, values, intent) to be unambiguously translated into a tool call. And to allow deterministic validation in automated tests.
+The policy defines constraints and rules that must be checked before calling a specific tool, referred to as **"ToolX."**
 
 Input Data:
-Tools Descriptions: A list of tools along with descriptions explaining their functionality and constraints.
-Target Tool (ToolX): The specific tool for which relevant policy items need to be identified.
-Policy: The policy to write the examples for
+- Target Tool (ToolX): The specific tool under analysis.
+- Policy: The policy to write the examples for
+- Tools Descriptions: A list of other tools along with descriptions explaining their functionality. Tools Descriptions are provided for context only. Do not generate examples that use tools other than ToolX.
 
-Objective:
-For the given policy, generate:
-- **Exactly EX_FIX_NUM examples that violate the policy**
-- **Exactly EX_FIX_NUM examples that comply with the policy**
-
-Each example must be:
-- Clear and explicit about why it violates or complies
-- Specific and concrete
-- Actionable and suitable for validation or automated testing
+Each generated example must be:
+- Concise, specific and concrete
+- Actionable and suitable for programmatic check using the other tools, or automated testing
 
 
 Guidelines for Creating Examples:
 
 1. Violating Examples:
-Quantity: Provide exactly **EX_FIX_NUM** violating examples.
-Diverse: Provide a range of cases where the policy is violated, including common mistakes, edge cases, and scenarios where specific conditions of the policy are breached.
-Clear: Ensure each violating example explicitly demonstrates why it does not comply with the policy. Highlight the incorrect aspects.
-Specific: Use concrete and testable examples that can be directly translated into code.
+Diverse: Provide a range of cases where the tool is used in a way that *violates* the policy. Include common mistakes, edge cases, and scenarios where specific conditions of the policy are breached.
+Quantity: Up to EX_FIX_NUM violating examples.
 
 2. Compliance Examples:
-Quantity: Provide exactly **EX_FIX_NUM** violating examples.
-Diverse: Include a variety of correct cases, covering different valid ways of adhering to the policy.
-Clear: Each compliance example should clearly illustrate how the policy is properly followed.
-Actionable: Ensure that examples are easy to implement in test cases, directly demonstrating adherence.
+Diverse: Include a variety of correct cases how ToolX can be used. Do not include cases that do not use the tool. You should cover different valid ways of using the tool while adhering to the policy.
+Quantity: Up to EX_FIX_NUM compliance examples.
 
 3. Edge Cases:
-- At least **one of the six total examples** (violation or compliance) must cover an edge or boundary condition, if applicable.
+At least one violating example AND at least one compliance example must include an edge or boundary condition (if applicable).
 - Edge cases may involve:
   - Numeric limits
   - Optional or missing parameters
@@ -41,30 +33,49 @@ Actionable: Ensure that examples are easy to implement in test cases, directly d
   - Minimum or maximum allowed values
 
 4. Comprehensive Coverage:
-Ensure all rules within each policy are covered. If a policy contains multiple conditions, provide examples for each possible combination of compliance and violation.
+When the policy includes multiple conditions, include examples that:
+- Violate one condition at a time
+- Violate multiple conditions simultaneously (if applicable)
+- Fully comply with all conditions
 
-Output Format (JSON):
+The number of violation and compliance examples may differ, as long as each does not exceed EX_FIX_NUM.
+
+All examples must be distinct and non-overlapping. Avoid rephrasing the same scenario with minor wording changes.
+
+Output ONLY valid JSON. Do not include explanations, comments, or any text outside the JSON object.
+Output Format (JSON schema):
+```
 {
-    "violation_examples": [
-        "Violating example 1",
-        "Violating example 2",
-        "Violating example 3",
-        "Violating example 4"
-    ],
-    "compliance_examples": [
-       "Compliance example 1",
-       "Compliance example 2",
-       "Compliance example 3",
-       "Compliance example 4"
-    ]
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["violation_examples", "compliance_examples"],
+  "properties": {
+    "violation_examples": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of tool usage examples that violate the policy"
+    },
+    "compliance_examples": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of tool usage examples that comply with the policy"
+    }
+  },
+  "additionalProperties": false
 }
+```
 
-Example:
+Example of (up to) 4 violation examples and (up to) 4 compliance examples:
 
 Target Tool: rent_car
 Policy: The user can rent only medium cars in red or small cars in blue or any yellow car
 
 Output:
+```
 {
     "violation_examples": [
         "A user asks to rent a green car",
@@ -75,7 +86,7 @@ Output:
     "compliance_examples": [
         "A user asks to rent a red medium car",
         "The user requests to rent small blue car",
-        "Renting a big yellow car",
         "Renting a small yellow car"
     ]
 }
+```

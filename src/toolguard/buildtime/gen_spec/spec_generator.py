@@ -153,13 +153,12 @@ class ToolGuardSpecGenerator:
         return self.options.example_number
 
     async def generate_policy(self, tool_name: str) -> ToolGuardSpec:
-        if PolicySpecStep.CREATE_POLICIES in self._effective_steps():
-            spec = await self.create_spec(tool_name)
+        # if PolicySpecStep.CREATE_POLICIES in self._effective_steps():
+        spec = await self.create_spec(tool_name)
         if PolicySpecStep.ADD_POLICIES in self._effective_steps():
             for i in range(self._add_iterations()):
                 await self.add_items(tool_name, spec, i)
-            if not spec.policy_items:
-                return spec
+
         if PolicySpecStep.REVIEW_POLICIES in self._effective_steps():
             await self.review_policy(tool_name, spec)
 
@@ -296,6 +295,9 @@ spec: {spec.model_dump_json(indent=2)}"""
         return not (all(float(counts[key]) / num > 0.5 for key in counts)), comments
 
     async def review_policy(self, tool_name: str, spec: ToolGuardSpec):
+        if not spec.policy_items:
+            return
+
         logger.debug(f"review_policy({tool_name})")
         # system_prompt = read_prompt_file("policy_reviewer")
         system_prompt = read_prompt_file("review_policy_relevance")
@@ -328,6 +330,8 @@ policy: {item.model_dump_json(indent=2)}"""
         save_output(self.out_dir, f"{tool_name}_rev.json", spec)
 
     async def review_policy_feasibility(self, tool_name: str, spec: ToolGuardSpec):
+        if not spec.policy_items:
+            return
         logger.debug(f"review_policy_feasibility({tool_name})")
         system_prompt = read_prompt_file("review_policy_feasibility")
         all_tool_descs = json.dumps(self.tools_descriptions)
@@ -387,6 +391,9 @@ policy: {item.model_dump_json(indent=2)}"""
         save_output(self.out_dir, f"{tool_name}_rev_feasibility.json", spec)
 
     async def ensure_self_contained(self, tool_name: str, spec: ToolGuardSpec):
+        if not spec.policy_items:
+            return
+
         logger.debug(f"self_containe({tool_name})")
         system_prompt = read_prompt_file("policy_reviewer_self_contained")
         tool = self.tools_details[tool_name]
@@ -418,6 +425,9 @@ policy: {item.model_dump_json(indent=2)}"""
         save_output(self.out_dir, f"{tool_name}_self_contained.json", spec)
 
     async def add_references(self, tool_name: str, spec: ToolGuardSpec):
+        if not spec.policy_items:
+            return
+
         logger.debug(f"add_ref({tool_name})")
         system_prompt = read_prompt_file("add_references")
         # remove old refs (used to help avoid duplications)
@@ -441,6 +451,9 @@ policy: {item.model_dump_json(indent=2)}"""
         save_output(self.out_dir, f"{tool_name}_ref.json", spec)
 
     def reference_correctness(self, tool_name: str, spec: ToolGuardSpec):
+        if not spec.policy_items:
+            return
+
         logger.debug(f"reference_correctness({tool_name})")
         save_output(self.out_dir, f"{tool_name}_ref_orig_.json", spec)
         spec, unmatched_policies = find_mismatched_references(
@@ -451,6 +464,9 @@ policy: {item.model_dump_json(indent=2)}"""
     async def example_creator(
         self, tool_name: str, spec: ToolGuardSpec, fixed_examples: Optional[int] = None
     ):
+        if not spec.policy_items:
+            return
+
         logger.debug(f"example_creator({tool_name})")
         if fixed_examples:
             system_prompt = read_prompt_file("create_short_examples")
