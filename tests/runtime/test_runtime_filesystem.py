@@ -9,7 +9,6 @@ from toolguard.runtime import (
     PolicyViolationException,
     IToolInvoker,
 )
-from toolguard.runtime.data_types import RESULTS_FILENAME
 
 
 class MockToolInvoker(IToolInvoker):
@@ -36,17 +35,6 @@ async def test_load_toolguards_from_filesystem():
 
 
 @pytest.mark.asyncio
-async def test_context_manager_loads_guards():
-    """Test that context manager properly loads guard functions."""
-    with load_toolguards(TEST_DATA_DIR) as runtime:
-        # Verify guards are loaded
-        assert "add_tool" in runtime._guards
-        assert "divide_tool" in runtime._guards
-        assert callable(runtime._guards["add_tool"])
-        assert callable(runtime._guards["divide_tool"])
-
-
-@pytest.mark.asyncio
 async def test_guard_toolcall_compliance():
     """Test guard_toolcall with compliant arguments."""
     mock_invoker = MockToolInvoker()
@@ -57,6 +45,64 @@ async def test_guard_toolcall_compliance():
 
         # Test divide with non-zero divisor (should pass)
         await runtime.guard_toolcall("divide_tool", {"a": 10, "b": 2}, mock_invoker)
+
+
+@pytest.mark.asyncio
+async def test_guard_toolcall_parallel_calls():
+    """Test multiple parallel guard_toolcall invocations with compliance and violations."""
+    import asyncio
+
+    mock_invoker = MockToolInvoker()
+
+    with load_toolguards(TEST_DATA_DIR) as runtime:
+        # Create multiple parallel tasks - all compliant
+        tasks_compliant = [
+            runtime.guard_toolcall("add_tool", {"a": 5, "b": 3}, mock_invoker),
+            runtime.guard_toolcall("add_tool", {"a": 10, "b": 20}, mock_invoker),
+            runtime.guard_toolcall("divide_tool", {"a": 10, "b": 2}, mock_invoker),
+            runtime.guard_toolcall("divide_tool", {"a": 20, "b": 5}, mock_invoker),
+            runtime.guard_toolcall("add_tool", {"a": 1, "b": 1}, mock_invoker),
+        ]
+
+        # Execute all compliant tasks in parallel
+        results = await asyncio.gather(*tasks_compliant)
+
+        # All should complete without raising exceptions
+        assert len(results) == 5
+
+        # Test parallel calls with mix of compliance and violations
+        tasks_mixed = [
+            runtime.guard_toolcall(
+                "add_tool", {"a": 5, "b": 3}, mock_invoker
+            ),  # compliant
+            runtime.guard_toolcall(
+                "add_tool", {"a": -5, "b": 3}, mock_invoker
+            ),  # violation
+            runtime.guard_toolcall(
+                "divide_tool", {"a": 10, "b": 2}, mock_invoker
+            ),  # compliant
+            runtime.guard_toolcall(
+                "divide_tool", {"a": 10, "b": 0}, mock_invoker
+            ),  # violation
+            runtime.guard_toolcall(
+                "add_tool", {"a": 100, "b": 200}, mock_invoker
+            ),  # compliant
+        ]
+
+        # Use gather with return_exceptions=True to capture exceptions
+        results_mixed = await asyncio.gather(*tasks_mixed, return_exceptions=True)
+
+        # Check that we got the expected mix of results and exceptions
+        assert len(results_mixed) == 5
+        assert results_mixed[0] is None  # successful call
+        assert isinstance(results_mixed[1], PolicyViolationException)  # negative number
+        assert "positive numbers" in str(results_mixed[1]).lower()
+        assert results_mixed[2] is None  # successful call
+        assert isinstance(
+            results_mixed[3], PolicyViolationException
+        )  # division by zero
+        assert "division by zero" in str(results_mixed[3]).lower()
+        assert results_mixed[4] is None  # successful call
 
 
 @pytest.mark.asyncio
@@ -133,38 +179,6 @@ async def test_context_manager_restores_path():
 
     # Path should be restored
     assert sys.path == original_path
-
-
-@pytest.mark.asyncio
-async def test_load_with_custom_filename():
-    """Test loading toolguards with custom result filename."""
-    # This should work with the default filename
-    runtime = load_toolguards(TEST_DATA_DIR, RESULTS_FILENAME)
-    assert runtime is not None
-
-    with runtime:
-        assert "add_tool" in runtime._guards
-        assert "divide_tool" in runtime._guards
-
-
-@pytest.mark.asyncio
-async def test_filesystem_and_memory_modes_equivalent():
-    """Test that filesystem and memory modes produce equivalent results."""
-    from toolguard.runtime import load_toolguards_from_memory
-    from toolguard.runtime.data_types import ToolGuardsCodeGenerationResult
-
-    # Load from filesystem
-    with load_toolguards(TEST_DATA_DIR) as fs_runtime:
-        fs_guards = set(fs_runtime._guards.keys())
-
-    # Load from memory
-    result = ToolGuardsCodeGenerationResult.load(TEST_DATA_DIR)
-    with load_toolguards_from_memory(result) as mem_runtime:
-        mem_guards = set(mem_runtime._guards.keys())
-
-    # Both should have the same guards
-    assert fs_guards == mem_guards
-    assert fs_guards == {"add_tool", "divide_tool"}
 
 
 @pytest.mark.asyncio

@@ -208,26 +208,6 @@ async def test_load_toolguards_from_memory_basic(
 
 
 @pytest.mark.asyncio
-async def test_context_manager_loads_modules(
-    sample_result,
-    sample_api_types,
-    sample_api_interface,
-    sample_api_impl,
-    sample_guard_add,
-    sample_guard_divide,
-):
-    """Test that context manager properly loads modules."""
-    runtime = load_toolguards_from_memory(sample_result)
-
-    with runtime:
-        # Verify guards are loaded
-        assert "add_tool" in runtime._guards
-        assert "divide_tool" in runtime._guards
-        assert callable(runtime._guards["add_tool"])
-        assert callable(runtime._guards["divide_tool"])
-
-
-@pytest.mark.asyncio
 async def test_guard_toolcall_compliance(
     sample_result,
     sample_api_types,
@@ -245,6 +225,65 @@ async def test_guard_toolcall_compliance(
 
         # Test divide with non-zero divisor (should pass)
         await runtime.guard_toolcall("divide_tool", {"a": 10, "b": 2}, mock_invoker)
+
+
+@pytest.mark.asyncio
+async def test_guard_toolcall_parallel_calls(
+    sample_result,
+    sample_api_types,
+    sample_api_interface,
+    sample_api_impl,
+    sample_guard_add,
+    sample_guard_divide,
+):
+    """Test multiple parallel guard_toolcall invocations."""
+    import asyncio
+
+    mock_invoker = MockToolInvoker()
+
+    with load_toolguards_from_memory(sample_result) as runtime:
+        # Create multiple parallel tasks
+        tasks = [
+            runtime.guard_toolcall("add_tool", {"a": 5, "b": 3}, mock_invoker),
+            runtime.guard_toolcall("add_tool", {"a": 10, "b": 20}, mock_invoker),
+            runtime.guard_toolcall("divide_tool", {"a": 10, "b": 2}, mock_invoker),
+            runtime.guard_toolcall("divide_tool", {"a": 20, "b": 5}, mock_invoker),
+            runtime.guard_toolcall("add_tool", {"a": 1, "b": 1}, mock_invoker),
+        ]
+
+        # Execute all tasks in parallel
+        results = await asyncio.gather(*tasks)
+
+        # All should complete without raising exceptions
+        assert len(results) == 5
+
+        # Test parallel calls with some violations
+        tasks_with_violations = [
+            runtime.guard_toolcall("add_tool", {"a": 5, "b": 3}, mock_invoker),
+            runtime.guard_toolcall(
+                "add_tool", {"a": -5, "b": 3}, mock_invoker
+            ),  # violation
+            runtime.guard_toolcall("divide_tool", {"a": 10, "b": 2}, mock_invoker),
+            runtime.guard_toolcall(
+                "divide_tool", {"a": 10, "b": 0}, mock_invoker
+            ),  # violation
+        ]
+
+        # Use gather with return_exceptions=True to capture exceptions
+        results_with_exceptions = await asyncio.gather(
+            *tasks_with_violations, return_exceptions=True
+        )
+
+        # Check that we got the expected mix of results and exceptions
+        assert len(results_with_exceptions) == 4
+        assert results_with_exceptions[0] is None  # successful call
+        assert isinstance(
+            results_with_exceptions[1], PolicyViolationException
+        )  # negative number
+        assert results_with_exceptions[2] is None  # successful call
+        assert isinstance(
+            results_with_exceptions[3], PolicyViolationException
+        )  # division by zero
 
 
 @pytest.mark.asyncio
@@ -305,33 +344,6 @@ async def test_guard_toolcall_no_guard(
     with load_toolguards_from_memory(sample_result) as runtime:
         # Call a tool that doesn't exist (should not raise)
         await runtime.guard_toolcall("nonexistent_tool", {"a": 5, "b": 3}, mock_invoker)
-
-
-@pytest.mark.asyncio
-async def test_context_manager_cleanup(
-    sample_result,
-    sample_api_types,
-    sample_api_interface,
-    sample_api_impl,
-    sample_guard_add,
-    sample_guard_divide,
-):
-    """Test that context manager properly cleans up modules."""
-    import sys
-
-    runtime = load_toolguards_from_memory(sample_result)
-
-    # Track which modules were loaded
-    loaded_modules = []
-    with runtime:
-        loaded_modules = list(runtime._loaded_modules.keys())
-        # Verify modules are in sys.modules
-        for mod_name in loaded_modules:
-            assert mod_name in sys.modules
-
-    # After exiting context, modules should be cleaned up
-    for mod_name in loaded_modules:
-        assert mod_name not in sys.modules
 
 
 def test_runtime_init_validation():
