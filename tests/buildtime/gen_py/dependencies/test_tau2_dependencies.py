@@ -2,15 +2,14 @@ import inspect
 import os
 from pathlib import Path
 
-import mellea
 import pytest
 from tau2.domains.airline.data_model import FlightBase
 from tau2.domains.airline.tools import AirlineTools
 from tau2.environment.toolkit import ToolType, is_tool
 
 from toolguard.buildtime.gen_py.domain_from_funcs import generate_domain_from_functions
-from toolguard.buildtime.gen_py.mellea_simple import SimpleBackend
 from toolguard.buildtime.gen_py.tool_dependencies import tool_dependencies
+from toolguard.buildtime.llm import I_TG_LLM
 from toolguard.buildtime.llm.tg_litellm import LitellmModel
 
 current_dir = str(Path(__file__).parent)
@@ -58,8 +57,8 @@ class TestToolsDependencies:
         print("Tearing down class resources")
 
     @pytest.fixture(autouse=True)
-    def session(self):
-        llm = LitellmModel(
+    def llm(self) -> I_TG_LLM:
+        return LitellmModel(
             model_name=os.getenv("MODEL_NAME") or "Azure/gpt-5-2025-08-07",
             provider=os.getenv("LLM_PROVIDER") or "azure",
             kw_args={
@@ -68,67 +67,65 @@ class TestToolsDependencies:
                 "api_key": os.getenv("LLM_API_KEY"),
             },
         )
-        mellea_backend = SimpleBackend(llm)
-        return mellea.MelleaSession(mellea_backend)
 
     @pytest.mark.asyncio
-    async def test_args_only(self, session):
+    async def test_args_only(self, llm):
         policy = "The total number of passengers in a reservation does not exceed five."
         assert (
             await tool_dependencies(
-                policy, book_reservation_signature, self.domain, session
+                policy, book_reservation_signature, self.domain, llm
             )
             == set()
         )
 
     @pytest.mark.asyncio
-    async def test_payment_in_user(self, session):
+    async def test_payment_in_user(self, llm):
         policy = """All payment methods used are already present in the user's profile.
         Each reservation can use at most one travel certificate, one credit card, and three gift cards. """
         assert await tool_dependencies(
-            policy, book_reservation_signature, self.domain, session
+            policy, book_reservation_signature, self.domain, llm
         ) == {"get_user_details"}
 
     @pytest.mark.asyncio
-    async def test_payment_in_args(self, session):
+    async def test_payment_in_args(self, llm):
         policy = "Each reservation can use at most one travel certificate, one credit card, and three gift cards."
         deps = await tool_dependencies(
-            policy, book_reservation_signature, self.domain, session
+            policy, book_reservation_signature, self.domain, llm
         )
         assert deps == {"get_user_details"}
 
     @pytest.mark.asyncio
-    async def test_membership(self, session):
+    async def test_membership(self, llm):
         policy = """
         If the booking user is a regular member, 0 free checked bag for each basic economy passenger, 1 free checked bag for each economy passenger, and 2 free checked bags for each business passenger.
         If the booking user is a silver member, 1 free checked bag for each basic economy passenger, 2 free checked bag for each economy passenger, and 3 free checked bags for each business passenger.
         If the booking user is a gold member, 2 free checked bag for each basic economy passenger, 3 free checked bag for each economy passenger, and 3 free checked bags for each business passenger.
         """
         assert await tool_dependencies(
-            policy, book_reservation_signature, self.domain, session
+            policy, book_reservation_signature, self.domain, llm
         ) == {"get_user_details"}
 
     @pytest.mark.asyncio
-    async def test_flight_status(self, session):
+    async def test_flight_status(self, llm):
         policy = """The agent must ensure that the flight status is 'available' before booking.
         Flights with status 'delayed', 'on time', or 'flying' cannot be booked.
         """
         assert await tool_dependencies(
-            policy, book_reservation_signature, self.domain, session
+            policy, book_reservation_signature, self.domain, llm
         ) == {"get_flight_status"}
 
     @pytest.mark.asyncio
-    async def test_update_flight_basic_economy(self, session):
+    async def test_update_flight_basic_economy(self, llm):
         policy = "Basic economy flights cannot be modified. The agent must verify the reservation's cabin class before calling the flight update API."
         assert await tool_dependencies(
-            policy, update_flights_signature, self.domain, session
+            policy, update_flights_signature, self.domain, llm
         ) == {"get_reservation_details"}
 
     # This test succeeds only with §§advanced models (eg, o1. but not gpt-4o)
     @pytest.mark.asyncio
-    async def test_indirect_api(self, session):
+    async def test_indirect_api(self, llm):
         policy = "When changing flights in a reservation, the agent must ensure that the origin, destination, and trip type remain unchanged."
         deps = await tool_dependencies(
-            policy, update_flights_signature, self.domain, session
+            policy, update_flights_signature, self.domain, llm
         )
         assert deps == {"get_reservation_details", "get_scheduled_flight"}

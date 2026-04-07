@@ -7,9 +7,9 @@ from types import ModuleType
 from typing import Callable, List, Optional, Tuple, Type
 
 from loguru import logger
-from mellea import MelleaSession
 
 from toolguard.buildtime.gen_py import prompts
+from toolguard.buildtime.llm import I_TG_LLM
 from toolguard.buildtime.gen_py.naming_conv import (
     guard_fn_module_name,
     guard_fn_name,
@@ -50,13 +50,13 @@ class ToolGuardGenerator:
         tool_policy: ToolGuardSpec,
         py_path: Path,
         domain: RuntimeDomain,
-        m: MelleaSession,
+        llm: I_TG_LLM,
     ) -> None:
         self.py_path = py_path
         self.app_name = app_name
         self.tool_policy = tool_policy
         self.domain = domain
-        self.m = m
+        self.llm = llm
 
     def _create_dirs(self):
         app_path = self.py_path / py.to_py_module_name(self.app_name)
@@ -111,7 +111,7 @@ class ToolGuardGenerator:
         dep_tools = []
         if self.domain.app_api_size > 1:
             dep_tools = list(
-                await tool_dependencies(item.description, sig_str, self.domain, self.m)
+                await tool_dependencies(item.description, sig_str, self.domain, self.llm)
             )
         logger.debug(f"Dependencies of '{item.name}': {dep_tools}")
 
@@ -162,7 +162,7 @@ class ToolGuardGenerator:
             first_time = trial_no == "a"
             if first_time:
                 res = await prompts.generate_init_tests(
-                    self.m,
+                    self.llm,
                     fn_src=guard,
                     policy_item=item,
                     domain=domain,  # noqa: B023
@@ -171,7 +171,7 @@ class ToolGuardGenerator:
             else:
                 assert test_file
                 res = await prompts.improve_tests(
-                    self.m,
+                    self.llm,
                     prev_impl=test_file.content,  # noqa: B023
                     domain=domain,  # noqa: B023
                     policy_item=item,
@@ -261,7 +261,7 @@ class ToolGuardGenerator:
             domain = self.domain.get_definitions_only()  # omit runtime fields
             prev_python = get_code_content(prev_guard.content)
             res = await prompts.improve_tool_guard(
-                self.m,
+                self.llm,
                 policy_txt=item.description,
                 dependent_tool_names=dep_tools,
                 prev_impl=prev_python,  # noqa: B023
