@@ -2,13 +2,12 @@
 
 from typing import List
 
-from mellea import generative
-
+from toolguard.buildtime.gen_py.prompt_runner import run_prompt
+from toolguard.buildtime.llm import I_TG_LLM
 from toolguard.runtime.data_types import FileTwin
 
 
-@generative
-async def improve_tool_guard(
+async def _improve_tool_guard_template(
     policy_txt: str,
     dependent_tool_names: List[str],
     prev_impl: str,
@@ -168,3 +167,25 @@ async def improve_tool_guard(
         ```
     """
     ...
+
+
+async def improve_tool_guard(
+    llm: I_TG_LLM,
+    *,
+    policy_txt: str,
+    dependent_tool_names: List[str],
+    prev_impl: str,
+    review_comments: List[str],
+    api: FileTwin,
+    data_types: FileTwin,
+) -> str:
+    return await run_prompt(
+        llm,
+        _improve_tool_guard_template,
+        policy_txt=policy_txt,
+        dependent_tool_names=dependent_tool_names,
+        prev_impl=prev_impl,
+        review_comments=review_comments,
+        api=api,
+        data_types=data_types,
+    )

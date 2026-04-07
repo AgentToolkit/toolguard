@@ -2,13 +2,12 @@
 
 from typing import List
 
-from mellea import generative
-
+from toolguard.buildtime.gen_py.prompt_runner import run_prompt
+from toolguard.buildtime.llm import I_TG_LLM
 from toolguard.runtime.data_types import Domain, FileTwin, ToolGuardSpecItem
 
 
-@generative
-async def generate_init_tests(
+async def _generate_init_tests_template(
     fn_src: FileTwin,
     policy_item: ToolGuardSpecItem,
     domain: Domain,
@@ -113,8 +112,7 @@ async def generate_init_tests(
     ...
 
 
-@generative
-async def improve_tests(
+async def _improve_tests_template(
     prev_impl: str,
     domain: Domain,
     policy_item: ToolGuardSpecItem,
@@ -139,3 +137,41 @@ async def improve_tests(
     - You can add import statements, but dont remove them.
     """
     ...
+
+
+async def generate_init_tests(
+    llm: I_TG_LLM,
+    *,
+    fn_src: FileTwin,
+    policy_item: ToolGuardSpecItem,
+    domain: Domain,
+    dependent_tool_names: List[str],
+) -> str:
+    return await run_prompt(
+        llm,
+        _generate_init_tests_template,
+        fn_src=fn_src,
+        policy_item=policy_item,
+        domain=domain,
+        dependent_tool_names=dependent_tool_names,
+    )
+
+
+async def improve_tests(
+    llm: I_TG_LLM,
+    *,
+    prev_impl: str,
+    domain: Domain,
+    policy_item: ToolGuardSpecItem,
+    review_comments: List[str],
+    dependent_tool_names: List[str],
+) -> str:
+    return await run_prompt(
+        llm,
+        _improve_tests_template,
+        prev_impl=prev_impl,
+        domain=domain,
+        policy_item=policy_item,
+        review_comments=review_comments,
+        dependent_tool_names=dependent_tool_names,
+    )

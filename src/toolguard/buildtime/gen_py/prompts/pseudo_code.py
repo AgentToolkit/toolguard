@@ -1,13 +1,12 @@
 # mypy: ignore-errors
 
 
-from mellea import generative
-
+from toolguard.buildtime.gen_py.prompt_runner import run_prompt
+from toolguard.buildtime.llm import I_TG_LLM
 from toolguard.runtime.data_types import FileTwin
 
 
-@generative
-async def tool_policy_pseudo_code(
+async def _pseudo_code_template(
     policy_txt: str, fn_to_analyze: str, data_types: FileTwin, api: FileTwin
 ) -> str:
     """
@@ -169,3 +168,22 @@ async def tool_policy_pseudo_code(
     ```
     """
     ...
+
+
+async def tool_policy_pseudo_code(
+    llm: I_TG_LLM,
+    *,
+    policy_txt: str,
+    fn_to_analyze: str,
+    data_types: FileTwin,
+    api: FileTwin,
+    model_options: dict | None = None,
+) -> str:
+    return await run_prompt(
+        llm,
+        _pseudo_code_template,
+        policy_txt=policy_txt,
+        fn_to_analyze=fn_to_analyze,
+        data_types=data_types,
+        api=api,
+    )
