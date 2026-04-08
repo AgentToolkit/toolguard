@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "toolguard"
-version = "0.2.13"
+version = "0.2.14"
 description = "Policy adherence code generation for guarding AI agent tools"
 readme = "README.md"
 
@@ -30,7 +30,6 @@ dependencies = [
     "fastmcp>=2.13.0",
     "loguru"
 ]
-
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: Apache Software License",
@@ -41,12 +40,16 @@ license = { file = "LICENSE" }
 [tool.hatch.metadata]
 allow-direct-references = true
 
+[tool.uv]
+override-dependencies = [
+    "click==8.3.2" #mellea uses click==8.1.8 that makes langflow unittest fail
+]
 
 [dependency-groups]
 dev = [
     "dotenv",
     "pre-commit>=4.2.0",
-    "tau2 @ git+https://github.com/sierra-research/tau2-bench.git@main",
+    "tau2 @ git+https://github.com/sierra-research/tau2-bench.git@main ; python_version >= '3.12'",
 ]
 
 
