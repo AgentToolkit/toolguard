@@ -1,14 +1,11 @@
-# mypy: ignore-errors
-
 from typing import List
 
-from mellea import generative
-
+from toolguard.buildtime.llm.generative_fn import generative
 from toolguard.runtime.data_types import Domain, FileTwin, ToolGuardSpecItem
 
 
 @generative
-async def generate_init_tests(
+async def generate_init_tests(  # type: ignore[empty-body]
     fn_src: FileTwin,
     policy_item: ToolGuardSpecItem,
     domain: Domain,
@@ -114,7 +111,7 @@ async def generate_init_tests(
 
 
 @generative
-async def improve_tests(
+async def improve_tests(  # type: ignore[empty-body]
     prev_impl: str,
     domain: Domain,
     policy_item: ToolGuardSpecItem,

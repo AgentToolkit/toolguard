@@ -37,7 +37,7 @@ STEP1 = "step1"
 STEP2 = "step2"
 
 short_options = PolicySpecOptions(
-    spec_steps={PolicySpecStep.CREATE_POLICIES},
+    spec_steps={PolicySpecStep.CREATE_POLICIES}, example_number=4
 )
 
 

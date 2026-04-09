@@ -4,10 +4,9 @@ import re
 from importlib import import_module
 from pathlib import Path
 from types import ModuleType
-from typing import Callable, List, Optional, Tuple, Type
+from typing import Callable, List, Optional, Tuple, Type, cast
 
 from loguru import logger
-from mellea import MelleaSession
 
 from toolguard.buildtime.gen_py import prompts
 from toolguard.buildtime.gen_py.naming_conv import (
@@ -19,6 +18,7 @@ from toolguard.buildtime.gen_py.naming_conv import (
 )
 from toolguard.buildtime.gen_py.templates import load_template
 from toolguard.buildtime.gen_py.tool_dependencies import tool_dependencies
+from toolguard.buildtime.llm.i_tg_llm import I_TG_LLM
 from toolguard.buildtime.utils import py, pyright, pytest
 from toolguard.buildtime.utils.llm_py import get_code_content
 from toolguard.buildtime.utils.py_doc_str import extract_docstr_args
@@ -50,13 +50,13 @@ class ToolGuardGenerator:
         tool_policy: ToolGuardSpec,
         py_path: Path,
         domain: RuntimeDomain,
-        m: MelleaSession,
+        llm: I_TG_LLM,
     ) -> None:
         self.py_path = py_path
         self.app_name = app_name
         self.tool_policy = tool_policy
         self.domain = domain
-        self.m = m
+        self.llm = llm
 
     def _create_dirs(self):
         app_path = self.py_path / py.to_py_module_name(self.app_name)
@@ -111,7 +111,9 @@ class ToolGuardGenerator:
         dep_tools = []
         if self.domain.app_api_size > 1:
             dep_tools = list(
-                await tool_dependencies(item.description, sig_str, self.domain, self.m)
+                await tool_dependencies(
+                    item.description, sig_str, self.domain, self.llm
+                )
             )
         logger.debug(f"Dependencies of '{item.name}': {dep_tools}")
 
@@ -161,25 +163,29 @@ class ToolGuardGenerator:
             domain = self.domain.get_definitions_only()  # remove runtime fields
             first_time = trial_no == "a"
             if first_time:
+                # pylint: disable-next=redundant-keyword-arg  # Decorator modifies signature
                 res = await prompts.generate_init_tests(
-                    self.m,
+                    self.llm,
                     fn_src=guard,
                     policy_item=item,
-                    domain=domain,  # noqa: B023
+                    domain=domain,
                     dependent_tool_names=dep_tools,
                 )
+                res = cast(str, res)
             else:
                 assert test_file
+                # pylint: disable-next=redundant-keyword-arg  # Decorator modifies signature
                 res = await prompts.improve_tests(
-                    self.m,
-                    prev_impl=test_file.content,  # noqa: B023
-                    domain=domain,  # noqa: B023
+                    self.llm,
+                    prev_impl=test_file.content,
+                    domain=domain,
                     policy_item=item,
-                    review_comments=errors,  # noqa: B023
+                    review_comments=errors,
                     dependent_tool_names=dep_tools,
                 )
+                res = cast(str, res)
 
-            test_content = get_code_content(res)
+            test_content = get_code_content(res)  # type: ignore[arg-type]
             test_file = FileTwin(file_name=test_file_name, content=test_content).save(
                 self.py_path
             )
@@ -260,15 +266,16 @@ class ToolGuardGenerator:
             )
             domain = self.domain.get_definitions_only()  # omit runtime fields
             prev_python = get_code_content(prev_guard.content)
-            res = await prompts.improve_tool_guard(
-                self.m,
+            res = await prompts.improve_tool_guard(  # pylint: disable=redundant-keyword-arg
+                self.llm,
                 policy_txt=item.description,
                 dependent_tool_names=dep_tools,
-                prev_impl=prev_python,  # noqa: B023
+                prev_impl=prev_python,
                 review_comments=review_comments + errors,
                 api=domain.app_api,
                 data_types=domain.app_types,
             )
+            res = cast(str, res)
 
             guard = FileTwin(
                 file_name=prev_guard.file_name, content=get_code_content(res)

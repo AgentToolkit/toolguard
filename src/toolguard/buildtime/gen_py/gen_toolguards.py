@@ -2,12 +2,10 @@ import asyncio
 from pathlib import Path
 from typing import Callable, List, Optional
 
-import mellea
 from loguru import logger
 
 from toolguard.buildtime.gen_py.domain_from_funcs import generate_domain_from_functions
 from toolguard.buildtime.gen_py.domain_from_openapi import generate_domain_from_openapi
-from toolguard.buildtime.gen_py.mellea_simple import SimpleBackend
 from toolguard.buildtime.gen_py.tool_guard_generator import ToolGuardGenerator
 from toolguard.buildtime.llm import I_TG_LLM
 from toolguard.buildtime.utils import py, pyright, pytest
@@ -85,13 +83,8 @@ async def generate_toolguards_from_domain(
         if len(spec.policy_items) > 0
     ]
 
-    # mellea_workaround = {"model_options": {"reasoning_effort": "medium"}}#FIXME https://github.com/generative-computing/mellea/issues/270
-    # kw_args = llm.kw_args
-    # kw_args.update(mellea_workaround)
-    mellea_backend = SimpleBackend(llm)
-    m = mellea.MelleaSession(mellea_backend)
     tools_generator = [
-        ToolGuardGenerator(app_name, tool_policy, py_root, domain, m)
+        ToolGuardGenerator(app_name, tool_policy, py_root, domain, llm)
         for tool_policy in not_empty_specs
     ]
     with py.temp_python_path(py_root):

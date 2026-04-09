@@ -1,14 +1,10 @@
-# mypy: ignore-errors
-
 from typing import List
-
-from mellea import generative
-
+from toolguard.buildtime.llm.generative_fn import generative
 from toolguard.runtime.data_types import FileTwin
 
 
 @generative
-async def improve_tool_guard(
+async def improve_tool_guard(  # type: ignore[empty-body]
     policy_txt: str,
     dependent_tool_names: List[str],
     prev_impl: str,
