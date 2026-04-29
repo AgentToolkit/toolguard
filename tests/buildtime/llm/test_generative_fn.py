@@ -124,14 +124,14 @@ async def test_decorator_basic():
     """Test the function_imitation_prompt decorator."""
 
     @generative
-    def multiply(x: int, y: int) -> int:
-        """Multiply two numbers."""
-        return x * y
+    def count(num: int, lang: str) -> str:  # type: ignore[empty-body]
+        """returns the number string in the given language."""
+        ...
 
     # Async LLM call should parse return type
-    llm = MockLLM("12")
+    llm = MockLLM("two")
     # pylint: disable-next=too-many-function-args  # Decorator modifies signature
-    assert await multiply(llm, 3, 4) == 12
+    assert await count(llm, 2, "en") == "two"
 
 
 @pytest.mark.asyncio
