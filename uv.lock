@@ -3445,7 +3445,7 @@ wheels = [
 
 [[package]]
 name = "toolguard"
-version = "0.2.15"
+version = "0.2.17"
 source = { editable = "." }
 dependencies = [
     { name = "datamodel-code-generator" },
