@@ -1,4 +1,5 @@
 import ast
+import importlib
 import sys
 from contextlib import contextmanager
 from pathlib import Path
@@ -65,3 +66,16 @@ def top_level_types(path: str | Path) -> Set[str]:
             res.add(target.id)
 
     return res
+
+
+def load_class(
+    project_root: Path,
+    module_name: str,
+    class_name: str,
+):
+    sys.path.insert(0, str(project_root))
+    try:
+        module = importlib.import_module(module_name)
+        return getattr(module, class_name)
+    finally:
+        sys.path.pop(0)

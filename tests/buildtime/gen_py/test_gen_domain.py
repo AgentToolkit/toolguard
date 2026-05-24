@@ -1,7 +1,5 @@
-import importlib
 import inspect
 import re
-import sys
 from pathlib import Path
 from typing import Dict
 
@@ -12,19 +10,6 @@ from toolguard.buildtime.gen_py.domain_from_funcs import generate_domain_from_fu
 from toolguard.buildtime.gen_py.domain_from_openapi import generate_domain_from_openapi
 from toolguard.buildtime.utils import py, pyright
 from toolguard.buildtime.utils.open_api import OpenAPI
-
-
-def load_class(
-    project_root: Path,
-    module_name: str,
-    class_name: str,
-):
-    sys.path.insert(0, str(project_root))
-    try:
-        module = importlib.import_module(module_name)
-        return getattr(module, class_name)
-    finally:
-        sys.path.pop(0)
 
 
 @pytest.mark.asyncio
@@ -41,7 +26,7 @@ async def test_generate_domain_from_appointment_oas():
     report = await pyright.run(trg_path, domain.app_api.file_name)
     assert report.summary.errorCount == 0  # no syntax errors
 
-    api = load_class(
+    api = py.load_class(
         trg_path,
         py.path_to_module(domain.app_api.file_name),
         domain.app_api_class_name,
@@ -84,7 +69,7 @@ async def test_generate_domain_from_calculator_oas():
     report = await pyright.run(trg_path, domain.app_api.file_name)
     assert report.summary.errorCount == 0  # no syntax errors
 
-    api = load_class(
+    api = py.load_class(
         trg_path,
         py.path_to_module(domain.app_api.file_name),
         domain.app_api_class_name,
@@ -117,7 +102,7 @@ async def test_generate_domain_from_tau2_functions():
     report = await pyright.run(trg_path, domain.app_api.file_name)
     assert report.summary.errorCount == 0  # no syntax errors
 
-    api = load_class(
+    api = py.load_class(
         trg_path,
         py.path_to_module(domain.app_api.file_name),
         domain.app_api_class_name,

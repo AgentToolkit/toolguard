@@ -394,7 +394,7 @@ policy: {item.model_dump_json(indent=2)}"""
         if not spec.policy_items:
             return
 
-        logger.debug(f"self_containe({tool_name})")
+        logger.debug(f"self_contained({tool_name})")
         system_prompt = read_prompt_file("policy_reviewer_self_contained")
         tool = self.tools_details[tool_name]
 

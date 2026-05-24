@@ -171,7 +171,9 @@ class ToolguardRuntime:
                 ):
                     # Ensure arg_val is a dict before unpacking
                     if isinstance(arg_val, dict):
-                        guard_args[p_name] = param.annotation.model_construct(**arg_val)
+                        # Use model_validate instead of model_construct to ensure
+                        # nested Pydantic models are properly constructed recursively
+                        guard_args[p_name] = param.annotation.model_validate(arg_val)
                     else:
                         guard_args[p_name] = arg_val
                 else:
