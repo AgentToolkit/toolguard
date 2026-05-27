@@ -80,6 +80,7 @@ Target Tool (ToolX): The tool this policy is currently assigned to
 Policy: A single policy item to evaluate, including: name, description and references (verbatim excerpts from the Policy Document)
 
 Output JSON Format:
+```
 {
   "name": "<Policy Name>",
   "description": "<Policy Description>",
@@ -91,5 +92,4 @@ Output JSON Format:
   "missing_tool_description": "<Required only if rejection_reason is missing_tool>",
   "comments": "<Short explanation describing why the policy can or cannot be enforced at this stage>"
 }
-
-
+```

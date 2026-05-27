@@ -24,6 +24,7 @@ Target Tool (ToolX): The specific tool for which relevant policy items need to b
 Policy: The policy for which supporting references need to be extracted.
 
 Output Format (JSON):
+```
 {
     "references": [
         "<Exact Passage 1 from Policy Document>",
@@ -31,8 +32,10 @@ Output Format (JSON):
         "<Exact Passage 3 from Policy Document>"
   ],
 }
-
+```
 If no relevant references are found, return:
+```
 {
     "references": []
 }
+```

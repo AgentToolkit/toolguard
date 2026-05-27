@@ -80,6 +80,7 @@ Set can_be_validated = true if compliance can be verified:
 Set to false only if enforcement happens entirely after ToolX completes and outside of ToolX.
 
 Output JSON Format:
+```
 {
   "name": "<Policy Name>",
   "description": "<Policy Description>",
@@ -92,3 +93,4 @@ Output JSON Format:
   "comments": "<Detailed feedback on the policy, including score explanation and suggested improvements if needed>",
   "score": <integer between 1-5>
 }
+```

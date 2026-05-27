@@ -27,6 +27,7 @@ Target Tool (ToolX) – The specific tool for which relevant policy items need t
 TPTD (Tool Policy Text Description) – A JSON object containing tool policy items from previous stages.
 
 Output Format (JSON):
+```
 {
   "policy_items": [
     {
@@ -49,9 +50,11 @@ Output Format (JSON):
     }
   ]
 }
-
+```
 
 If no additional relevant policy items exist, return:
+```
 {
   "policy_items": []
 }
+```

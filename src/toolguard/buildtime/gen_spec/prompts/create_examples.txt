@@ -29,6 +29,7 @@ Include edge cases for both compliance and violation. Pay special attention to b
 Ensure all rules within each policy are covered. If a policy contains multiple conditions, provide examples for each possible combination of compliance and violation.
 
 Output Format (JSON):
+```
 {
     "violation_examples": [
         "Violating example 1",
@@ -41,6 +42,7 @@ Output Format (JSON):
        "Compliance example 3"
     ]
 }
+```
 
 Example:
 
@@ -48,6 +50,7 @@ Target Tool: rent_car
 Policy: The user can rent only medium cars in red or small cars in blue or any yellow car
 
 Output:
+```
 {
     "violation_examples": [
         "A user asks to rent a green car",
@@ -62,3 +65,4 @@ Output:
         "Renting a small yellow car"
     ]
 }
+```
