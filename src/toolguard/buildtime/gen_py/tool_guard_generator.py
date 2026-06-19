@@ -128,7 +128,10 @@ class ToolGuardGenerator:
                 return None, guard
             except Exception as ex:
                 logger.exception(ex)
-                logger.warning("guard generation failed. returning initial guard")
+                logger.error(
+                    f"Guard generation failed for item '{item.name}'; shipping the "
+                    f"initial scaffold (stub) guard, which performs no checks."
+                )
                 return None, init_guard
 
         # Tests generated, now generate guards
@@ -142,8 +145,9 @@ class ToolGuardGenerator:
             return guard_tests, guard
         except Exception as ex:
             logger.exception(ex)
-            logger.warning(
-                f"guard generation failed. returning initial guard: {str(ex)}"
+            logger.error(
+                f"Guard generation failed for item '{item.name}'; shipping the "
+                f"initial scaffold (stub) guard, which performs no checks: {str(ex)}"
             )
             return None, init_guard
 

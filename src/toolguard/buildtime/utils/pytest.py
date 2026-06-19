@@ -140,11 +140,27 @@ async def run_tests_in_safe_python_separate_process(
         Result from the test execution process.
     """
 
-    code = f"""
-import pytest
-pytest.main(["{folder / test_file}", "--quiet", "--json-report", "--json-report-file={folder / report_file}"])
-"""
+    code = _build_runner_code(folder, test_file, report_file)
     return await run_safe_python(code, ["pytest"])
+
+
+def _build_runner_code(folder: Path, test_file: Path, report_file: Path) -> str:
+    """Build the pytest-runner snippet executed in the sandboxed interpreter.
+
+    Paths are embedded via ``repr()`` so they survive being executed as source
+    code. ``str(WindowsPath)`` contains backslashes (e.g. ``C:\\Users\\...``);
+    interpolating that raw into a string literal turns ``\\U`` into an invalid
+    unicode escape and the whole snippet fails to compile with
+    ``SyntaxError: ... truncated \\UXXXXXXXX escape``, so pytest never runs and the
+    JSON report is never written. ``repr()`` produces a correctly escaped literal
+    on every platform.
+    """
+    test_path = str(folder / test_file)
+    report_arg = f"--json-report-file={folder / report_file}"
+    return (
+        "\nimport pytest\n"
+        f'pytest.main([{test_path!r}, "--quiet", "--json-report", {report_arg!r}])\n'
+    )
 
 
 def configure(folder: Path):

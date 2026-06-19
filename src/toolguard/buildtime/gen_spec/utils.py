@@ -20,7 +20,9 @@ CRITICAL OUTPUT RULES:
 @cache
 def read_prompt_file(filename: str, return_json: bool = True) -> str:
     with open(
-        os.path.join(os.path.dirname(__file__), "prompts", filename + ".txt"), "r"
+        os.path.join(os.path.dirname(__file__), "prompts", filename + ".txt"),
+        "r",
+        encoding="utf-8",
     ) as f:
         prompt = f.read()
 

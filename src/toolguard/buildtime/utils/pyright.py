@@ -1,5 +1,6 @@
 import asyncio
 import json
+import shutil
 import sys
 from pathlib import Path
 from typing import List, Optional
@@ -10,6 +11,24 @@ from toolguard.runtime.data_types import FileTwin
 
 ERROR = "error"
 WARNING = "warning"
+
+
+def _resolve_pyright() -> str:
+    """Locate the pyright console script.
+
+    The ``pyright`` console script is installed next to the interpreter (the
+    venv ``Scripts``/``bin`` directory). Prefer that absolute path so it is found
+    even when the script directory is not on ``PATH`` — a common situation on
+    Windows, where the bare name otherwise raises
+    ``FileNotFoundError: [WinError 2]``. Fall back to a ``PATH`` lookup and
+    finally to the bare name.
+    """
+    bindir = Path(sys.executable).parent
+    for name in ("pyright", "pyright.exe", "pyright.cmd", "pyright.bat"):
+        candidate = bindir / name
+        if candidate.exists():
+            return str(candidate)
+    return shutil.which("pyright") or "pyright"
 
 
 class Position(BaseModel):
@@ -88,7 +107,7 @@ async def run(folder: Path, py_file: Path) -> DiagnosticsReport:
     py_path = sys.executable
 
     process = await asyncio.create_subprocess_exec(
-        "pyright",
+        _resolve_pyright(),
         "--pythonpath",
         py_path,
         "--outputjson",

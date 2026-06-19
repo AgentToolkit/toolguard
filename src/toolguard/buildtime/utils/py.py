@@ -56,7 +56,7 @@ def to_py_module_name(txt: str) -> str:
 
 
 def top_level_types(path: str | Path) -> Set[str]:
-    nodes = ast.parse(Path(path).read_text()).body
+    nodes = ast.parse(Path(path).read_text(encoding="utf-8")).body
     res = set()
     for node in nodes:
         if isinstance(node, ast.ClassDef):
