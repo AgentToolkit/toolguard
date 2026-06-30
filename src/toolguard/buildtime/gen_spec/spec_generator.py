@@ -468,7 +468,9 @@ policy: {item.model_dump_json(indent=2)}"""
             return
 
         logger.debug(f"example_creator({tool_name})")
-        if fixed_examples:
+        if fixed_examples is not None:
+            if fixed_examples == 0:
+                return
             system_prompt = read_prompt_file("create_short_examples")
             system_prompt = system_prompt.replace("EX_FIX_NUM", str(fixed_examples))
         else:
