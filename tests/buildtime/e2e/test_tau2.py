@@ -30,6 +30,11 @@ app_name = "calc"  # dont use "calculator", as it conflicts with example name
 STEP1 = "step1"
 STEP2 = "step2"
 
+# The tool description of `transfer_to_human_agents` embeds its own policy text, so the
+# generator may or may not emit policy items for it regardless of the policy under test.
+# Exclude it from the "no other tool is guarded" assertions.
+POLICY_AGNOSTIC_TOOLS = ["transfer_to_human_agents"]
+
 
 def llm() -> I_TG_LLM:
     return LitellmModel(
@@ -82,7 +87,12 @@ async def test_tau2_simple():
     assert len(item0.compliance_examples) > 1
     assert len(item0.violation_examples) > 1
 
-    other_specs = [spec for spec in specs if spec not in [book_spec, update_spec]]
+    other_specs = [
+        spec
+        for spec in specs
+        if spec not in [book_spec, update_spec]
+        and spec.tool_name not in POLICY_AGNOSTIC_TOOLS
+    ]
     assert all([not spec.policy_items for spec in other_specs])
 
     # spec = ToolGuardSpec.load("/Users/davidboaz/Documents/GitHub/toolguard/tests/tmp/e2e/calculator/tool_functions_short/GCP/claude-4-sonnet/step1/divide_tool.json")
@@ -172,7 +182,11 @@ async def test_tau2_complex_api():
     assert len(item0.compliance_examples) > 1
     assert len(item0.violation_examples) > 1
 
-    other_specs = [spec for spec in specs if spec not in [cancel_spec]]
+    other_specs = [
+        spec
+        for spec in specs
+        if spec not in [cancel_spec] and spec.tool_name not in POLICY_AGNOSTIC_TOOLS
+    ]
     assert all([not spec.policy_items for spec in other_specs])
 
     # spec = ToolGuardSpec.load("/Users/davidboaz/Documents/GitHub/toolguard/tests/tmp/e2e/calculator/tool_functions_short/GCP/claude-4-sonnet/step1/divide_tool.json")
