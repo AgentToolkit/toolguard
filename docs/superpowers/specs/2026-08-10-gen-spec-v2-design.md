@@ -310,8 +310,11 @@ would generate wrong-enforcement guards. Documented, not fixed: point v2 at its 
 | e2e | v2 → adapter → `generate_guards_code`: guards compile and their generated tests pass (calculator) | yes |
 | e2e | Employee policy + MCP server → shape parity with ground truth: every tool file present, ids well-formed, trigger/requires on every item, pending types in the enum | yes |
 
-Ground-truth fixtures are copied into `tests/data/specs_v2/` to avoid a cross-repo test
-dependency.
+Ground-truth fixtures live in `tests/examples/employee_mini/` — a committed six-spec
+slice of smith's employee output, chosen so the byte-parity, grounding and
+identifier gates run in a plain clone without a cross-repo dependency. The full
+28-spec example and its benchmarks belong to the evaluate-toolguard project; see
+that directory's README for the three derivations applied.
 
 ## Implementation notes
 

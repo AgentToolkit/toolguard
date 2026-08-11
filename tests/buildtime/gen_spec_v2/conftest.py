@@ -1,4 +1,4 @@
-"""A scripted LLM for the stage and pipeline tests.
+"""A scripted LLM for the stage and pipeline tests, plus the corpus paths.
 
 Responses are keyed by the ``[STAGE:x]`` marker every v2 user prompt carries,
 so a test declares what each stage answers without caring about call order or
@@ -15,26 +15,19 @@ from toolguard.buildtime.gen_spec.data_types import ToolInfo, ToolInfoParam
 from toolguard.buildtime.gen_spec_v2.context import GenContext
 from toolguard.buildtime.llm import I_TG_LLM
 
-CORPUS_DIR = Path("tests/data/specs_v2")
-"""Ground-truth employee specs. Not committed; see the test-baseline doc."""
+CORPUS_DIR = Path("tests/examples/employee_mini")
+"""A committed six-spec slice of the employee ground truth.
 
-CORPUS_INPUTS_DIR = Path("tests/data/specs_v2_inputs")
-"""The policy document, tool definitions and system vars those specs came from."""
-
-requires_corpus = pytest.mark.skipif(
-    not CORPUS_DIR.is_dir() or not CORPUS_INPUTS_DIR.is_dir(),
-    reason=(
-        "needs the employee ground-truth corpus under tests/data/ — copy "
-        "smith/examples/employee/smith/{smith_outputs/ground_truth_specs,guidance.txt,"
-        "system_vars.json,tool_definitions.json} into tests/data/specs_v2{,_inputs}/"
-    ),
-)
-"""Skip a test that reads the ground-truth corpus, when it is not present.
-
-Every test that needs the corpus carries this, and every module that reads it at
-import time guards that read, so a checkout without `tests/data/` still collects
-and runs the rest of the suite instead of failing collection outright.
+Real generator output, so the format, grounding and identifier gates test what
+a model actually produces rather than what a synthetic fixture remembers to
+include. The full 28-spec example and its benchmarks live in the
+evaluate-toolguard project; see this directory's README for what was kept and
+why.
 """
+
+CORPUS_SPECS_DIR = CORPUS_DIR / "specs"
+CORPUS_GUIDANCE = CORPUS_DIR / "guidance.txt"
+CORPUS_SYSTEM_VARS = CORPUS_DIR / "system_vars.json"
 
 STAGE_MARKER = re.compile(r"\[STAGE:(\w+)\]")
 

@@ -10,24 +10,18 @@ inferred; §7 records where a result came from an earlier state of the tree.
 
 ## How to reproduce
 
-### The corpus is not committed
+### Nothing to copy in — the fixtures are committed
 
-The 488-passed figure below needs the employee ground-truth corpus, which is deliberately
-not in the repository. Without it 13 tests skip and the count is **273 passed, 13 skipped**
-— a fresh clone runs green either way, it just proves less. To get the full number, copy
-from smith:
+Everything below runs from a plain `git clone`. The five tests that need real
+generator output read `tests/examples/employee_mini/` — a committed six-spec slice of
+smith's employee output, with `guidance.txt` truncated to the rules those specs quote.
+No shipped code under `src/` reads any fixture.
 
-```bash
-mkdir -p tests/data/specs_v2 tests/data/specs_v2_inputs
-SMITH=../smith/examples/employee/smith
-cp "$SMITH"/smith_outputs/ground_truth_specs/*.json tests/data/specs_v2/
-cp "$SMITH"/{guidance.txt,system_vars.json,tool_definitions.json} tests/data/specs_v2_inputs/
-```
-
-Five test files read it — `test_serialize.py`, `test_refmatch_real_policy.py`,
-`test_adapter.py`, `test_gen_py_contract.py`, `test_sysvars.py` — via the
-`requires_corpus` mark in `tests/buildtime/gen_spec_v2/conftest.py`. No shipped code
-under `src/` touches it.
+The §1 numbers were first measured against the full 28-spec corpus at
+`tests/data/specs_v2/`, which is now gitignored and lives in the evaluate-toolguard
+project. Both counts are recorded below, with the older one marked as no longer
+reproducible from this repo: what changed is the size of the parametrized sets, not
+which behaviors are gated.
 
 ### Commands
 
@@ -48,8 +42,8 @@ python -m pyright src/toolguard/buildtime/gen_spec_v2 tests/buildtime/gen_spec_v
 
 | Suite | Result | Time |
 |---|---|---|
-| Non-e2e (unit + contract) | **488 passed**, 0 failed, 3 pre-existing warnings | 52.9s |
-| Non-e2e without the ground-truth corpus | **273 passed, 13 skipped** | 21.4s |
+| Non-e2e (unit + contract), committed fixtures | **332 passed**, 0 failed, 0 skipped, 3 pre-existing warnings | 72.2s |
+| Non-e2e against the full 28-spec corpus (earlier in session; see §1) | **488 passed**, 0 failed | 52.9s |
 | v2 e2e — calculator, 4 tool-input shapes | **4 passed** | in the 417s below |
 | v2 e2e — tau2 `simple` | **passed** | " |
 | v2 e2e — tau2 `complex_api` | **failed** — transient LLM invalid-JSON, §4 | " |
@@ -59,31 +53,37 @@ python -m pyright src/toolguard/buildtime/gen_spec_v2 tests/buildtime/gen_spec_v
 | pyright — `gen_spec_v2` + all new tests | **0 errors** | |
 | pyright — whole `src/toolguard` | 15 errors, **all pre-existing** in v1 modules | |
 
-Total: **493 automated checks passing, 1 failing**, the failure being a transport-level
-model error rather than a logic defect.
+Total: **337 automated checks passing, 1 failing** on committed fixtures alone, the
+failure being a transport-level model error rather than a logic defect.
 
-## 1. Non-e2e tests — 488 passed
+## 1. Non-e2e tests — 332 passed
 
-No LLM. This is the suite to trust for regressions.
+No LLM. This is the suite to trust for regressions. The `mini` column is what a plain
+clone runs — the reproducible number. The `full` column is what these same tests
+measured earlier in the session, when they read the 28-spec corpus at
+`tests/data/specs_v2/`; reproducing it now means repointing `CORPUS_DIR` in
+`tests/buildtime/gen_spec_v2/conftest.py`, since nothing reads that path any more. Only
+the four corpus-parametrized files differ between the columns, and only in how many
+cases they run — not in which behaviors they gate.
 
-| File | Tests | Covers |
-|---|---:|---|
-| `test_refmatch_real_policy.py` | 96 | all 95 real ground-truth references ground back to themselves |
-| `test_gen_py_contract.py` | 61 | python identifiers, generated-file collisions, what codegen receives |
-| `test_adapter.py` | 41 | `skip` truth table, debug preservation, whole employee corpus |
-| `test_stages.py` | 31 | create/expand/review/enrich/examples, incl. misshaped LLM responses |
-| `test_serialize.py` | 30 | byte parity against all 28 ground-truth fixtures |
-| `test_refmatch.py` | 22 | grounding: exact, wrapped, markdown-stripped, dash, snap, multi-segment, archive-when-ungrounded |
-| `test_reconcile.py` | 19 | vote reconciliation, malformed votes |
-| `test_pipeline.py` | 15 | 3 entry points, per-tool isolation, partial regeneration |
-| `test_prompts.py` | 14 | every stage sees the inputs it judges against |
-| `test_sysvars.py` | 13 | dict/path loading, `action_list`/`action_description` exclusion, nested values kept |
-| `test_conflicts.py` | 12 | detection bounds, routing to each involved tool |
-| `test_examples_only.py` | 8 | `generate_guard_examples_v2` touches only the examples |
-| `test_context.py` | 5 | prompt-slice rendering |
-| `test_tools_input.py` | 5 | callables / OpenAPI dict / `list[ToolInfo]` |
-| **v2 subtotal** | **372** | |
-| pre-existing suite | 116 | unchanged by this work |
+| File | mini | full | Covers |
+|---|---:|---:|---|
+| `test_stages.py` | 31 | 31 | create/expand/review/enrich/examples, incl. misshaped LLM responses |
+| `test_refmatch_real_policy.py` | 28 | 96 | every real reference grounds back to itself (27 vs 95) |
+| `test_refmatch.py` | 22 | 22 | grounding: exact, wrapped, markdown-stripped, dash, snap, multi-segment, archive-when-ungrounded |
+| `test_reconcile.py` | 19 | 19 | vote reconciliation, malformed votes |
+| `test_adapter.py` | 19 | 41 | `skip` truth table, debug preservation, the employee corpus |
+| `test_gen_py_contract.py` | 17 | 61 | python identifiers, generated-file collisions, what codegen receives |
+| `test_pipeline.py` | 15 | 15 | 3 entry points, per-tool isolation, partial regeneration |
+| `test_prompts.py` | 14 | 14 | every stage sees the inputs it judges against |
+| `test_sysvars.py` | 13 | 13 | dict/path loading, `action_list`/`action_description` exclusion, nested values kept |
+| `test_conflicts.py` | 12 | 12 | detection bounds, routing to each involved tool |
+| `test_serialize.py` | 8 | 30 | byte parity against every ground-truth fixture (6 vs 28) |
+| `test_examples_only.py` | 8 | 8 | `generate_guard_examples_v2` touches only the examples |
+| `test_context.py` | 5 | 5 | prompt-slice rendering |
+| `test_tools_input.py` | 5 | 5 | callables / OpenAPI dict / `list[ToolInfo]` |
+| **v2 subtotal** | **216** | **372** | |
+| pre-existing suite | 116 | 116 | unchanged by this work |
 
 The 3 warnings are pre-existing: one `PytestCollectionWarning` for a test class with
 `__init__`, two litellm coroutine warnings.
@@ -117,6 +117,10 @@ expiry, issue<expiry, 90-day cap) plus `update_employee.home_address_same_countr
 needs only a `tool_history` lookup. Everything identity-, conversation-, result-, or
 question-dependent is skipped. That is the honest count of what today's runtime can
 enforce, and each `skip` condition disappears as the runtime gains that capability.
+
+The committed six-spec slice reproduces the same ratio in miniature: **7 of 22 items
+across 3 of 6 tools**, asserted in `test_gen_py_contract.py`. Re-measure the 28-spec
+figure in evaluate-toolguard; the mini figure is the one that regresses in CI.
 
 ## 4. The one failure, and the variance behind it
 
@@ -217,3 +221,6 @@ Report is written to `tests/tmp/e2e/guard_set_delta/guard_set_delta.md` on each 
 - Prompt files are `lru_cache`d per process, so a prompt edited while a run is in flight
   does not take effect mid-run.
 - e2e results depend on the model. Record `MODEL_NAME` alongside any future comparison.
+- §1's per-file counts were measured twice: the `full` column against the 28-spec corpus
+  in place, the `mini` column after it was replaced by
+  `tests/examples/employee_mini/`. The `mini` column is the one CI will reproduce.

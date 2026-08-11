@@ -1,25 +1,21 @@
 """Grounding against the real employee policy document.
 
-Every reference in the ground-truth specs was quoted from
-``tests/data/specs_v2_inputs/guidance.txt``, so grounding each one must
-return that same span. This is the regression gate on the matcher: a
-normalization or segmentation change that starts mangling real references
-fails here, where the synthetic tests would not notice.
+Every reference in the ground-truth specs was quoted by a model out of
+``employee_mini/guidance.txt``, so grounding each one must return that same
+span. This is the regression gate on the matcher: a normalization or
+segmentation change that starts mangling real references fails here, where the
+synthetic tests would not notice.
 """
-
-from pathlib import Path
 
 import pytest
 
 from toolguard.buildtime.gen_spec_v2.refmatch import ground
 from toolguard.buildtime.gen_spec_v2.serialize import load_spec
 
-from .conftest import requires_corpus
+from .conftest import CORPUS_GUIDANCE, CORPUS_SPECS_DIR
 
-GUIDANCE = Path("tests/data/specs_v2_inputs/guidance.txt")
-SPEC_DIR = Path("tests/data/specs_v2")
-
-pytestmark = requires_corpus
+GUIDANCE = CORPUS_GUIDANCE
+SPEC_DIR = CORPUS_SPECS_DIR
 
 
 def _references():
@@ -30,13 +26,11 @@ def _references():
                 yield doc, item.id, reference
 
 
-# Guarded: this module reads the corpus at import time, and an unguarded read
-# aborts collection for the whole suite when tests/data/ is absent.
-ALL_REFERENCES = list(_references()) if GUIDANCE.is_file() else []
+ALL_REFERENCES = list(_references())
 
 
 def test_the_corpus_is_not_empty():
-    assert len(ALL_REFERENCES) == 95
+    assert len(ALL_REFERENCES) == 27
 
 
 @pytest.mark.parametrize(

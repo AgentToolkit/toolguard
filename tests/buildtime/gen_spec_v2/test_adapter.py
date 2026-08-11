@@ -26,9 +26,9 @@ from toolguard.buildtime.gen_spec_v2.models import (
 from toolguard.buildtime.gen_spec_v2.serialize import load_spec
 from toolguard.runtime.data_types import ToolGuardSpec
 
-from .conftest import requires_corpus
+from .conftest import CORPUS_SPECS_DIR
 
-SPEC_DIR = Path("tests/data/specs_v2")
+SPEC_DIR = CORPUS_SPECS_DIR
 
 
 def _item(name="a rule", **kwargs) -> PolicyItemV2:
@@ -152,7 +152,6 @@ def test_spec_level_fields_are_preserved_in_debug():
 # --- the real corpus -------------------------------------------------------
 
 
-@requires_corpus
 @pytest.mark.parametrize("path", sorted(SPEC_DIR.glob("*.json")), ids=lambda p: p.stem)
 def test_every_ground_truth_spec_converts_and_validates(path: Path):
     v1 = spec_v2_to_v1(load_spec(path))
@@ -161,7 +160,6 @@ def test_every_ground_truth_spec_converts_and_validates(path: Path):
     assert ToolGuardSpec.model_validate(v1.model_dump()).tool_name == v1.tool_name
 
 
-@requires_corpus
 def test_employee_corpus_skips_every_identity_dependent_rule():
     v1 = spec_v2_to_v1(load_spec(SPEC_DIR / "update_employee.json"))
     unskipped = {i.name for i in v1.policy_items if not i.skip}

@@ -12,12 +12,10 @@ import pytest
 
 from toolguard.buildtime.gen_spec_v2.serialize import dump_spec_str, load_spec
 
-from .conftest import requires_corpus
+from .conftest import CORPUS_SPECS_DIR
 
-FIXTURE_DIR = Path("tests/data/specs_v2")
+FIXTURE_DIR = CORPUS_SPECS_DIR
 FIXTURES = sorted(FIXTURE_DIR.glob("*.json"))
-
-pytestmark = requires_corpus
 
 
 def _expected(path: Path) -> str:
@@ -34,7 +32,9 @@ def _expected(path: Path) -> str:
 
 
 def test_fixtures_are_present():
-    assert len(FIXTURES) == 28
+    # Guards against a glob that silently matches nothing, which would turn the
+    # parity gate below into a test that passes by running zero cases.
+    assert len(FIXTURES) == 6
 
 
 @pytest.mark.parametrize("path", FIXTURES, ids=lambda p: p.stem)

@@ -29,9 +29,9 @@ from toolguard.buildtime.gen_spec_v2.models import PolicyItemV2, SpecV2
 from toolguard.buildtime.gen_spec_v2.serialize import load_spec
 from toolguard.runtime.data_types import ToolGuardSpec
 
-from .conftest import requires_corpus
+from .conftest import CORPUS_SPECS_DIR
 
-SPEC_DIR = Path("tests/data/specs_v2")
+SPEC_DIR = CORPUS_SPECS_DIR
 EMPLOYEE_SPECS = sorted(SPEC_DIR.glob("*.json"))
 
 
@@ -54,7 +54,6 @@ def _codegen_prepare(specs):
     ]
 
 
-@requires_corpus
 @pytest.mark.parametrize("path", EMPLOYEE_SPECS, ids=lambda p: p.stem)
 def test_every_codegen_bound_item_yields_a_usable_python_identifier(path: Path):
     # Only unskipped items are named by codegen. Skipped ones are not, which
@@ -90,7 +89,6 @@ def test_the_disambiguation_suffix_stays_a_valid_identifier():
         assert guard_item_fn_name(item).isidentifier()
 
 
-@requires_corpus
 @pytest.mark.parametrize("path", EMPLOYEE_SPECS, ids=lambda p: p.stem)
 def test_items_of_one_tool_never_share_a_generated_file(path: Path):
     # Two items mapping to one module name would overwrite each other's guard.
@@ -119,32 +117,25 @@ def test_colliding_names_survive_codegens_dot_replacement():
     assert len(set(modules)) == 2
 
 
-@requires_corpus
 def test_codegen_receives_only_enforceable_items():
     specs = [spec_v2_to_v1(load_spec(p)) for p in EMPLOYEE_SPECS]
 
     prepared = _codegen_prepare(specs)
 
     assert {s.tool_name for s in prepared} == {
-        "add_employee",
         "create_time_off_request",
         "set_passport",
-        "set_visa",
         "update_employee",
-        "update_passport",
-        "update_visa",
     }
-    assert sum(len(s.policy_items) for s in prepared) == 15
+    assert sum(len(s.policy_items) for s in prepared) == 7
 
 
-@requires_corpus
 def test_a_spec_with_nothing_enforceable_is_dropped_before_codegen():
     specs = [spec_v2_to_v1(load_spec(SPEC_DIR / "get_employee.json"))]
 
     assert _codegen_prepare(specs) == []
 
 
-@requires_corpus
 def test_the_unattachable_global_spec_never_reaches_codegen():
     # A spec whose tool_name has no tool behind it would make codegen generate
     # a guard for nothing.

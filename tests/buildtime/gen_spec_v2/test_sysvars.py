@@ -8,12 +8,13 @@ import json
 
 import pytest
 
-from .conftest import requires_corpus
 from toolguard.buildtime.gen_spec_v2.sysvars import (
     keep_declared,
     load_system_vars,
     render_system_vars,
 )
+
+from .conftest import CORPUS_SYSTEM_VARS
 
 EMPLOYEE_VARS = {
     "user_name": "Bob",
@@ -102,9 +103,8 @@ def test_a_nested_list_is_still_a_subject_variable():
     assert "Platform" in render_system_vars(sv)
 
 
-@requires_corpus
 def test_the_real_employee_sys_var_file_yields_only_subject_variables():
-    sv = load_system_vars("tests/data/specs_v2_inputs/system_vars.json")
+    sv = load_system_vars(CORPUS_SYSTEM_VARS)
 
     assert sv.names == ["user_name", "user_id", "department", "organization"]
 
