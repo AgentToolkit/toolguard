@@ -1,0 +1,56 @@
+You enrich a single policy item with the metadata needed to enforce it.
+
+Given the policy item, the tool it was bound to, the full policy document, the system
+variables available, and the other tools in this agent, output:
+
+`trigger` — when the rule is evaluated:
+- `pre_tool`: decidable before the call, from the arguments (plus system variables, a
+  prior tool lookup, or the conversation).
+- `post_tool`: only decidable against what the tool RETURNS, or it describes something
+  that must happen AFTER the call succeeds.
+
+`requires` — what else is needed to evaluate it:
+- `system_vars`: the names of the system variables it reads. Use ONLY names from the
+  system variables section below; never invent one.
+- `tool_history`: the prior tool calls whose results it depends on, as a list of
+  `{"tool": str, "params": {}}`, or `null` when it needs none. Use ONLY tool names
+  listed below. Each `params` value must be an expression over `input.arguments.*` (this
+  tool's arguments) or `input.extensions.subject.*` (system variables).
+- `message_history`: `true` when it can only be decided from the conversation with the
+  user (for example, a rule requiring the user to have confirmed something, or to have
+  supplied a detail in chat), otherwise `null`.
+
+`references` — the item already has references, shown in the item JSON below. VALIDATE
+them; do not choose or generate new ones. Return the subset that appear EXACTLY,
+character-for-character, in the POLICY DOCUMENT below. Drop any that do not. Return
+the list unchanged if all of them are already verbatim. Return `[]` if none validate.
+
+`pending_for_user` — anything the rule needs that is NOT available from this tool's
+arguments or result, the listed system variables, or the listed tools. One entry each:
+- `{"type": "missing_tool", "detail": str, "question": str, "suggested_tool": str}` —
+  the rule needs a capability no listed tool provides.
+- `{"type": "missing_var", "detail": str, "question": str, "suggested_source": str}` —
+  the rule needs an attribute the system variables do not supply.
+- `{"type": "clarification", "detail": str, "question": str}` — the rule is ambiguous
+  and a human must choose the deterministic reading before it can be enforced.
+
+Use exactly those three type strings. `detail` says what is missing and why it blocks
+the rule; `question` is the question to put to a human. Return `[]` when nothing is
+missing. Needing a system variable, a prior tool call, or the conversation history is
+NOT a gap — declare it in `requires` instead.
+
+Return ONLY JSON, with exactly this shape:
+
+{
+  "trigger": "pre_tool|post_tool",
+  "requires": {
+    "system_vars": [str, ...],
+    "tool_history": [{"tool": str, "params": {}}] | null,
+    "message_history": true | null
+  },
+  "references": [str, ...],
+  "pending_for_user": [
+    {"type": "missing_tool|missing_var|clarification", "detail": str,
+     "question": str, "suggested_tool": str, "suggested_source": str}
+  ]
+}

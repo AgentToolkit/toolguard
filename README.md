@@ -171,6 +171,98 @@ The following generation phases can be selected via `spec_steps`:
 - `REVIEW_POLICIES_SELF_CONTAINED` – Ensure each policy description is fully self-contained and unambiguous.
 - `REVIEW_POLICIES_FEASIBILITY` – Validate that each policy can be deterministically enforced.
 
+##### Alternative: v2 Specification Generation
+
+`gen_spec_v2` is a second, parallel generator. Where the generator above records a
+rule's text and examples, v2 also records **who** is acting, **when** the rule applies,
+**what else** is needed to decide it, and **what is missing** to enforce it at all — so
+rules that today's generator silently drops become visible instead.
+
+It is an alternative, not a replacement: `generate_guard_specs` is unchanged and remains
+the default.
+
+```python
+from toolguard.buildtime import (
+    generate_guard_specs_v2_full,
+    specs_v2_to_v1,
+    generate_guards_code,
+)
+
+specs = await generate_guard_specs_v2_full(
+    policy_text=policy_text,          # raw markdown; no bullet structure required
+    tools=tools,                      # functions, an OpenAPI dict, or a list[ToolInfo]
+    llm=llm,
+    work_dir="specs_v2",              # give v2 its own directory (see the note below)
+    system_vars="sys_var.json",        # a dict or a path; optional
+    source_doc="policy_doc.md",
+)
+
+# Feed the existing code generator:
+v1_specs = specs_v2_to_v1(specs, known_tools=[t.__name__ for t in tools])
+guards = await generate_guards_code(
+    tool_specs=v1_specs, tools=tools, work_dir="code", llm=llm, app_name="myapp"
+)
+```
+
+###### System variables
+
+`system_vars` declares the attributes of the acting user that policies may refer to,
+which is what makes rules like "only HR may add an employee" expressible. Pass a dict or
+a path to a JSON file:
+
+```json
+{
+  "user_name": "Bob",
+  "user_id": 1,
+  "department": ["Corporate Leadership", "Engineering", "Product", "HR", "Finance"],
+  "organization": ["IBM Corporation", "Red Hat", "Kyndryl"]
+}
+```
+
+A list value is a closed set of allowed values; anything else is one example of the shape
+to expect. Nested values are fine — a structured attribute of the acting user is still a
+subject variable. Two keys are ignored if present, `action_list` and
+`action_description`, because they describe the agent's own tools rather than the acting
+user. Generated specs may only name variables declared here.
+
+###### What each policy item records
+
+| Field | Meaning |
+|---|---|
+| `trigger` | `pre_tool` (decided from the arguments) or `post_tool` (decided against the result) |
+| `requires.system_vars` | Which acting-user attributes the rule reads |
+| `requires.tool_history` | A tool that must be called first, and with which arguments |
+| `requires.message_history` | The rule can only be decided from the conversation |
+| `pending_for_user` | A `missing_tool`, `missing_var`, or `clarification` gap, with the question to ask |
+| `references` | Verbatim spans of the policy document the rule came from |
+
+###### Entry points
+
+| Function | Does |
+|---|---|
+| `generate_guard_specs_v2` | One spec per tool → `<tool>.json`. No cross-tool work. |
+| `generate_spec_conflicts_v2` | Finds conflicts across a complete spec set (loaded from `work_dir` if not passed) and records them on each spec. Idempotent. |
+| `generate_guard_specs_v2_full` | All tools, then conflicts — one call for a full build. |
+| `generate_guard_examples_v2` | Reruns only the examples stage for specs already on disk, leaving everything else on each item untouched (the v2 counterpart of `generate_guard_examples`). |
+
+`SpecV2Options` controls `review_votes` (5), `enrich_votes` (3), `add_iterations` (3),
+`include_examples`, `example_number`, `max_concurrency` (8), and `on_tool_error`
+(`"skip"` by default, so one tool's failure does not abort the run).
+
+###### Feeding the code generator
+
+`specs_v2_to_v1` marks an item `skip=True` when today's codegen and runtime cannot
+enforce it *correctly* — generated guards receive `args` + `api` only, with no acting
+user and no conversation, and there is no post-invocation hook. So an item is skipped
+when it has a `pending_for_user` gap, needs `message_history`, is `post_tool`, or reads
+`system_vars`. Expect a v2 run over an identity-heavy policy to yield few guards; that
+is the honest count of what can be enforced today, and each condition disappears as the
+runtime gains the corresponding capability.
+
+> **Point v2 at its own `work_dir`.** v2 writes `<tool>.json`, the same filenames v1
+> uses, and v1's loader accepts a v2 file while ignoring its extra fields — which would
+> leave every item `skip=False` and generate guards for rules that cannot be enforced.
+
 #### Step 4: Generate Guard Code (Buildtime)
 
 ```python
@@ -424,6 +516,14 @@ except Exception as e:
 - `generate_guard_specs()`: Generate guard specifications from policy text
 - `generate_guards_code()`: Generate executable guard code from specifications
 - `LitellmModel`: LLM configuration for various providers
+
+v2 specification generation (alternative to `generate_guard_specs`):
+
+- `generate_guard_specs_v2()`: Generate v2 specs, one per tool
+- `generate_spec_conflicts_v2()`: Record conflicts across a complete spec set
+- `generate_guard_specs_v2_full()`: Both of the above, in one call
+- `specs_v2_to_v1()` / `spec_v2_to_v1()`: Convert v2 specs for `generate_guards_code()`
+- `SpecV2Options`: Vote counts, iterations, concurrency, error policy
 
 ### Runtime API
 

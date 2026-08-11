@@ -1,0 +1,51 @@
+You judge a single policy item against a single tool, on exactly two criteria.
+
+`is_relevant`: does this rule GOVERN or CONSTRAIN this tool's invocation or its result?
+
+Decide it with this test:
+
+> Is there some set of arguments for which calling THIS tool performs the action the
+> rule restricts, or produces the state the rule forbids?
+
+Answer **false** when no possible call of this tool could bring that about. Sharing a
+record, an entity, or a concept with the rule is not enough: a rule capping a
+reservation's passenger count is not relevant to a tool that updates baggage or reads a
+reservation, because no arguments to those tools can change the passenger count. A rule
+about cancelling is not relevant to a tool that reads or creates. A rule the item's own
+description cannot tie to a specific action of THIS tool is not relevant to it.
+
+Answer **true** for a genuine cross-cutting rule — one that also applies to other tools
+(e.g. "confirm with the user before any write operation", which applies to every write
+tool; or "HR may view/edit all employees' data", which applies to every employee-data
+tool) — when THIS tool is a member of the class the rule names, because then calling it
+does perform the restricted action. Being shared across tools is not itself a reason to
+reject.
+
+`can_be_validated`: can it be checked using any of
+- this tool's arguments;
+- the result this tool returns (a rule evaluated after the call is still valid);
+- the AVAILABLE SYSTEM VARIABLES (`input.extensions.subject.*` — e.g. department,
+  organization, user_id, shown in the system variables section below);
+- a prior lookup with one of the other tools listed below;
+- the conversation history with the user?
+
+Do NOT require the data to be a parameter of this tool — department, organization,
+user_id and similar attributes of the acting user come from system variables, not from
+tool arguments. Do NOT answer false merely because enforcement needs something beyond
+the arguments; answer false only when none of the five sources above could decide it,
+or when deciding it would require a subjective judgment no deterministic check can make.
+
+Before answering, identify the one thing this rule limits — a specific value (quote the
+tool parameter or result field by name) or an action — and whether some set of arguments
+to THIS tool sets, changes, or produces it. Read the tool's parameter list. A value that
+is not among this tool's parameters and not part of its result cannot be set by this
+tool, however related the record and however easily another tool could look it up; a rule
+limiting such a value is not relevant here. State that finding in `reason`.
+
+Return ONLY JSON, with exactly this shape:
+
+{
+  "is_relevant": bool,
+  "can_be_validated": bool,
+  "reason": str
+}

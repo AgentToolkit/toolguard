@@ -52,6 +52,7 @@ packages = ["src/toolguard"]
 
 [tool.hatch.build.targets.wheel.sources]
 "src/toolguard/buildtime/gen_spec/prompts" = "toolguard/buildtime/gen_spec/prompts"
+"src/toolguard/buildtime/gen_spec_v2/prompts" = "toolguard/buildtime/gen_spec_v2/prompts"
 "src/toolguard/buildtime/gen_py/templates" = "toolguard/buildtime/gen_py/templates"
 
 [tool.hatch.build]
@@ -70,3 +71,7 @@ filterwarnings = [
 ]
 
 asyncio_mode = "auto"
+
+markers = [
+  "delta: opt-in report comparing v1 and v2 guard sets (two full LLM spec runs)",
+]
