@@ -1,7 +1,7 @@
 # gen_spec_v2 — test baseline
 
 Date: 2026-08-11
-Base commit: `e31b21c` (version 0.2.21), branch `sys_var`, nothing committed
+Base commit: `e31b21c` (version 0.2.21); the work itself landed as `da24902` on branch `sys_var`
 LLM for e2e runs: `claude-sonnet-4-6` via azure
 Design: [2026-08-10-gen-spec-v2-design.md](../specs/2026-08-10-gen-spec-v2-design.md)
 
@@ -9,6 +9,27 @@ Written to be re-run and diffed after further benchmarks. Every number was measu
 inferred; §7 records where a result came from an earlier state of the tree.
 
 ## How to reproduce
+
+### The corpus is not committed
+
+The 488-passed figure below needs the employee ground-truth corpus, which is deliberately
+not in the repository. Without it 13 tests skip and the count is **273 passed, 13 skipped**
+— a fresh clone runs green either way, it just proves less. To get the full number, copy
+from smith:
+
+```bash
+mkdir -p tests/data/specs_v2 tests/data/specs_v2_inputs
+SMITH=../smith/examples/employee/smith
+cp "$SMITH"/smith_outputs/ground_truth_specs/*.json tests/data/specs_v2/
+cp "$SMITH"/{guidance.txt,system_vars.json,tool_definitions.json} tests/data/specs_v2_inputs/
+```
+
+Five test files read it — `test_serialize.py`, `test_refmatch_real_policy.py`,
+`test_adapter.py`, `test_gen_py_contract.py`, `test_sysvars.py` — via the
+`requires_corpus` mark in `tests/buildtime/gen_spec_v2/conftest.py`. No shipped code
+under `src/` touches it.
+
+### Commands
 
 ```bash
 # No LLM needed. Definitive, ~53s.
@@ -28,6 +49,7 @@ python -m pyright src/toolguard/buildtime/gen_spec_v2 tests/buildtime/gen_spec_v
 | Suite | Result | Time |
 |---|---|---|
 | Non-e2e (unit + contract) | **488 passed**, 0 failed, 3 pre-existing warnings | 52.9s |
+| Non-e2e without the ground-truth corpus | **273 passed, 13 skipped** | 21.4s |
 | v2 e2e — calculator, 4 tool-input shapes | **4 passed** | in the 417s below |
 | v2 e2e — tau2 `simple` | **passed** | " |
 | v2 e2e — tau2 `complex_api` | **failed** — transient LLM invalid-JSON, §4 | " |
