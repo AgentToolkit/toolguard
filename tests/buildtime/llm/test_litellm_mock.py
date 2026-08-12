@@ -238,37 +238,45 @@ async def test_chat_json_retry_on_invalid_json(mock_model):
     json_data = {"valid": "json"}
 
     with patch("toolguard.buildtime.llm.tg_litellm.acompletion") as mock_acompletion:
-        with patch("toolguard.buildtime.llm.tg_litellm.asyncio.sleep") as mock_sleep:
-            # First two responses are invalid, third is valid
-            mock_acompletion.side_effect = [
-                create_mock_response("This is not JSON"),
-                create_mock_response("Still not JSON"),
-                create_mock_response(json.dumps(json_data)),
-            ]
+        # First two responses are invalid, third is valid
+        mock_acompletion.side_effect = [
+            create_mock_response("This is not JSON"),
+            create_mock_response("Still not JSON"),
+            create_mock_response(json.dumps(json_data)),
+        ]
 
-            messages = [{"role": "user", "content": "Give me JSON"}]
-            result = await mock_model.chat_json(messages)
+        messages = [{"role": "user", "content": "Give me JSON"}]
+        result = await mock_model.chat_json(messages)
 
-            assert result == json_data
-            assert mock_acompletion.call_count == 3
-            assert mock_sleep.call_count == 2
+        assert result == json_data
+        assert mock_acompletion.call_count == 3
+
+        # Each retry is a repair turn: the rejected reply and the reason go
+        # back to the model, rather than the original prompt being replayed.
+        retry_messages = mock_acompletion.call_args_list[1].kwargs["messages"]
+        assert retry_messages[-2] == {
+            "role": "assistant",
+            "content": "This is not JSON",
+        }
+        assert "JSON" in retry_messages[-1]["content"]
 
 
 @pytest.mark.asyncio
 async def test_chat_json_max_retries_exceeded(mock_model):
-    """Test that RuntimeError is raised after max retries for invalid JSON."""
+    """Test that RuntimeError is raised once the model stops making progress."""
     with patch("toolguard.buildtime.llm.tg_litellm.acompletion") as mock_acompletion:
-        with patch("toolguard.buildtime.llm.tg_litellm.asyncio.sleep"):
-            # Always return invalid JSON
-            mock_acompletion.return_value = create_mock_response("Not JSON at all")
+        # Always return the same invalid JSON
+        mock_acompletion.return_value = create_mock_response("Not JSON at all")
 
-            messages = [{"role": "user", "content": "Give me JSON"}]
+        messages = [{"role": "user", "content": "Give me JSON"}]
 
-            with pytest.raises(RuntimeError) as exc_info:
-                await mock_model.chat_json(messages)
+        with pytest.raises(RuntimeError) as exc_info:
+            await mock_model.chat_json(messages)
 
-            assert "Exceeded maximum retries" in str(exc_info.value)
-            assert mock_acompletion.call_count == 5
+        assert "valid JSON" in str(exc_info.value)
+        # A model that answers a correction with the identical reply will not
+        # be talked round; spending the remaining attempts on it is waste.
+        assert mock_acompletion.call_count == 2
 
 
 @pytest.mark.asyncio
