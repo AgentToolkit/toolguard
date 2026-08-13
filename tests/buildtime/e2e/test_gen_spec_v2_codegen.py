@@ -20,9 +20,9 @@ from typing import Any, Dict, Optional, Type, TypeVar
 
 import pytest
 from dotenv import load_dotenv
-from examples.calculator.inputs import tool_functions as fn_tools
-from examples.calculator.inputs import tool_langchain as lg_tools
-from examples.calculator.inputs import tool_methods as mtd_tools
+from tests.examples.calculator.inputs import tool_functions as fn_tools
+from tests.examples.calculator.inputs import tool_langchain as lg_tools
+from tests.examples.calculator.inputs import tool_methods as mtd_tools
 
 from toolguard.buildtime import (
     LitellmModel,

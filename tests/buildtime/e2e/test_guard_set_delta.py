@@ -24,7 +24,7 @@ from typing import Dict, List
 
 import pytest
 from dotenv import load_dotenv
-from examples.calculator.inputs import tool_functions as fn_tools
+from tests.examples.calculator.inputs import tool_functions as fn_tools
 
 from toolguard.buildtime import (
     LitellmModel,
