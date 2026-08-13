@@ -38,7 +38,10 @@ from toolguard.buildtime.gen_spec_v2.models import (
     Trigger,
 )
 from toolguard.buildtime.gen_spec_v2.pipeline import (
+    SpecGenerationError,
     SpecV2Options,
+    ToolErrorPolicy,
+    ToolFailure,
     generate_guard_examples_v2,
     generate_guard_specs_v2,
     generate_guard_specs_v2_full,
@@ -59,6 +62,9 @@ __all__ = [
     "generate_guard_specs_v2_full",
     "generate_guard_examples_v2",
     "SpecV2Options",
+    "ToolErrorPolicy",
+    "SpecGenerationError",
+    "ToolFailure",
     # adapter to what codegen and the runtime consume
     "spec_v2_to_v1",
     "specs_v2_to_v1",

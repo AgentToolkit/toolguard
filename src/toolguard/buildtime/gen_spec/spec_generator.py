@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from toolguard.buildtime.compat.strenum import StrEnum
 from toolguard.buildtime.data_types import TOOLS
 from toolguard.buildtime.gen_spec.data_types import ToolInfo
+from toolguard.buildtime.gen_spec.errors import SpecGenerationError, ToolFailure
 from toolguard.buildtime.gen_spec.fn_to_toolinfo import function_to_toolInfo
 from toolguard.buildtime.gen_spec.oas_to_toolinfo import openapi_to_toolinfos
 from toolguard.buildtime.gen_spec.utils import (
@@ -102,20 +103,40 @@ async def extract_toolguard_specs(
         llm, policy_text, tool_infos, process_dir, options
     )
 
-    async def do_one_tool(tool_name: str) -> ToolGuardSpec:
-        spec = await generator.generate_policy(tool_name)
+    failures: List[ToolFailure] = []
+
+    async def do_one_tool(tool_name: str) -> Optional[ToolGuardSpec]:
+        # Isolated per tool: one tool whose response will not parse used to
+        # discard every other tool's finished spec in the same call.
+        try:
+            spec = await generator.generate_policy(tool_name)
+        except Exception as ex:  # noqa: BLE001 - per-tool isolation by design
+            logger.error("Spec generation failed for '{}': {}", tool_name, ex)
+            failures.append(ToolFailure(tool_name=tool_name, error=str(ex)))
+            return None
         if spec.policy_items:
             save_output(step1_output_dir, tool_name + ".json", spec)
         return spec
 
-    specs = await asyncio.gather(
-        *[
-            do_one_tool(tool.name)
-            for tool in tool_infos
-            if ((tools2guard is None) or (tool.name in tools2guard))
-        ]
-    )
+    targets = [
+        tool.name
+        for tool in tool_infos
+        if ((tools2guard is None) or (tool.name in tools2guard))
+    ]
+    results = await asyncio.gather(*[do_one_tool(name) for name in targets])
     logger.debug("All tools done")
+
+    specs = [spec for spec in results if spec is not None]
+
+    # gather() completes out of order; report in the order the tools were asked for.
+    order = {name: i for i, name in enumerate(targets)}
+    failures.sort(key=lambda f: order[f.tool_name])
+
+    if failures:
+        # Everything that worked is already on disk, so raising here loses
+        # nothing and stops a short spec set from passing for a small request.
+        raise SpecGenerationError(failures, specs)
+
     return specs
 
 

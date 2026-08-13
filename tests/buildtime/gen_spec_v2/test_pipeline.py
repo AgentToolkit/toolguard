@@ -3,9 +3,11 @@
 import json
 
 import pytest
+from pydantic import ValidationError
 
 from toolguard.buildtime.gen_spec_v2.models import PendingType, Trigger
 from toolguard.buildtime.gen_spec_v2.pipeline import (
+    SpecGenerationError,
     SpecV2Options,
     generate_guard_specs_v2,
     generate_guard_specs_v2_full,
@@ -179,20 +181,62 @@ async def test_pending_gaps_reach_the_written_spec(tmp_path):
     assert pending.suggested_source == "system_vars:blacklist"
 
 
+class _BoomFor(FakeLLM):
+    """Fails the pipeline of one named tool and no other."""
+
+    def __init__(self, responses, tool_name):
+        super().__init__(responses)
+        self.tool_name = tool_name
+
+    async def chat_json(self, messages):
+        # Key on the tool under generation, not the catalog every prompt
+        # carries, so only the named tool's pipeline fails.
+        if f"Tool name: {self.tool_name}" in messages[-1]["content"]:
+            raise RuntimeError("model exploded")
+        return await super().chat_json(messages)
+
+
 async def test_a_failing_tool_does_not_abort_the_others(tmp_path):
-    class Boom(FakeLLM):
-        async def chat_json(self, messages):
-            # Key on the tool under generation, not the catalog every prompt
-            # carries, so only get_employee's pipeline fails.
-            if "Tool name: get_employee" in messages[-1]["content"]:
-                raise RuntimeError("model exploded")
-            return await super().chat_json(messages)
+    llm = _BoomFor(_responses(), "get_employee")
 
-    llm = Boom(_responses())
+    with pytest.raises(SpecGenerationError) as exc_info:
+        await generate_guard_specs_v2(POLICY, TOOLS, llm, tmp_path)
 
-    specs = await generate_guard_specs_v2(POLICY, TOOLS, llm, tmp_path)
+    # Every healthy tool still ran, and its spec still reached disk.
+    assert [s.tool_name for s in exc_info.value.specs] == ["update_employee"]
+    assert (tmp_path / "update_employee.json").exists()
+
+
+async def test_the_error_names_the_tools_that_failed(tmp_path):
+    llm = _BoomFor(_responses(), "get_employee")
+
+    with pytest.raises(SpecGenerationError) as exc_info:
+        await generate_guard_specs_v2(POLICY, TOOLS, llm, tmp_path)
+
+    error = exc_info.value
+    assert [f.tool_name for f in error.failures] == ["get_employee"]
+    assert "model exploded" in error.failures[0].error
+    # A caller that only logs the exception must still learn which tool it was.
+    assert "get_employee" in str(error)
+
+
+async def test_skip_keeps_the_old_partial_result_behaviour(tmp_path):
+    llm = _BoomFor(_responses(), "get_employee")
+
+    specs = await generate_guard_specs_v2(
+        POLICY,
+        TOOLS,
+        llm,
+        tmp_path,
+        options=SpecV2Options(on_tool_error="skip"),
+    )
 
     assert [s.tool_name for s in specs] == ["update_employee"]
+
+
+async def test_a_misspelled_error_policy_is_rejected(tmp_path):
+    with pytest.raises(ValidationError):
+        SpecV2Options(on_tool_error="skipp")
 
 
 async def test_on_tool_error_raise_propagates(tmp_path):

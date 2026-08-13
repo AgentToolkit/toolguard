@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 
 from toolguard.buildtime.compat.strenum import StrEnum
 from toolguard.buildtime.gen_spec.data_types import ToolInfo
+from toolguard.buildtime.gen_spec.errors import SpecGenerationError, ToolFailure
 from toolguard.buildtime.gen_spec_v2.conflicts import attach_conflicts, find_conflicts
 from toolguard.buildtime.gen_spec_v2.context import GenContext
 from toolguard.buildtime.gen_spec_v2.models import SpecDebugV2, SpecV2
@@ -43,10 +44,18 @@ class ToolErrorPolicy(StrEnum):
     """What to do when one tool's generation raises."""
 
     skip = "skip"
-    """Record the failure and let every other tool finish."""
+    """Record the failure in the log and return the specs that did work."""
 
     raise_ = "raise"
-    """Abort the whole run."""
+    """Abort the whole run at the first failure."""
+
+    raise_at_end = "raise_at_end"
+    """Let every other tool finish and write, then raise naming the failures.
+
+    The default. A guard spec that silently goes missing is a tool that ships
+    unguarded, so a partial set has to be an error the caller cannot overlook
+    -- while still costing only the tools that actually failed.
+    """
 
 
 class SpecV2Options(BaseModel):
@@ -61,7 +70,7 @@ class SpecV2Options(BaseModel):
         description="None = let the model choose, >0 = exactly that many per side",
     )
     max_concurrency: int = Field(default=8, ge=1)
-    on_tool_error: str = "skip"
+    on_tool_error: ToolErrorPolicy = Field(default=ToolErrorPolicy.raise_at_end)
 
 
 async def _generate_one(
@@ -110,6 +119,11 @@ async def generate_guard_specs_v2(
     Writes ``<tool>.json``. Note these are the same filenames v1 uses, and v1's
     loader will accept them while silently ignoring the v2 fields — point v2 at
     its own directory rather than sharing one with v1 output.
+
+    Raises:
+        SpecGenerationError: under the default ``raise_at_end`` policy, once
+            every other tool has finished and been written. Pass
+            ``on_tool_error="skip"`` to get the partial list back instead.
     """
     options = options or SpecV2Options()
     work_dir = Path(work_dir)
@@ -127,15 +141,17 @@ async def generate_guard_specs_v2(
         targets = [tool for tool in ctx.tools if tool.name in set(tools2guard)]
 
     semaphore = asyncio.Semaphore(options.max_concurrency)
+    failures: List[ToolFailure] = []
 
     async def guarded(tool: ToolInfo):
         async with semaphore:
             try:
                 return await _generate_one(llm, ctx, tool, source_doc, options)
             except Exception as ex:  # noqa: BLE001 - per-tool isolation by design
-                if options.on_tool_error == "raise":
+                if options.on_tool_error == ToolErrorPolicy.raise_:
                     raise
                 logger.error("Spec generation failed for '{}': {}", tool.name, ex)
+                failures.append(ToolFailure(tool_name=tool.name, error=str(ex)))
                 return None
 
     results = await asyncio.gather(*[guarded(tool) for tool in targets])
@@ -145,6 +161,16 @@ async def generate_guard_specs_v2(
         dump_spec(spec, work_dir / f"{spec.tool_name}.json")
 
     logger.debug("gen_spec_v2: wrote {}/{} spec(s)", len(specs), len(targets))
+
+    # gather() completes out of order; report in the order the tools were asked for.
+    order = {tool.name: i for i, tool in enumerate(targets)}
+    failures.sort(key=lambda f: order[f.tool_name])
+
+    if failures and options.on_tool_error == ToolErrorPolicy.raise_at_end:
+        # Written first, then raised: nothing that succeeded is lost, and the
+        # shortfall cannot be mistaken for a smaller request.
+        raise SpecGenerationError(failures, specs)
+
     return specs
 
 

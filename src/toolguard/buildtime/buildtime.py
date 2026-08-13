@@ -50,6 +50,12 @@ async def generate_guard_specs(
 
     Returns:
         List of ToolGuardSpec objects containing the generated specifications.
+
+    Raises:
+        SpecGenerationError: if any tool failed. Every other tool still ran and
+            its spec is already written; the error names what was lost, so a
+            short spec set cannot pass for a small request. The successful
+            specs are on the exception as ``.specs``.
     """
     work_dir = Path(work_dir)
     work_dir.mkdir(parents=True, exist_ok=True)
