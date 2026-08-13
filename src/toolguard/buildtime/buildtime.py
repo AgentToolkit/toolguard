@@ -14,6 +14,15 @@ from toolguard.buildtime.gen_spec.spec_generator import (
     ToolGuardSpecGenerator,
     _tools_to_tool_infos,
 )
+from toolguard.buildtime.gen_spec_v2 import (  # noqa: F401 - re-exported API
+    SpecV2,
+    SpecV2Options,
+    generate_guard_specs_v2,
+    generate_guard_specs_v2_full,
+    generate_spec_conflicts_v2,
+    spec_v2_to_v1,
+    specs_v2_to_v1,
+)
 from toolguard.buildtime.llm import I_TG_LLM
 from toolguard.buildtime.utils.open_api import OpenAPI
 from toolguard.runtime.data_types import ToolGuardsCodeGenerationResult, ToolGuardSpec
@@ -41,6 +50,12 @@ async def generate_guard_specs(
 
     Returns:
         List of ToolGuardSpec objects containing the generated specifications.
+
+    Raises:
+        SpecGenerationError: if any tool failed. Every other tool still ran and
+            its spec is already written; the error names what was lost, so a
+            short spec set cannot pass for a small request. The successful
+            specs are on the exception as ``.specs``.
     """
     work_dir = Path(work_dir)
     work_dir.mkdir(parents=True, exist_ok=True)

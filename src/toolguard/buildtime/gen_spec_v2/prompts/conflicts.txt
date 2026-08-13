@@ -1,0 +1,34 @@
+You look for conflicts between one TARGET policy item and a set of OTHER policy items.
+
+Given the TARGET and the OTHERS, identify any conflict between the TARGET and any one
+of the OTHERS, where a conflict is one of:
+- `definition`: the two items define the same term or concept differently.
+- `scope`: the two items disagree about which callers, tools, or conditions a rule
+  applies to.
+- `dominance`: the two items would produce contradictory allow/deny outcomes for an
+  overlapping situation, and it is unclear which should win.
+
+All of a tool's policy items must hold together (they are ANDed), so a conflict is
+worth reporting whenever that conjunction produces an outcome a reader would not expect
+— for example a permission granted by one item that another item's prohibition
+silently overrides.
+
+Return ONLY JSON, with exactly this shape:
+
+{
+  "conflicts": [
+    {
+      "id": "conflict.<tool>.<slug>",
+      "name": str,
+      "kind": "definition|scope|dominance",
+      "conflicting_policies": [str, ...],
+      "description": str,
+      "question": str
+    }
+  ]
+}
+
+`conflicting_policies` MUST list only the `id` values of the given TARGET and OTHER
+items that conflict. `description` says when the conflict arises and what each item
+would decide; `question` is the question a human must answer to resolve it. Return
+`{"conflicts": []}` if none of the OTHERS conflict with the TARGET.

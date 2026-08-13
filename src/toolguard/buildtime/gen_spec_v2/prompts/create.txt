@@ -1,0 +1,68 @@
+You bind natural-language policy rules to ONE tool.
+
+Given the tool's name, description, and parameters, the full policy document, the
+system variables available at policy-evaluation time, and a catalog of every other
+tool in this agent, decide which policy rules GOVERN or CONSTRAIN this tool's
+invocation or its result.
+
+A rule governs this tool only if **invoking this tool could actually bring about what
+the rule restricts**. Apply this test to every candidate rule:
+
+> Is there some set of arguments for which calling THIS tool performs the action the
+> rule restricts, or produces the state the rule forbids?
+
+If no possible call of this tool could bring that about, the rule does NOT govern this
+tool — even when the rule mentions records, entities, or concepts this tool also touches.
+A rule limiting how many passengers a reservation may have governs the tools that set or
+change the passenger list; it does not govern a tool that updates baggage or looks up a
+reservation, because no arguments to those tools can change the passenger count. A rule
+about cancelling something does not govern a tool that reads it or creates it.
+
+Bind every rule that passes that test, INCLUDING cross-cutting rules instantiated
+per-tool: a rule that applies to a whole class of tools (e.g. "confirm with the user
+before any write operation" applies to every write tool; "HR may view/edit all
+employees' data" applies to every employee-data tool) still governs THIS tool when this
+tool is a member of that class — a write tool does perform the write being restricted.
+Membership in the class the rule names is what matters, not merely touching the same
+data.
+
+A rule is in scope here when it can be validated using any of:
+- this tool's arguments, or the result it returns;
+- the available system variables (see that section — these map to
+  `input.extensions.subject.*`, NOT to tool parameters);
+- the result of calling another tool first;
+- the conversation history with the user.
+
+Do not invent rules that are not grounded in the policy document you were given.
+
+Return ONLY JSON, with exactly this shape:
+
+{
+  "tool_info": {"is_read_only": bool, "user_enrichment": str},
+  "policy_items": [
+    {"slug": str, "name": str, "description": str, "references": [str, ...]}
+  ]
+}
+
+Rules for the output:
+- Before emitting an item, identify the one thing its rule limits — a specific value or
+  an action — and check the parameter list for whether some set of arguments to THIS tool
+  sets, changes, or produces it. **Omit the item when it does not**: a value absent from
+  this tool's parameters and result cannot be set by this tool, however related the
+  record and however easily another tool could look it up.
+- `slug` is a short, lowercase, underscore-separated summary of the rule, e.g.
+  `hr_only` or `salary_positive`. Do not include the tool name.
+- `name` is a one-line human-readable statement of the rule.
+- `description` must be self-contained: a reader who sees only this item, the tool,
+  and the system variables must be able to decide it without the policy document. It
+  MUST name (a) which action of THIS tool the rule restricts, and (b) exactly what is
+  tested — a parameter of this tool, a field of its result, a system variable, or a
+  value fetched by a prior tool call. If you cannot name both, this tool is not the one
+  the rule governs: omit the item.
+- `references` MUST be a NON-EMPTY list of one or more spans copied EXACTLY —
+  verbatim, character-for-character, including any markdown — from the POLICY
+  DOCUMENT below. Each span must be contiguous text from the document and should be
+  a complete rule, not a fragment. Do NOT paraphrase, summarize, reword, or elide
+  with "...".
+- Do NOT emit a policy item you cannot ground in at least one verbatim span.
+- Return no policy items if none of the policy rules apply to this tool.

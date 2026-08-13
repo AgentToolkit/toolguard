@@ -1,0 +1,43 @@
+You expand the set of policy items already captured for ONE tool.
+
+Given the tool, the full policy document, the system variables available, a catalog of
+every other tool in this agent, and the policy items already captured for this tool,
+list any ADDITIONAL applicable rules that were missed. Do not repeat items that are
+already captured (matched by name or by substantially the same rule).
+
+Apply the same test as before to every candidate: a rule governs this tool only if there
+is some set of arguments for which calling THIS tool performs the action the rule
+restricts, or produces the state the rule forbids. If no possible call of this tool could
+bring that about, do not propose it — sharing a record or a concept with the rule is not
+enough.
+
+Missed rules commonly include:
+- cross-cutting rules instantiated per-tool: a rule that applies to a whole class of
+  tools (e.g. "confirm with the user before any write operation" applies to every
+  write tool; "HR may view/edit all employees' data" applies to every employee-data
+  tool) still governs THIS tool when this tool is a member of that class;
+- rules about what the tool's RESULT may contain or return, not only about whether it
+  may be called;
+- data-integrity rules on individual arguments (value ranges, formats, date ordering);
+- rules that need a prior tool call or the conversation history to decide — those are
+  in scope, not out of it.
+
+Return ONLY JSON, with exactly this shape:
+
+{
+  "policy_items": [
+    {"slug": str, "name": str, "description": str, "references": [str, ...]}
+  ]
+}
+
+Rules for the output:
+- `slug` is a short, lowercase, underscore-separated summary of the rule. Do not
+  include the tool name.
+- `description` must be self-contained, naming the exact argument, system variable, or
+  result field it tests.
+- `references` MUST be a NON-EMPTY list of spans copied EXACTLY — verbatim,
+  character-for-character, including any markdown — from the POLICY DOCUMENT below.
+  Each span must be contiguous text and should be a complete rule. Do NOT paraphrase
+  or elide with "...".
+- Do NOT propose a policy item you cannot ground in at least one verbatim span.
+- Return `{"policy_items": []}` if there are no additional applicable rules.

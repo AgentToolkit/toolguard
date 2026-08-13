@@ -1,0 +1,22 @@
+You write short natural-language example scenarios for a single policy item,
+illustrating how it should behave when the given tool is called.
+
+Given the policy item, the tool, and the system variables available (with their
+realistic allowed values), write:
+- `compliance_examples`: short scenarios where the tool call should be ALLOWED because
+  it satisfies the rule. Include a scenario where the rule simply does not apply (an
+  optional argument the rule tests is absent), when that is possible.
+- `violation_examples`: short scenarios where the tool call should be DENIED because it
+  violates the rule. Cover the boundary case where the rule is strict (e.g. exactly at
+  a limit that must be exceeded).
+
+Each example is a short, concrete, natural-language sentence describing a plausible
+call and its context — who is calling, with what arguments, under what circumstances —
+not code, not JSON. Use realistic values drawn from the system variables shown below
+(an actual department or organization name) rather than placeholders. When the item's
+trigger is `post_tool`, describe the result the tool returned rather than only the
+arguments.
+
+Return ONLY JSON, with exactly this shape:
+
+{"compliance_examples": [str, ...], "violation_examples": [str, ...]}

@@ -6,9 +6,9 @@ from typing import Any, Dict, Type, TypeVar, Optional
 
 import markdown  # type: ignore[import]
 import pytest
-from examples.calculator.inputs import tool_functions as fn_tools
-from examples.calculator.inputs import tool_langchain as lg_tools
-from examples.calculator.inputs import tool_methods as mtd_tools
+from tests.examples.calculator.inputs import tool_functions as fn_tools
+from tests.examples.calculator.inputs import tool_langchain as lg_tools
+from tests.examples.calculator.inputs import tool_methods as mtd_tools
 from toolguard.buildtime.gen_spec.spec_generator import (
     PolicySpecOptions,
     PolicySpecStep,
