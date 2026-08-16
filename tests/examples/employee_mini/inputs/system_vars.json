@@ -1,0 +1,14 @@
+{
+  "user_name": "Bob",
+  "user_id": 1,
+  "department": ["Corporate Leadership", "Engineering", "HR"],
+  "organization": ["IBM Corporation", "Red Hat"],
+  "action_list": [
+    "get_bank_account",
+    "get_direct_reports",
+    "update_employee",
+    "update_passport",
+    "create_time_off_request"
+  ],
+  "action_description": "The tool the agent is about to call."
+}

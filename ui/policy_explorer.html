@@ -1,0 +1,1831 @@
+<!DOCTYPE html>
+<!--
+  ToolGuard Policy Explorer — self-contained, no build step, no server.
+
+  Open this file in a browser and drop in:
+    * a policy document  (e.g. benchmarks/employee/inputs/employee_policy_doc.md)
+    * per-tool spec JSON (e.g. benchmarks/employee/ground_truth/step1/*.json)
+  or just drop the whole benchmark folder.
+
+  Reads BOTH spec formats. v2 ("step1", described by ground_truth/step1.schema.json):
+    tool_name, source_doc, policy_items[], conflicts[]?
+    policy_items[]:  id, name, description, compliance_examples, violation_examples,
+                     references, trigger, requires{system_vars, tool_history, message_history},
+                     skip?, pending_for_user[]?, resolved_by_user[]?
+    conflicts[]:     id, name, kind, conflicting_policies, description, question, resolution(null)
+
+  v1 (toolguard's original ToolGuardSpec) carries a subset, and only that subset is
+  shown for it — nothing is invented to fill the gaps:
+    tool_name, policy_items[], debug?
+    policy_items[]:  name, description, references, compliance_examples,
+                     violation_examples, skip, debug?
+  So a v1 item has no id (one is derived for selection), no trigger, and no
+  `requires` block — which the detail panel reports as "not recorded in this
+  spec" rather than as "no context required".
+
+  v1 references quote an HTML *rendering* of the policy document
+  (`<strong>own data</strong>`) while the document itself is markdown, so they
+  line up as "normalized" matches rather than exact ones. Both markups are
+  stripped for that comparison; see buildNormalized.
+
+  Run `node ui/verify_explorer.mjs` for a headless smoke check over both formats.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ToolGuard · Policy Explorer</title>
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --panel: #ffffff;
+    --ink: #1c2230;
+    --ink-soft: #55617a;
+    --ink-faint: #8a94a8;
+    --line: #e3e7ee;
+    --line-strong: #cfd6e2;
+    --accent: #3b57d6;
+    --accent-soft: #eaeefc;
+    --mark: rgba(255, 208, 0, 0.42);
+    --mark-pending: rgba(255, 138, 0, 0.42);
+    --mark-strong: rgba(59, 87, 214, 0.30);
+    --mark-strong-border: #3b57d6;
+    --mark-conflict: rgba(209, 73, 91, 0.30);
+    --mark-conflict-border: #d1495b;
+    --good: #1f9d57;
+    --good-bg: #eef9f1;
+    --good-line: #bfe6cd;
+    --bad: #d1495b;
+    --warn: #c8730a;
+    --warn-bg: #fff3e2;
+    --radius: 10px;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: var(--sans);
+    color: var(--ink);
+    background: var(--bg);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  button { font-family: inherit; }
+
+  /* ---- top bar ---- */
+  .topbar {
+    height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 18px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .topbar .logo {
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    font-size: 15px;
+  }
+  .topbar .logo b { color: var(--accent); }
+  .topbar .sub { color: var(--ink-faint); font-size: 12.5px; }
+  .topbar .spacer { flex: 1; }
+  .topbar .stat {
+    font-size: 12px;
+    color: var(--ink-soft);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 3px 11px;
+    white-space: nowrap;
+  }
+  .topbar .stat b { color: var(--ink); }
+  .topbar .stat.alert { background: #fdeef0; border-color: #f0c2c9; color: var(--bad); }
+  .topbar .stat.alert b { color: var(--bad); }
+
+  /* ---- app grid ---- */
+  .app {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr) 400px;
+    gap: 0;
+    height: calc(100vh - 52px);
+  }
+  .col { overflow-y: auto; height: 100%; }
+  .sidebar { background: var(--panel); border-right: 1px solid var(--line); }
+  .center { background: var(--bg); padding: 22px 26px 60px; }
+  .detail { background: var(--panel); border-left: 1px solid var(--line); }
+
+  .section {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .section h3 {
+    margin: 0 0 10px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-faint);
+    font-weight: 700;
+  }
+
+  /* ---- upload ---- */
+  .drop {
+    border: 1.5px dashed var(--line-strong);
+    border-radius: var(--radius);
+    padding: 16px 12px;
+    text-align: center;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+    background: #fbfcfe;
+  }
+  .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); }
+  .drop .big { font-weight: 600; color: var(--ink); }
+  .drop .small { font-size: 12px; margin-top: 4px; }
+  .drop-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .drop-actions button {
+    flex: 1;
+    font-size: 12px;
+    padding: 6px 8px;
+    border: 1px solid var(--line-strong);
+    background: #fff;
+    border-radius: 7px;
+    cursor: pointer;
+    color: var(--ink);
+  }
+  .drop-actions button:hover { border-color: var(--accent); color: var(--accent); }
+  .loaded {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+  .loaded .row { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; }
+  .loaded .row .v { text-align: right; word-break: break-all; }
+  .loaded .ok { color: var(--good); }
+  .loaded .miss { color: var(--ink-faint); }
+  .loaded .warnline {
+    margin-top: 6px; padding: 6px 8px; border-radius: 6px;
+    background: var(--warn-bg); border: 1px solid #f4d8b0; color: var(--warn);
+    font-size: 11.5px; line-height: 1.45;
+  }
+  .docselect {
+    margin-top: 8px; width: 100%; font-family: var(--mono); font-size: 11.5px;
+    padding: 5px 6px; border: 1px solid var(--line-strong); border-radius: 7px; background: #fff;
+    color: var(--ink);
+  }
+
+  /* ---- filters ---- */
+  .fgroup { margin-bottom: 12px; }
+  .fgroup:last-child { margin-bottom: 0; }
+  .fgroup > label {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    margin-bottom: 5px;
+  }
+  .segmented { display: flex; border: 1px solid var(--line-strong); border-radius: 7px; overflow: hidden; }
+  .segmented button {
+    flex: 1;
+    border: none;
+    background: #fff;
+    padding: 5px 4px;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--ink-soft);
+    border-right: 1px solid var(--line);
+  }
+  .segmented button:last-child { border-right: none; }
+  .segmented button.on { background: var(--accent); color: #fff; font-weight: 600; }
+  .varlist { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chipbtn {
+    font-size: 11.5px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    border: 1px solid var(--line-strong);
+    background: #fff;
+    cursor: pointer;
+    color: var(--ink-soft);
+    font-family: var(--mono);
+  }
+  .chipbtn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .clearbtn {
+    margin-top: 4px;
+    font-size: 11.5px;
+    background: none;
+    border: none;
+    color: var(--accent);
+    cursor: pointer;
+    padding: 2px 0;
+  }
+  .resetbtn {
+    width: 100%; margin-top: 4px; font-size: 11.5px; padding: 5px 8px;
+    border: 1px solid var(--line-strong); background: #fff; border-radius: 7px;
+    cursor: pointer; color: var(--ink-soft);
+  }
+  .resetbtn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ---- tool list ---- */
+  .toollist { padding: 8px 8px 16px; }
+  .toolrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--ink);
+  }
+  .toolrow:hover { background: var(--bg); }
+  .toolrow.sel { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .toolrow.dim { opacity: 0.4; }
+  .toolrow .name { flex: 1; font-family: var(--mono); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .toolrow.all .name { font-family: var(--sans); font-weight: 600; }
+  .toolrow .count {
+    font-size: 11px;
+    background: var(--line);
+    color: var(--ink-soft);
+    border-radius: 20px;
+    padding: 1px 8px;
+    min-width: 20px;
+    text-align: center;
+  }
+  .toolrow.sel .count { background: var(--accent); color: #fff; }
+  .dots { display: flex; gap: 3px; flex: 0 0 auto; width: 24px; }
+  .pdot { width: 7px; height: 7px; border-radius: 50%; background: var(--warn); flex: 0 0 auto; }
+  .pdot.res { background: var(--good); }
+  .pdot.miss { background: var(--bad); }
+  .pdot.hidden { visibility: hidden; }
+
+  /* ---- conflicts ---- */
+  .conflictlist { padding: 4px 8px 4px; }
+  .crow {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; border-radius: 8px; cursor: pointer; color: var(--ink);
+  }
+  .crow:hover { background: var(--bg); }
+  .crow.sel { background: #fdeef0; color: var(--bad); font-weight: 600; }
+  .crow .cdot { width: 7px; height: 7px; border-radius: 50%; background: var(--bad); flex: 0 0 auto; }
+  .crow .name { flex: 1; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .crow .count { font-size: 11px; background: var(--line); color: var(--ink-soft); border-radius: 20px; padding: 1px 8px; min-width: 20px; text-align: center; }
+  .crow.sel .count { background: var(--bad); color: #fff; }
+
+  .cscope { display: inline-block; font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-faint); }
+
+  /* conflict detail: clickable policy chips */
+  .polchip {
+    border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; margin-bottom: 7px;
+    cursor: pointer; transition: border-color .12s, box-shadow .12s;
+  }
+  .polchip:hover { border-color: var(--bad); box-shadow: 0 1px 6px rgba(209,73,91,.10); }
+  .polchip .pc-tool { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .05em; }
+  .polchip .pc-name { font-weight: 600; font-size: 12.5px; margin-top: 1px; }
+  .polchip .pc-id { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-top: 1px; }
+  .polchip.unresolved { cursor: default; opacity: .7; border-style: dashed; }
+  .polchip.unresolved:hover { border-color: var(--line); box-shadow: none; }
+
+  .tag.conflict { background: #fdeef0; color: var(--bad); border-color: #f0c2c9; cursor: pointer; }
+  .resolvecard { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: #fbfcfe; font-size: 12.5px; }
+  .resolvecard.pending { border-color: #f4d8b0; background: var(--warn-bg); color: var(--warn); }
+  .resolvecard .rk { color: var(--ink-soft); }
+  .resolvecard .rk b { color: var(--ink); }
+  .resolvecard .note { display: block; margin-top: 5px; font-size: 11.5px; color: var(--ink-soft); }
+
+  /* ---- guidance center ---- */
+  .guide-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+  .guide-head h2 { margin: 0; font-size: 16px; }
+  .guide-head .hint { color: var(--ink-faint); font-size: 12.5px; }
+  .legend { display: flex; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; font-size: 12px; color: var(--ink-soft); }
+  .legend .sw { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 5px; }
+  .guide {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 22px 26px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.75;
+    color: #2a3346;
+  }
+  mark { border-radius: 3px; padding: 1px 1px; background: var(--mark); color: inherit; scroll-margin-top: 80px; cursor: pointer; transition: outline .12s; }
+  mark:hover { outline: 1.5px solid var(--mark-strong-border); }
+  mark.pending { background: var(--mark-pending); }
+  mark.strong { background: var(--mark-strong); outline: 1.5px solid var(--mark-strong-border); }
+  /* conflict overlay wins over the other classes */
+  mark.conflict { background: var(--mark-conflict); outline: 1.5px solid var(--mark-conflict-border); }
+  /* quote matched only after whitespace/markdown normalization */
+  mark.fuzzy { border-bottom: 2px dashed var(--warn); border-radius: 3px 3px 0 0; }
+
+  .empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 60vh;
+    color: var(--ink-faint);
+    text-align: center;
+    gap: 8px;
+  }
+  .empty .k { font-size: 40px; }
+
+  /* ---- detail ---- */
+  .detail-inner { padding: 0 0 60px; }
+  .dhead { position: sticky; top: 0; background: var(--panel); padding: 14px 16px; border-bottom: 1px solid var(--line); z-index: 2; }
+  .dhead h2 { margin: 0; font-size: 15px; }
+  .dhead .desc { color: var(--ink-soft); font-size: 12.5px; margin-top: 4px; }
+  .dhead .hmeta { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+  .backbtn { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 12.5px; padding: 0 0 8px; }
+
+  .pcard {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 12px 13px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: border-color .12s, box-shadow .12s;
+  }
+  .pcard:hover { border-color: var(--accent); box-shadow: 0 1px 6px rgba(59,87,214,.10); }
+  .pcard.skipped { opacity: .55; border-style: dashed; }
+  .pcard .pname { font-weight: 600; font-size: 13px; }
+  .pcard .pid { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-top: 2px; }
+  .pcard .pmeta { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+
+  .tag {
+    font-size: 10.5px;
+    padding: 2px 7px;
+    border-radius: 5px;
+    background: var(--bg);
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+    font-family: var(--mono);
+  }
+  .tag.pending { background: var(--warn-bg); color: var(--warn); border-color: #f4d8b0; }
+  .tag.resolved { background: var(--good-bg); color: #145c34; border-color: var(--good-line); }
+  .tag.skip { background: #eceff4; color: var(--ink-faint); border-color: var(--line-strong); text-decoration: line-through; }
+  .tag.missref { background: #fdeef0; color: var(--bad); border-color: #f0c2c9; }
+  .tag.trig { background: #eef1f7; }
+  .tag.kind { background: #f3eefc; color: #5b3fa8; border-color: #ddd2f4; }
+
+  .block { margin: 16px 0; }
+  .block h4 { margin: 0 0 7px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-faint); }
+  .block .desc-body { font-size: 12.5px; color: var(--ink-soft); }
+  .exlist { margin: 0; padding: 0; list-style: none; }
+  .exlist li { padding: 6px 10px; border-radius: 7px; margin-bottom: 5px; font-size: 12.5px; display: flex; gap: 8px; }
+  .exlist li.good { background: var(--good-bg); color: #145c34; }
+  .exlist li.bad { background: #fdeef0; color: #8f2434; }
+  .exlist li .ic { font-weight: 700; flex: 0 0 auto; }
+
+  .reflist { margin: 0; padding: 0; list-style: none; }
+  .reflist li {
+    font-family: var(--mono); font-size: 12px;
+    background: var(--mark); border-radius: 6px;
+    padding: 6px 9px; margin-bottom: 5px; color: #4a4200;
+    cursor: pointer;
+  }
+  .reflist li:hover { outline: 1.5px solid var(--mark-strong-border); }
+  .reflist li .rstat {
+    display: block; font-family: var(--sans); font-size: 10.5px;
+    text-transform: uppercase; letter-spacing: .05em; margin-bottom: 3px; opacity: .75;
+  }
+  .reflist li.ref-fuzzy { border-bottom: 2px dashed var(--warn); border-radius: 6px 6px 0 0; }
+  .reflist li.ref-none { background: #fdeef0; color: #8f2434; cursor: default; }
+  .reflist li.ref-none:hover { outline: none; }
+  .reflist li.ref-nodoc { background: var(--bg); color: var(--ink-soft); cursor: default; }
+  .reflist li.ref-nodoc:hover { outline: none; }
+
+  .pendingcard {
+    border: 1px solid #f4d8b0; background: var(--warn-bg);
+    border-radius: 8px; padding: 10px 12px; margin-bottom: 8px;
+  }
+  .pendingcard .ptype { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--warn); }
+  .pendingcard .q { font-weight: 600; margin: 5px 0; }
+  .pendingcard .kv { font-size: 12px; color: var(--ink-soft); margin-top: 4px; }
+  .pendingcard .kv b { color: var(--ink); font-weight: 600; }
+  .pendingcard.resolved { border-color: var(--good-line); background: var(--good-bg); }
+  .pendingcard.resolved .ptype { color: #147a41; }
+  .pendingcard .answer {
+    margin-top: 7px; padding: 7px 9px; border-radius: 6px;
+    background: #fff; border: 1px solid var(--good-line); font-size: 12px; color: var(--ink);
+  }
+  .pendingcard .answer b { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: #147a41; margin-bottom: 2px; }
+
+  .req-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  /* ---- requires: tool_history value ---- */
+  .req-tool { margin-top: 8px; }
+  .req-sub {
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    color: var(--ink-faint); text-transform: uppercase; letter-spacing: .05em;
+    margin-bottom: 5px;
+  }
+  .th-entry {
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 7px 9px;
+    margin-bottom: 6px;
+    background: #fbfcfe;
+  }
+  .th-tool { display: block; font-family: var(--mono); font-weight: 600; font-size: 12px; color: var(--accent); }
+  .th-params { margin-top: 5px; display: grid; gap: 3px; }
+  .th-param { display: flex; gap: 8px; font-family: var(--mono); font-size: 11.5px; align-items: baseline; }
+  .th-key { color: var(--ink-soft); flex: 0 0 auto; }
+  .th-val { color: var(--ink); word-break: break-all; }
+  .th-empty { font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); margin-top: 5px; }
+
+  /* ---- raw JSON (debug / archive passthrough) ---- */
+  details.rawbox { margin-top: 14px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfe; }
+  details.rawbox > summary {
+    cursor: pointer; padding: 8px 11px; font-size: 11.5px; font-weight: 600;
+    color: var(--ink-soft); text-transform: uppercase; letter-spacing: .05em;
+  }
+  details.rawbox pre {
+    margin: 0; padding: 0 11px 11px; font-family: var(--mono); font-size: 11px;
+    white-space: pre-wrap; word-break: break-word; color: var(--ink-soft);
+  }
+  .enrich { font-size: 12px; color: var(--ink-soft); margin-top: 6px; }
+
+  /* ---- reference popover (click a highlight -> policies mentioning it) ---- */
+  .refpop {
+    position: absolute;
+    z-index: 50;
+    max-width: 340px;
+    max-height: 320px;
+    overflow-y: auto;
+    background: var(--panel);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    box-shadow: 0 6px 24px rgba(28, 34, 48, 0.16);
+    padding: 8px;
+    font-size: 12.5px;
+  }
+  .refpop[hidden] { display: none; }
+  .refpop .rp-head {
+    font-family: var(--mono); font-size: 10.5px; text-transform: uppercase;
+    letter-spacing: .05em; color: var(--ink-faint);
+    padding: 4px 6px 6px; border-bottom: 1px solid var(--line); margin-bottom: 6px;
+  }
+  .refpop .rp-reftext {
+    display: block; margin-top: 3px; color: var(--ink);
+    background: var(--mark); border-radius: 4px; padding: 3px 6px;
+    font-family: var(--mono); font-size: 11px; text-transform: none; letter-spacing: 0;
+    white-space: normal; word-break: break-word;
+  }
+  .refpop .rp-refblock + .rp-refblock { margin-top: 8px; }
+  .refpop .rp-row {
+    border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; margin-bottom: 6px;
+    cursor: pointer; transition: border-color .12s, box-shadow .12s;
+  }
+  .refpop .rp-row:last-child { margin-bottom: 0; }
+  .refpop .rp-row:hover { border-color: var(--accent); box-shadow: 0 1px 6px rgba(59,87,214,.10); }
+  .refpop .rp-tool { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .05em; }
+  .refpop .rp-name { font-weight: 600; font-size: 12.5px; margin-top: 1px; }
+  .refpop .rp-id { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-top: 1px; }
+  .refpop .rp-empty { color: var(--ink-faint); padding: 4px 6px 6px; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="logo">ToolGuard · <b>Policy Explorer</b></div>
+    <div class="sub">policy doc ⇄ per-tool step1 specs</div>
+    <div class="spacer"></div>
+    <div class="stat" id="statTools">0 tools</div>
+    <div class="stat" id="statPolicies">0 policies</div>
+    <div class="stat" id="statPending">0 pending</div>
+    <div class="stat" id="statResolved">0 resolved</div>
+    <div class="stat" id="statConflicts">0 conflicts</div>
+    <div class="stat" id="statUnmatched">0 unmatched refs</div>
+  </div>
+
+  <div class="app">
+    <!-- LEFT -->
+    <div class="col sidebar">
+      <div class="section">
+        <h3>Data</h3>
+        <div class="drop" id="drop">
+          <div class="big">Drop files here</div>
+          <div class="small">policy doc (.md/.txt) + step1 specs (*.json)<br/>(or the whole benchmark folder)</div>
+          <div class="drop-actions">
+            <button id="pickFiles">Choose files</button>
+            <button id="pickFolder">Choose folder</button>
+          </div>
+        </div>
+        <input type="file" id="fileInput" multiple accept=".json,.txt,.md" hidden />
+        <input type="file" id="folderInput" webkitdirectory hidden />
+        <div class="loaded" id="loaded"></div>
+        <select class="docselect" id="docSelect" style="display:none"></select>
+      </div>
+
+      <div class="section" id="filterSection" style="display:none">
+        <h3>Filters</h3>
+        <div class="fgroup">
+          <label>User questions</label>
+          <div class="segmented" data-filter="questions">
+            <button data-val="all" class="on">All</button>
+            <button data-val="pending">Pending</button>
+            <button data-val="resolved">Resolved</button>
+            <button data-val="none">None</button>
+          </div>
+        </div>
+        <div class="fgroup" id="pendingTypeGroup" style="display:none">
+          <label>&#8627; Question type</label>
+          <div class="varlist" id="pendingTypeList"></div>
+          <button class="clearbtn" id="clearPendingTypes" style="display:none">clear</button>
+        </div>
+        <div class="fgroup">
+          <label>Quote match in doc</label>
+          <div class="segmented" data-filter="refs">
+            <button data-val="all" class="on">All</button>
+            <button data-val="exact">Exact</button>
+            <button data-val="fuzzy">Normalized</button>
+            <button data-val="none">Missing</button>
+          </div>
+        </div>
+        <div class="fgroup">
+          <label>Skipped items</label>
+          <div class="segmented" data-filter="skip">
+            <button data-val="all" class="on">All</button>
+            <button data-val="only">Only</button>
+            <button data-val="hide">Hide</button>
+          </div>
+        </div>
+        <div class="fgroup">
+          <label>Requires message history</label>
+          <div class="segmented" data-filter="msg">
+            <button data-val="all" class="on">All</button>
+            <button data-val="req">Required</button>
+            <button data-val="notreq">Not req.</button>
+          </div>
+        </div>
+        <div class="fgroup">
+          <label>Requires tool history</label>
+          <div class="segmented" data-filter="tool">
+            <button data-val="all" class="on">All</button>
+            <button data-val="req">Required</button>
+            <button data-val="notreq">Not req.</button>
+          </div>
+        </div>
+        <div class="fgroup">
+          <label>Trigger</label>
+          <div class="segmented" data-filter="trigger">
+            <button data-val="all" class="on">All</button>
+            <button data-val="pre">Pre</button>
+            <button data-val="post">Post</button>
+            <button data-val="other">Other</button>
+          </div>
+        </div>
+        <div class="fgroup">
+          <label>Requires system vars</label>
+          <div class="varlist" id="varList"></div>
+          <button class="clearbtn" id="clearVars" style="display:none">clear</button>
+        </div>
+        <button class="resetbtn" id="resetFilters">Reset filters</button>
+      </div>
+
+      <div class="section" id="conflictSection" style="display:none">
+        <h3>Conflicts</h3>
+        <div class="conflictlist" id="conflictList"></div>
+      </div>
+
+      <div class="toollist" id="toolList"></div>
+    </div>
+
+    <!-- CENTER -->
+    <div class="col center" id="center">
+      <div class="empty" id="centerEmpty">
+        <div class="k">🗎</div>
+        <div>Upload the <b>policy document</b> and the step1 spec <b>.json</b> files to begin.</div>
+        <div style="font-size:12.5px">The policy document appears here with the selected tool's quoted references highlighted.</div>
+      </div>
+      <div id="centerContent" style="display:none">
+        <div class="guide-head">
+          <h2 id="guideTitle">Policy document</h2>
+          <span class="hint" id="guideHint"></span>
+        </div>
+        <div class="legend">
+          <span><span class="sw" style="background:var(--mark)"></span>quoted reference</span>
+          <span><span class="sw" style="background:var(--mark-pending)"></span>item with a pending question</span>
+          <span><span class="sw" style="background:var(--mark-strong);outline:1.5px solid var(--mark-strong-border)"></span>selected item</span>
+          <span><span class="sw" style="background:var(--mark-conflict);outline:1.5px solid var(--mark-conflict-border)"></span>conflict</span>
+          <span><span class="sw" style="background:var(--mark);border-bottom:2px dashed var(--warn)"></span>matched only after normalizing</span>
+        </div>
+        <div class="guide" id="guide"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="col detail" id="detail">
+      <div class="detail-inner" id="detailInner">
+        <div class="empty" style="height:40vh">
+          <div>Select a tool to see its policy items.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="refpop" id="refpop" hidden></div>
+
+<script>
+"use strict";
+
+// ---------- state ----------
+const state = {
+  docs: [],              // [{name, path, text}] — every .md/.txt loaded
+  activeDoc: null,       // path of the doc rendered in the center column
+  docPinned: false,      // true once the user picks a doc explicitly
+  specs: [],             // [{tool_name, source_doc?, policy_items:[...], conflicts?, debug?, archive?, _path}]
+  policies: [],          // flattened [{...item, tool_name, _key}]
+  conflicts: [],         // flattened [{...conflict, _tool}]
+  conflictsByPolicy: new Map(), // policy id -> [conflict, ...] (reverse index, derived)
+  selectedTool: "all",   // "all" | tool_name
+  selectedPolicy: null,  // policy _key
+  selectedConflict: null,// conflict id
+  filters: {
+    questions: "all",    // all | pending | resolved | none
+    pendingType: new Set(),
+    refs: "all",         // all | exact | fuzzy | none
+    skip: "all",         // all | only | hide
+    msg: "all", tool: "all", trigger: "all",
+    vars: new Set(),
+  },
+  allVars: [],
+  allQuestionTypes: [],
+};
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const basename = (p) => String(p || "").split("/").pop();
+
+// reference strings backing the marks in the current render (index -> string).
+// `data-refs` attributes on <mark> elements are comma-joined indices into this list.
+let guideRefList = [];
+
+// ---------- file loading ----------
+function classifyAndStore(name, path, text) {
+  const lower = name.toLowerCase();
+  if (lower.endsWith(".json")) {
+    let obj;
+    try {
+      obj = JSON.parse(text);
+    } catch (e) {
+      console.warn("Bad JSON:", path, e);
+      return false;
+    }
+    if (!obj || typeof obj !== "object") return false;
+    // a step1 spec: one tool, a (possibly empty) list of policy items
+    if (typeof obj.tool_name === "string" && Array.isArray(obj.policy_items)) {
+      obj._path = path;
+      // same tool re-uploaded (or the same tool from another run) replaces the old one
+      state.specs = state.specs.filter((s) => s.tool_name !== obj.tool_name);
+      state.specs.push(obj);
+      return true;
+    }
+    return false;
+  }
+  if (lower.endsWith(".txt") || lower.endsWith(".md")) {
+    state.docs = state.docs.filter((d) => d.path !== path);
+    state.docs.push({ name, path, text });
+    return true;
+  }
+  return false;
+}
+
+function readFile(item) {
+  const file = item.file;
+  const path = item.path || file.webkitRelativePath || file.name;
+  return new Promise((resolve) => {
+    const r = new FileReader();
+    r.onload = () => resolve({ name: file.name, path, text: r.result });
+    r.onerror = () => resolve(null);
+    r.readAsText(file);
+  });
+}
+
+async function handleFiles(fileList) {
+  const items = Array.from(fileList).map((f) => ({ file: f, path: f.webkitRelativePath || f.name }));
+  await ingest(items);
+}
+
+async function ingest(items) {
+  const results = await Promise.all(items.map(readFile));
+  for (const res of results) {
+    if (res) classifyAndStore(res.name, res.path, res.text);
+  }
+  rebuildDerived();
+  render();
+}
+
+// drag & drop with directory recursion (keeps each file's path for provenance)
+function traverseEntry(entry, out) {
+  return new Promise((resolve) => {
+    if (entry.isFile) {
+      entry.file((f) => { out.push({ file: f, path: (entry.fullPath || "/" + f.name).replace(/^\//, "") }); resolve(); });
+    } else if (entry.isDirectory) {
+      const reader = entry.createReader();
+      const all = [];
+      const readBatch = () => reader.readEntries((entries) => {
+        if (!entries.length) {
+          Promise.all(all.map((e) => traverseEntry(e, out))).then(resolve);
+        } else {
+          all.push(...entries);
+          readBatch();
+        }
+      });
+      readBatch();
+    } else { resolve(); }
+  });
+}
+
+async function handleDrop(dt) {
+  const items = dt.items ? Array.from(dt.items) : [];
+  const entries = items.map((it) => (it.webkitGetAsEntry ? it.webkitGetAsEntry() : null)).filter(Boolean);
+  if (entries.length) {
+    const out = [];
+    await Promise.all(entries.map((e) => traverseEntry(e, out)));
+    await ingest(out);
+  } else {
+    await handleFiles(dt.files);
+  }
+}
+
+// ---------- quote matching against the policy document ----------
+// The spec contract is that every `references` entry is a verbatim substring of
+// source_doc. Generated specs sometimes drift on whitespace or markdown emphasis,
+// so an exact miss falls back to a normalized match and is flagged as such.
+let normCache = null;    // {docPath, norm, map}
+let matchCache = new Map(); // ref -> {kind, spans}
+let matchCacheDoc = null;
+
+function activeDocObj() {
+  return state.docs.find((d) => d.path === state.activeDoc) || null;
+}
+function docText() {
+  const d = activeDocObj();
+  return d ? d.text : null;
+}
+
+const HTML_TAG = /^<\/?[a-zA-Z][^<>]{0,60}>$/;
+
+function buildNormalized(text) {
+  // collapse whitespace runs to one space, drop markdown emphasis and HTML tags,
+  // lowercase. map[k] = index in `text` of normalized char k.
+  // (Some pipelines quote an HTML rendering of the doc — `<li>Only <strong>HR</strong> …` —
+  //  while the doc itself is markdown; stripping both markups lets those quotes line up.)
+  let norm = "";
+  const map = [];
+  let prevSpace = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === " " || ch === "\t" || ch === "\n" || ch === "\r" || ch === "\f" || ch === "\v") {
+      if (!prevSpace && norm.length) { norm += " "; map.push(i); }
+      prevSpace = true;
+      continue;
+    }
+    if (ch === "*" || ch === "_" || ch === "`" || ch === "#") continue; // markdown noise
+    if (ch === "<") {
+      const close = text.indexOf(">", i);
+      if (close !== -1 && HTML_TAG.test(text.slice(i, close + 1))) { i = close; continue; }
+    }
+    norm += ch.toLowerCase();
+    map.push(i);
+    prevSpace = false;
+  }
+  return { norm, map };
+}
+
+function normalizeNeedle(s) {
+  return buildNormalized(String(s)).norm.trim();
+}
+
+function ensureNorm() {
+  const d = activeDocObj();
+  if (!d) { normCache = null; return null; }
+  if (!normCache || normCache.docPath !== d.path) {
+    const n = buildNormalized(d.text);
+    normCache = { docPath: d.path, norm: n.norm, map: n.map };
+  }
+  return normCache;
+}
+
+// {kind: 'exact'|'fuzzy'|'none'|'nodoc', spans:[{start,end}]}
+function matchRef(ref) {
+  const text = docText();
+  if (text == null) return { kind: "nodoc", spans: [] };
+  if (matchCacheDoc !== state.activeDoc) { matchCache = new Map(); matchCacheDoc = state.activeDoc; }
+  const hit = matchCache.get(ref);
+  if (hit) return hit;
+
+  let out = { kind: "none", spans: [] };
+  const needle = String(ref == null ? "" : ref);
+  if (needle.length) {
+    const spans = [];
+    let from = 0;
+    while (true) {
+      const idx = text.indexOf(needle, from);
+      if (idx === -1) break;
+      spans.push({ start: idx, end: idx + needle.length });
+      from = idx + Math.max(1, needle.length);
+    }
+    if (spans.length) {
+      out = { kind: "exact", spans };
+    } else {
+      const n = ensureNorm();
+      const nn = normalizeNeedle(needle);
+      if (n && nn.length > 2) {
+        const fspans = [];
+        let f = 0;
+        while (true) {
+          const idx = n.norm.indexOf(nn, f);
+          if (idx === -1) break;
+          const s = n.map[idx];
+          const e = n.map[idx + nn.length - 1] + 1;
+          if (s != null && e != null) fspans.push({ start: s, end: e });
+          f = idx + Math.max(1, nn.length);
+        }
+        if (fspans.length) out = { kind: "fuzzy", spans: fspans };
+      }
+    }
+  }
+  matchCache.set(ref, out);
+  return out;
+}
+
+// per-policy roll-up of its references' match kinds
+function refStats(p) {
+  const st = { exact: 0, fuzzy: 0, none: 0, nodoc: 0 };
+  for (const r of p.references || []) st[matchRef(r).kind]++;
+  return st;
+}
+
+// ---------- derived data ----------
+function rebuildDerived() {
+  state.specs.sort((a, b) => String(a.tool_name).localeCompare(String(b.tool_name)));
+  state.policies = [];
+  state.conflicts = [];
+  state.conflictsByPolicy = new Map();
+  const varSet = new Set();
+  const typeSet = new Set();
+
+  for (const spec of state.specs) {
+    (spec.policy_items || []).forEach((item, i) => {
+      if (!item || typeof item !== "object") return;
+      // older/generated specs may omit `id`; keep a stable key for selection either way
+      const key = item.id || `${spec.tool_name}#${i}`;
+      state.policies.push({ ...item, tool_name: spec.tool_name, _key: key, _idx: i });
+      const sv = (item.requires && item.requires.system_vars) || [];
+      sv.forEach((v) => varSet.add(v));
+      (item.pending_for_user || []).forEach((q) => typeSet.add(q.type || "(untyped)"));
+      (item.resolved_by_user || []).forEach((q) => typeSet.add(q.type || "(untyped)"));
+    });
+    // in the step1 format `conflicts` sits at the top level of the tool's own file
+    for (const c of spec.conflicts || []) {
+      state.conflicts.push({ ...c, _tool: spec.tool_name });
+    }
+  }
+
+  // reverse index: policy id -> conflicts that reference it (derived, never stored on policies)
+  for (const c of state.conflicts) {
+    for (const pid of c.conflicting_policies || []) {
+      if (!state.conflictsByPolicy.has(pid)) state.conflictsByPolicy.set(pid, []);
+      state.conflictsByPolicy.get(pid).push(c);
+    }
+  }
+
+  state.allVars = Array.from(varSet).sort();
+  state.allQuestionTypes = Array.from(typeSet).sort();
+  // drop stale filters / selections
+  state.filters.vars.forEach((v) => { if (!varSet.has(v)) state.filters.vars.delete(v); });
+  state.filters.pendingType.forEach((t) => { if (!typeSet.has(t)) state.filters.pendingType.delete(t); });
+  if (state.selectedConflict && !state.conflicts.some((c) => c.id === state.selectedConflict)) {
+    state.selectedConflict = null;
+  }
+  if (state.selectedPolicy && !state.policies.some((p) => p._key === state.selectedPolicy)) {
+    state.selectedPolicy = null;
+  }
+  if (state.selectedTool !== "all" && !state.specs.some((s) => s.tool_name === state.selectedTool)) {
+    state.selectedTool = "all";
+  }
+  pickActiveDoc();
+}
+
+// prefer the doc the specs actually quote (source_doc), unless the user picked one
+function pickActiveDoc() {
+  if (!state.docs.length) { state.activeDoc = null; return; }
+  if (state.docPinned && state.docs.some((d) => d.path === state.activeDoc)) return;
+  const wanted = new Set(
+    state.specs.map((s) => basename(s.source_doc)).filter(Boolean)
+  );
+  const match = state.docs.find((d) => wanted.has(basename(d.path)) || wanted.has(d.name));
+  const current = state.docs.find((d) => d.path === state.activeDoc);
+  state.activeDoc = (match || current || state.docs[state.docs.length - 1]).path;
+}
+
+// resolve a policy id: same tool first (ids are unique per file), then anywhere
+function resolvePolicy(id, tool) {
+  if (tool) {
+    const local = state.policies.find((p) => p.tool_name === tool && p.id === id);
+    if (local) return local;
+  }
+  return state.policies.find((p) => p.id === id) || null;
+}
+
+// the doc references a conflict should light up: the union of its policies' references
+function conflictRefs(c) {
+  const set = new Set();
+  for (const pid of (c && c.conflicting_policies) || []) {
+    const p = resolvePolicy(pid, c._tool);
+    if (p) for (const r of p.references || []) set.add(r);
+  }
+  // fall back to any references written directly on the conflict entry
+  for (const r of (c && c.references) || []) set.add(r);
+  return set;
+}
+
+// ---------- filtering ----------
+function passesFilters(item) {
+  const f = state.filters;
+  const pending = (item.pending_for_user || []).length;
+  const resolved = (item.resolved_by_user || []).length;
+
+  if (f.questions === "pending" && !pending) return false;
+  if (f.questions === "resolved" && !resolved) return false;
+  if (f.questions === "none" && (pending || resolved)) return false;
+  if (f.questions !== "all" && f.questions !== "none" && f.pendingType.size) {
+    const src = f.questions === "resolved" ? item.resolved_by_user : item.pending_for_user;
+    const types = new Set((src || []).map((q) => q.type || "(untyped)"));
+    let hit = false;
+    f.pendingType.forEach((t) => { if (types.has(t)) hit = true; });
+    if (!hit) return false;
+  }
+
+  if (f.skip === "only" && item.skip !== true) return false;
+  if (f.skip === "hide" && item.skip === true) return false;
+
+  if (f.refs !== "all" && docText() != null) {
+    const st = refStats(item);
+    if (f.refs === "none" && !st.none) return false;
+    if (f.refs === "fuzzy" && !st.fuzzy) return false;
+    if (f.refs === "exact" && (st.none || st.fuzzy || !st.exact)) return false;
+  }
+
+  const req = item.requires || {};
+  const th = req.tool_history;
+  const hasTool = Array.isArray(th) ? th.length > 0 : !!th;
+  if (f.msg === "req" && req.message_history !== true) return false;
+  if (f.msg === "notreq" && req.message_history === true) return false;
+  if (f.tool === "req" && !hasTool) return false;
+  if (f.tool === "notreq" && hasTool) return false;
+  if (f.trigger === "pre" && item.trigger !== "pre_tool") return false;
+  if (f.trigger === "post" && item.trigger !== "post_tool") return false;
+  if (f.trigger === "other" && (item.trigger === "pre_tool" || item.trigger === "post_tool")) return false;
+  if (f.vars.size) {
+    const sv = new Set(req.system_vars || []);
+    let hit = false;
+    f.vars.forEach((v) => { if (sv.has(v)) hit = true; });
+    if (!hit) return false;
+  }
+  return true;
+}
+
+function visiblePoliciesFor(toolName) {
+  return state.policies.filter(
+    (p) => (toolName === "all" || p.tool_name === toolName) && passesFilters(p)
+  );
+}
+
+function specFor(toolName) {
+  return state.specs.find((s) => s.tool_name === toolName) || null;
+}
+
+// ---------- rendering ----------
+function render() {
+  const hasData = state.specs.length && docText() != null;
+  renderLoaded();
+  renderStats();
+  $("filterSection").style.display = state.specs.length ? "" : "none";
+  renderVarFilters();
+  renderQuestionTypeFilters();
+  renderConflictList();
+  renderToolList();
+  renderGuidance();
+  renderDetail();
+  $("centerEmpty").style.display = hasData ? "none" : "";
+  $("centerContent").style.display = hasData ? "" : "none";
+}
+
+function renderLoaded() {
+  const el = $("loaded");
+  const sel = $("docSelect");
+  if (!state.specs.length && !state.docs.length) {
+    el.innerHTML = "";
+    sel.style.display = "none";
+    return;
+  }
+
+  const active = activeDocObj();
+  const doc = active
+    ? `<span class="ok">✓ ${esc(active.name)}</span>`
+    : `<span class="miss">no policy doc yet</span>`;
+
+  // where the specs came from — the shared parent folder, when there is one
+  const dirs = Array.from(new Set(state.specs.map((s) => s._path.split("/").slice(0, -1).join("/"))));
+  const origin = dirs.length === 1 ? (dirs[0] || "(this folder)") : `${dirs.length} folders`;
+
+  let html =
+    `<div class="row"><span>Policy doc</span><span class="v">${doc}</span></div>` +
+    `<div class="row"><span>Specs</span><span class="v ok">${state.specs.length} loaded</span></div>`;
+  if (state.specs.length) {
+    html += `<div class="row"><span>From</span><span class="v" style="font-family:var(--mono);font-size:11px">${esc(origin)}</span></div>`;
+  }
+
+  // warn when the loaded doc is not the one the specs quote
+  const wanted = Array.from(new Set(state.specs.map((s) => basename(s.source_doc)).filter(Boolean)));
+  if (active && wanted.length && !wanted.includes(basename(active.path)) && !wanted.includes(active.name)) {
+    html += `<div class="warnline">These specs quote <b>${esc(wanted.join(", "))}</b>, but <b>${esc(active.name)}</b> is loaded. Highlighting will mostly miss.</div>`;
+  }
+  if (!active && state.specs.length && wanted.length) {
+    html += `<div class="warnline">Load <b>${esc(wanted.join(", "))}</b> to see quotes highlighted in context.</div>`;
+  }
+  if (dirs.length > 1) {
+    html += `<div class="warnline">Specs came from ${dirs.length} folders; one file per tool is kept, so a tool present in two runs shows only the last one loaded.</div>`;
+  }
+  el.innerHTML = html;
+
+  // doc picker, only worth showing when several docs are loaded
+  if (state.docs.length > 1) {
+    sel.style.display = "";
+    sel.innerHTML = state.docs
+      .map((d) => `<option value="${esc(d.path)}"${d.path === state.activeDoc ? " selected" : ""}>${esc(d.path)}</option>`)
+      .join("");
+  } else {
+    sel.style.display = "none";
+  }
+}
+
+function renderStats() {
+  $("statTools").innerHTML = `<b>${state.specs.length}</b> tools`;
+  $("statPolicies").innerHTML = `<b>${state.policies.length}</b> policies`;
+  const pending = state.policies.reduce((n, p) => n + (p.pending_for_user || []).length, 0);
+  const resolved = state.policies.reduce((n, p) => n + (p.resolved_by_user || []).length, 0);
+  $("statPending").innerHTML = `<b>${pending}</b> pending`;
+  $("statResolved").innerHTML = `<b>${resolved}</b> resolved`;
+  $("statConflicts").innerHTML = `<b>${state.conflicts.length}</b> conflicts`;
+
+  const um = $("statUnmatched");
+  if (docText() == null) {
+    um.className = "stat";
+    um.innerHTML = `refs <b>—</b>`;
+    return;
+  }
+  let none = 0, fuzzy = 0;
+  for (const p of state.policies) {
+    const st = refStats(p);
+    none += st.none;
+    fuzzy += st.fuzzy;
+  }
+  um.className = "stat" + (none ? " alert" : "");
+  um.innerHTML = `<b>${none}</b> refs missing · <b>${fuzzy}</b> normalized`;
+}
+
+function renderVarFilters() {
+  const wrap = $("varList");
+  wrap.innerHTML = "";
+  if (!state.allVars.length) {
+    wrap.innerHTML = `<span style="font-size:12px;color:var(--ink-faint)">none</span>`;
+    $("clearVars").style.display = "none";
+    return;
+  }
+  for (const v of state.allVars) {
+    const b = document.createElement("button");
+    b.className = "chipbtn" + (state.filters.vars.has(v) ? " on" : "");
+    b.textContent = v;
+    b.onclick = () => {
+      if (state.filters.vars.has(v)) state.filters.vars.delete(v);
+      else state.filters.vars.add(v);
+      render();
+    };
+    wrap.appendChild(b);
+  }
+  $("clearVars").style.display = state.filters.vars.size ? "" : "none";
+}
+
+function renderQuestionTypeFilters() {
+  const group = $("pendingTypeGroup");
+  const mode = state.filters.questions;
+  // sub-filter only applies to pending / resolved; clear it otherwise
+  if (mode !== "pending" && mode !== "resolved") {
+    if (state.filters.pendingType.size) state.filters.pendingType.clear();
+    group.style.display = "none";
+    return;
+  }
+  group.style.display = "";
+  const wrap = $("pendingTypeList");
+  wrap.innerHTML = "";
+  const field = mode === "resolved" ? "resolved_by_user" : "pending_for_user";
+  const types = Array.from(new Set(
+    state.policies.flatMap((p) => (p[field] || []).map((q) => q.type || "(untyped)"))
+  )).sort();
+  if (!types.length) {
+    wrap.innerHTML = `<span style="font-size:12px;color:var(--ink-faint)">none</span>`;
+    $("clearPendingTypes").style.display = "none";
+    return;
+  }
+  for (const t of types) {
+    const count = state.policies.filter(
+      (p) => (p[field] || []).some((q) => (q.type || "(untyped)") === t)
+    ).length;
+    const b = document.createElement("button");
+    b.className = "chipbtn" + (state.filters.pendingType.has(t) ? " on" : "");
+    b.textContent = `${t} · ${count}`;
+    b.onclick = () => {
+      if (state.filters.pendingType.has(t)) state.filters.pendingType.delete(t);
+      else state.filters.pendingType.add(t);
+      render();
+    };
+    wrap.appendChild(b);
+  }
+  $("clearPendingTypes").style.display = state.filters.pendingType.size ? "" : "none";
+}
+
+function renderConflictList() {
+  const section = $("conflictSection");
+  const el = $("conflictList");
+  el.innerHTML = "";
+  if (!state.conflicts.length) { section.style.display = "none"; return; }
+  section.style.display = "";
+  for (const c of state.conflicts) {
+    const n = (c.conflicting_policies || []).length;
+    const row = document.createElement("div");
+    row.className = "crow" + (state.selectedConflict === c.id ? " sel" : "");
+    const sub = [c._tool, c.kind].filter(Boolean).join(" · ");
+    row.innerHTML =
+      `<span class="cdot"></span>` +
+      `<span class="name">${esc(c.name || c.id)}<br/><span class="cscope">${esc(sub)}</span></span>` +
+      `<span class="count">${n}</span>`;
+    row.onclick = () => {
+      state.selectedConflict = c.id;
+      state.selectedPolicy = null;
+      if (c._tool) state.selectedTool = c._tool;
+      render();
+    };
+    el.appendChild(row);
+  }
+}
+
+function renderToolList() {
+  const el = $("toolList");
+  el.innerHTML = "";
+  if (!state.specs.length) return;
+
+  const allCount = visiblePoliciesFor("all").length;
+  el.appendChild(toolRow("all", "All tools", allCount, {}));
+
+  for (const spec of state.specs) {
+    const count = visiblePoliciesFor(spec.tool_name).length;
+    const items = spec.policy_items || [];
+    const flags = {
+      pending: items.some((p) => (p.pending_for_user || []).length),
+      resolved: items.some((p) => (p.resolved_by_user || []).length),
+      missing: docText() != null && items.some((p) => refStats(p).none > 0),
+    };
+    el.appendChild(toolRow(spec.tool_name, spec.tool_name, count, flags));
+  }
+}
+
+function toolRow(key, label, count, flags) {
+  const row = document.createElement("div");
+  row.className = "toolrow" + (key === "all" ? " all" : "") +
+    (state.selectedTool === key ? " sel" : "") +
+    (key !== "all" && count === 0 ? " dim" : "");
+  const dot = (on, cls, title) =>
+    `<span class="pdot ${cls} ${on ? "" : "hidden"}" title="${title}"></span>`;
+  row.innerHTML =
+    `<span class="dots">` +
+      dot(!!flags.pending, "", "has a pending question") +
+      dot(!!flags.resolved, "res", "has a resolved question") +
+      dot(!!flags.missing, "miss", "a reference is not found in the policy doc") +
+    `</span>` +
+    `<span class="name">${esc(label)}</span>` +
+    `<span class="count">${count}</span>`;
+  row.onclick = () => {
+    state.selectedTool = key;
+    state.selectedPolicy = null;
+    state.selectedConflict = null;
+    render();
+  };
+  return row;
+}
+
+// -- policy-document highlighting --
+function activeHighlights() {
+  // returns { refs: Map<refString,{pending}>, strong: Set, conflict: Set }
+  const refs = new Map();
+  const strong = new Set();
+  const conflict = new Set();
+  const scope = visiblePoliciesFor(state.selectedTool);
+  for (const p of scope) {
+    const isPending = !!(p.pending_for_user && p.pending_for_user.length);
+    for (const r of p.references || []) {
+      const prev = refs.get(r);
+      refs.set(r, { pending: (prev && prev.pending) || isPending });
+    }
+  }
+  if (state.selectedPolicy) {
+    const sel = state.policies.find((p) => p._key === state.selectedPolicy);
+    if (sel) for (const r of sel.references || []) strong.add(r);
+  }
+  if (state.selectedConflict) {
+    const c = state.conflicts.find((x) => x.id === state.selectedConflict);
+    conflictRefs(c).forEach((r) => conflict.add(r));
+  }
+  return { refs, strong, conflict };
+}
+
+function buildIntervals(refs, strong, conflict) {
+  const marks = []; // {start,end,pending,strong,conflict,fuzzy,ref}
+  const addAll = (ref, pending, isStrong, isConflict) => {
+    const m = matchRef(ref);
+    for (const s of m.spans) {
+      marks.push({
+        start: s.start, end: s.end,
+        pending, strong: isStrong, conflict: isConflict,
+        fuzzy: m.kind === "fuzzy", ref,
+      });
+    }
+  };
+  refs.forEach((meta, r) => addAll(r, meta.pending, false, false));
+  strong.forEach((r) => addAll(r, refs.has(r) ? refs.get(r).pending : false, true, false));
+  conflict.forEach((r) => addAll(r, refs.has(r) ? refs.get(r).pending : false, false, true));
+  return marks;
+}
+
+function renderGuidance() {
+  const text = docText();
+  if (text == null) return;
+  const active = activeDocObj();
+  $("guideTitle").textContent = active ? active.name : "Policy document";
+  const scopeLabel = state.selectedTool === "all" ? "all tools" : state.selectedTool;
+  const n = visiblePoliciesFor(state.selectedTool).length;
+  $("guideHint").textContent = `— highlighting the quotes of ${n} policy item${n === 1 ? "" : "s"} for ${scopeLabel}`;
+
+  const { refs, strong, conflict } = activeHighlights();
+  const marks = buildIntervals(refs, strong, conflict);
+
+  // per-char flags
+  const len = text.length;
+  const cov = new Uint8Array(len); // bit0 highlighted, bit1 pending, bit2 strong, bit3 conflict, bit4 fuzzy
+  // per-char set of reference-string indices covering it (for click -> policy lookup)
+  const refIndex = new Map();
+  guideRefList = [];
+  const refIdxOf = (r) => {
+    if (refIndex.has(r)) return refIndex.get(r);
+    const i = guideRefList.length;
+    guideRefList.push(r);
+    refIndex.set(r, i);
+    return i;
+  };
+  const refsAt = new Array(len); // index -> Set<refIdx> | undefined
+  for (const m of marks) {
+    const ri = refIdxOf(m.ref);
+    for (let i = m.start; i < m.end && i < len; i++) {
+      cov[i] |= 1;
+      if (m.pending) cov[i] |= 2;
+      if (m.strong) cov[i] |= 4;
+      if (m.conflict) cov[i] |= 8;
+      if (m.fuzzy) cov[i] |= 16;
+      (refsAt[i] || (refsAt[i] = new Set())).add(ri);
+    }
+  }
+
+  let html = "";
+  let i = 0;
+  let firstStrongPlaced = false;
+  let firstConflictPlaced = false;
+  while (i < len) {
+    const c = cov[i];
+    if (c === 0) {
+      let j = i;
+      while (j < len && cov[j] === 0) j++;
+      html += esc(text.slice(i, j));
+      i = j;
+    } else {
+      let j = i;
+      while (j < len && cov[j] === c) j++;
+      const cls = "hl" +
+        (c & 2 ? " pending" : "") +
+        (c & 4 ? " strong" : "") +
+        (c & 8 ? " conflict" : "") +
+        (c & 16 ? " fuzzy" : "");
+      let id = "";
+      if (!firstConflictPlaced && c & 8) { id = ' id="firstConflict"'; firstConflictPlaced = true; }
+      else if (!firstStrongPlaced && c & 4) { id = ' id="firstStrong"'; firstStrongPlaced = true; }
+      // union of reference indices across this mark's span -> data-refs
+      const rset = new Set();
+      for (let k = i; k < j; k++) { const s = refsAt[k]; if (s) s.forEach((x) => rset.add(x)); }
+      const refsAttr = rset.size ? ` data-refs="${Array.from(rset).join(",")}"` : "";
+      html += `<mark class="${cls}"${id} data-s="${i}"${refsAttr}>${esc(text.slice(i, j))}</mark>`;
+      i = j;
+    }
+  }
+  $("guide").innerHTML = html;
+
+  const target = $("firstConflict") || $("firstStrong");
+  if (target) target.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+// -- detail panel --
+function reqChips(req) {
+  // A v1 spec has no `requires` block at all, which is not the same as one that
+  // says nothing is needed — don't claim on its behalf.
+  if (req == null) {
+    return `<div class="req-chips"><span class="tag" style="opacity:.6">not recorded in this spec</span></div>`;
+  }
+  const th = req.tool_history;
+  const hasTool = Array.isArray(th) ? th.length > 0 : !!th;
+
+  const chips = [];
+  (req.system_vars || []).forEach((v) => chips.push(`<span class="tag">${esc(v)}</span>`));
+  if (req.message_history) chips.push(`<span class="tag">message_history</span>`);
+  if (!chips.length && !hasTool) chips.push(`<span class="tag" style="opacity:.6">no context required</span>`);
+
+  let html = chips.length ? `<div class="req-chips">${chips.join("")}</div>` : "";
+
+  // tool_history — show its value (the required prior calls and their param bindings)
+  if (hasTool) {
+    html += `<div class="req-tool"><div class="req-sub">tool_history</div>`;
+    if (Array.isArray(th)) {
+      for (const entry of th) {
+        const tool = (entry && entry.tool) || "(tool)";
+        const params = entry && entry.params;
+        let phtml = "";
+        if (params && typeof params === "object" && Object.keys(params).length) {
+          phtml = `<div class="th-params">` +
+            Object.entries(params).map(([k, v]) =>
+              `<div class="th-param"><span class="th-key">${esc(k)}:</span>` +
+              `<span class="th-val">${esc(typeof v === "string" ? v : JSON.stringify(v))}</span></div>`
+            ).join("") + `</div>`;
+        } else {
+          phtml = `<div class="th-empty">no params</div>`;
+        }
+        html += `<div class="th-entry"><span class="th-tool">${esc(tool)}</span>${phtml}</div>`;
+      }
+    } else {
+      // non-array truthy form — show the raw value
+      html += `<div class="th-empty">${esc(JSON.stringify(th))}</div>`;
+    }
+    html += `</div>`;
+  }
+
+  return html || `<div class="req-chips"><span class="tag" style="opacity:.6">no context required</span></div>`;
+}
+
+function renderDetail() {
+  const el = $("detailInner");
+  if (!state.specs.length) {
+    el.innerHTML = `<div class="empty" style="height:40vh"><div>Upload specs, then select a tool.</div></div>`;
+    return;
+  }
+
+  if (state.selectedPolicy) { renderPolicyDetail(el); return; }
+  if (state.selectedConflict) { renderConflictDetail(el); return; }
+
+  // list policy items for the current scope
+  const scope = visiblePoliciesFor(state.selectedTool);
+  const single = state.selectedTool !== "all" ? specFor(state.selectedTool) : null;
+  const total = single
+    ? (single.policy_items || []).length
+    : state.policies.length;
+  const title = state.selectedTool === "all" ? "All tools" : state.selectedTool;
+
+  let html = `<div class="dhead"><h2>${esc(title)}</h2>` +
+    `<div class="desc">${scope.length} of ${total} policy item${total === 1 ? "" : "s"} match the current filters</div>`;
+  if (single) {
+    const meta = [];
+    const ti = (single.debug && single.debug.tool_info) || null;
+    if (ti && typeof ti.is_read_only === "boolean") {
+      meta.push(`<span class="tag">${ti.is_read_only ? "read-only" : "writes"}</span>`);
+    }
+    if ((single.conflicts || []).length) {
+      meta.push(`<span class="tag conflict">⚠ ${single.conflicts.length} conflict${single.conflicts.length === 1 ? "" : "s"}</span>`);
+    }
+    if (single.source_doc) meta.push(`<span class="tag">${esc(basename(single.source_doc))}</span>`);
+    if (meta.length) html += `<div class="hmeta">${meta.join("")}</div>`;
+  }
+  html += `</div><div style="padding:14px 16px 0">`;
+
+  if (!scope.length) {
+    html += `<div style="color:var(--ink-faint);padding:20px 0">No policy items match the current filters.</div>`;
+  }
+
+  let lastTool = null;
+  for (const p of scope) {
+    if (state.selectedTool === "all" && p.tool_name !== lastTool) {
+      lastTool = p.tool_name;
+      html += `<div style="font-family:var(--mono);font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 6px">${esc(p.tool_name)}</div>`;
+    }
+    html += policyCardHTML(p);
+  }
+
+  if (single) html += specExtrasHTML(single);
+  html += `</div>`;
+  el.innerHTML = html;
+
+  el.querySelectorAll(".pcard[data-key]").forEach((card) => {
+    card.onclick = () => { state.selectedPolicy = card.dataset.key; render(); };
+  });
+}
+
+function specExtrasHTML(spec) {
+  let html = "";
+  const ti = (spec.debug && spec.debug.tool_info) || null;
+  if (ti && ti.user_enrichment) {
+    html += `<div class="block"><h4>Tool enrichment</h4><div class="enrich">${esc(ti.user_enrichment)}</div></div>`;
+  }
+  const archive = spec.archive || (spec.debug && spec.debug.archive);
+  if (Array.isArray(archive) && archive.length) {
+    html += `<details class="rawbox"><summary>Archive · ${archive.length} entr${archive.length === 1 ? "y" : "ies"}</summary>` +
+      `<pre>${esc(JSON.stringify(archive, null, 2))}</pre></details>`;
+  }
+  if (spec.debug) {
+    html += `<details class="rawbox"><summary>debug (raw)</summary>` +
+      `<pre>${esc(JSON.stringify(spec.debug, null, 2))}</pre></details>`;
+  }
+  return html;
+}
+
+function policyCardHTML(p) {
+  const req = p.requires || {};
+  const th = req.tool_history;
+  const hasTool = Array.isArray(th) ? th.length > 0 : !!th;
+  const meta = [];
+
+  if (p.skip === true) meta.push(`<span class="tag skip">skip</span>`);
+  if ((p.pending_for_user || []).length) meta.push(`<span class="tag pending">pending ×${p.pending_for_user.length}</span>`);
+  if ((p.resolved_by_user || []).length) meta.push(`<span class="tag resolved">resolved ×${p.resolved_by_user.length}</span>`);
+  const inConflict = (state.conflictsByPolicy.get(p.id) || []).length;
+  if (inConflict) meta.push(`<span class="tag conflict">⚠ conflict ×${inConflict}</span>`);
+  if (docText() != null) {
+    const st = refStats(p);
+    if (st.none) meta.push(`<span class="tag missref">✗ ${st.none} ref${st.none === 1 ? "" : "s"} not in doc</span>`);
+    if (st.fuzzy) meta.push(`<span class="tag pending">≈ ${st.fuzzy} normalized</span>`);
+  }
+  if (p.trigger) meta.push(`<span class="tag trig">${esc(p.trigger)}</span>`);
+  (req.system_vars || []).forEach((v) => meta.push(`<span class="tag">${esc(v)}</span>`));
+  if (hasTool) meta.push(`<span class="tag">tool_history</span>`);
+  if (req.message_history) meta.push(`<span class="tag">message_history</span>`);
+
+  return `<div class="pcard${p.skip === true ? " skipped" : ""}" data-key="${esc(p._key)}">` +
+    `<div class="pname">${esc(p.name || p.id || "(unnamed item)")}</div>` +
+    `<div class="pid">${p.id ? esc(p.id) : "(no id)"}</div>` +
+    `<div class="pmeta">${meta.join("")}</div>` +
+    `</div>`;
+}
+
+function questionCardHTML(q, resolved) {
+  const res = q.resolution || null;
+  let html = `<div class="pendingcard${resolved ? " resolved" : ""}">` +
+    `<div class="ptype">${resolved ? "resolved · " : ""}${esc(q.type || "question")}</div>` +
+    (q.question ? `<div class="q">${esc(q.question)}</div>` : "") +
+    (q.detail ? `<div class="kv">${esc(q.detail)}</div>` : "") +
+    (q.suggested_source ? `<div class="kv"><b>Suggested source:</b> ${esc(q.suggested_source)}</div>` : "") +
+    (q.suggested_tool ? `<div class="kv"><b>Suggested tool:</b> ${esc(q.suggested_tool)}</div>` : "");
+  if (res) {
+    if (res.answer) html += `<div class="answer"><b>Answer</b>${esc(res.answer)}</div>`;
+    if (res.effect) html += `<div class="answer"><b>Effect on the spec</b>${esc(res.effect)}</div>`;
+    if (res.decided_by) html += `<div class="kv"><b>Decided by:</b> ${esc(res.decided_by)}</div>`;
+  }
+  html += `</div>`;
+  return html;
+}
+
+function refListHTML(refs) {
+  let html = `<ul class="reflist">`;
+  refs.forEach((r, idx) => {
+    const m = matchRef(r);
+    const label = {
+      exact: "",
+      fuzzy: "≈ matched after normalizing whitespace / markdown",
+      none: "✗ not found in the policy doc",
+      nodoc: "no policy doc loaded",
+    }[m.kind];
+    html += `<li class="ref-${m.kind}" data-ref="${idx}">` +
+      (label ? `<span class="rstat">${esc(label)}</span>` : "") +
+      esc(r) + `</li>`;
+  });
+  html += `</ul>`;
+  return html;
+}
+
+function renderPolicyDetail(el) {
+  const p = state.policies.find((x) => x._key === state.selectedPolicy);
+  if (!p) { state.selectedPolicy = null; renderDetail(); return; }
+
+  const backLabel = state.selectedConflict ? "conflict" : p.tool_name;
+  let html = `<div class="dhead">` +
+    `<button class="backbtn" id="backBtn">← ${esc(backLabel)}</button>` +
+    `<h2>${esc(p.name || p.id || "(unnamed item)")}</h2>` +
+    `<div style="font-family:var(--mono);font-size:11px;color:var(--ink-faint)">${esc(p.tool_name)} · ${p.id ? esc(p.id) : "(no id)"}</div>`;
+  const hmeta = [];
+  if (p.skip === true) hmeta.push(`<span class="tag skip">skip</span>`);
+  if (p.trigger) hmeta.push(`<span class="tag trig">${esc(p.trigger)}</span>`);
+  if (hmeta.length) html += `<div class="hmeta">${hmeta.join("")}</div>`;
+  html += `</div><div style="padding:14px 16px 0">`;
+
+  if (p.description) {
+    html += `<div class="block"><h4>Rule</h4><div class="desc-body">${esc(p.description)}</div></div>`;
+  }
+
+  html += `<div class="block"><h4>Requires</h4>${reqChips(p.requires)}</div>`;
+
+  const myConflicts = state.conflictsByPolicy.get(p.id) || [];
+  if (myConflicts.length) {
+    html += `<div class="block"><h4>In conflict with</h4>`;
+    for (const c of myConflicts) {
+      const others = (c.conflicting_policies || []).filter((id) => id !== p.id);
+      html += `<div class="polchip" data-cid="${esc(c.id)}">` +
+        `<div class="pc-tool">${esc([c._tool, c.kind].filter(Boolean).join(" · "))}</div>` +
+        `<div class="pc-name">${esc(c.name || c.id)}</div>` +
+        `<div class="pc-id">${esc(others.join(", ") || "—")}</div>` +
+        `</div>`;
+    }
+    html += `</div>`;
+  }
+
+  if ((p.pending_for_user || []).length) {
+    html += `<div class="block"><h4>Pending for user</h4>`;
+    p.pending_for_user.forEach((q) => { html += questionCardHTML(q, false); });
+    html += `</div>`;
+  }
+
+  if ((p.resolved_by_user || []).length) {
+    html += `<div class="block"><h4>Resolved by user</h4>`;
+    p.resolved_by_user.forEach((q) => { html += questionCardHTML(q, true); });
+    html += `</div>`;
+  }
+
+  if ((p.references || []).length) {
+    html += `<div class="block"><h4>References (click to locate)</h4>${refListHTML(p.references)}</div>`;
+  }
+
+  if ((p.compliance_examples || []).length) {
+    html += `<div class="block"><h4>Compliance examples</h4><ul class="exlist">`;
+    p.compliance_examples.forEach((e) => { html += `<li class="good"><span class="ic">✓</span><span>${esc(e)}</span></li>`; });
+    html += `</ul></div>`;
+  }
+  if ((p.violation_examples || []).length) {
+    html += `<div class="block"><h4>Violation examples</h4><ul class="exlist">`;
+    p.violation_examples.forEach((e) => { html += `<li class="bad"><span class="ic">✗</span><span>${esc(e)}</span></li>`; });
+    html += `</ul></div>`;
+  }
+
+  if (p.debug) {
+    html += `<details class="rawbox"><summary>debug (raw)</summary><pre>${esc(JSON.stringify(p.debug, null, 2))}</pre></details>`;
+  }
+
+  html += `</div>`;
+  el.innerHTML = html;
+
+  $("backBtn").onclick = () => { state.selectedPolicy = null; render(); };
+  el.querySelectorAll(".polchip[data-cid]").forEach((chip) => {
+    chip.onclick = () => {
+      state.selectedConflict = chip.dataset.cid;
+      state.selectedPolicy = null;
+      render();
+    };
+  });
+  el.querySelectorAll(".reflist li:not(.ref-none):not(.ref-nodoc)").forEach((li) => {
+    li.onclick = () => locateReference(p.references[+li.dataset.ref]);
+  });
+}
+
+function renderConflictDetail(el) {
+  const c = state.conflicts.find((x) => x.id === state.selectedConflict);
+  if (!c) { state.selectedConflict = null; renderDetail(); return; }
+
+  let html = `<div class="dhead">` +
+    `<button class="backbtn" id="cBackBtn">← conflicts</button>` +
+    `<h2>${esc(c.name || c.id)}</h2>` +
+    `<div style="font-family:var(--mono);font-size:11px;color:var(--ink-faint)">${esc(c.id)}</div>` +
+    `<div class="hmeta">` +
+      (c._tool ? `<span class="tag">${esc(c._tool)}</span>` : "") +
+      (c.kind ? `<span class="tag kind">${esc(c.kind)}</span>` : "") +
+    `</div>` +
+    `</div><div style="padding:14px 16px 0">`;
+
+  if (c.description) {
+    html += `<div class="block"><h4>Why it is ambiguous</h4><div class="desc-body">${esc(c.description)}</div></div>`;
+  }
+
+  // conflicting policy items — resolved within this tool first
+  const ids = c.conflicting_policies || [];
+  html += `<div class="block"><h4>Conflicting policy items</h4>`;
+  if (!ids.length) {
+    html += `<div style="color:var(--ink-faint);font-size:12.5px">none listed</div>`;
+  }
+  for (const id of ids) {
+    const p = resolvePolicy(id, c._tool);
+    if (p) {
+      html += `<div class="polchip" data-key="${esc(p._key)}">` +
+        `<div class="pc-tool">${esc(p.tool_name)}</div>` +
+        `<div class="pc-name">${esc(p.name || id)}</div>` +
+        `<div class="pc-id">${esc(id)}</div>` +
+        `</div>`;
+    } else {
+      html += `<div class="polchip unresolved">` +
+        `<div class="pc-name">${esc(id)}</div>` +
+        `<div class="pc-id">not loaded — no policy item with this id</div>` +
+        `</div>`;
+    }
+  }
+  html += `</div>`;
+
+  // the question a human must answer
+  if (c.question) {
+    html += `<div class="block"><h4>Open question</h4>` +
+      `<div class="resolvecard pending">${esc(c.question)}</div></div>`;
+  }
+
+  // status. In the step1 format `resolution` is always null: a conflict entry exists
+  // only while pending, and a decision is recorded as resolved_by_user on the items.
+  const r = c.resolution;
+  html += `<div class="block"><h4>Status</h4>`;
+  if (r && typeof r === "object") {
+    html += `<div class="resolvecard">`;
+    if (r.dominant_policy) html += `<div class="rk"><b>Dominant:</b> ${esc(r.dominant_policy)}</div>`;
+    if (r.answer) html += `<div class="rk" style="margin-top:4px">${esc(r.answer)}</div>`;
+    if (r.rationale) html += `<div class="rk" style="margin-top:4px">${esc(r.rationale)}</div>`;
+    if (r.effect) html += `<div class="rk" style="margin-top:4px"><b>Effect:</b> ${esc(r.effect)}</div>`;
+    if (r.decided_by) html += `<div class="rk" style="margin-top:4px"><b>Decided by:</b> ${esc(r.decided_by)}</div>`;
+    html += `</div>`;
+  } else {
+    html += `<div class="resolvecard pending">Open — needs a human decision.` +
+      `<span class="note">Deciding it removes this entry from <code>conflicts</code> and records the answer under <code>resolved_by_user</code> on the affected policy items.</span></div>`;
+  }
+  html += `</div>`;
+
+  // references — union of the conflicting items' references
+  const refs = Array.from(conflictRefs(c));
+  if (refs.length) {
+    html += `<div class="block"><h4>References (click to locate)</h4>${refListHTML(refs)}</div>`;
+  }
+
+  html += `</div>`;
+  el.innerHTML = html;
+
+  $("cBackBtn").onclick = () => { state.selectedConflict = null; render(); };
+  el.querySelectorAll(".polchip[data-key]").forEach((chip) => {
+    chip.onclick = () => { state.selectedPolicy = chip.dataset.key; render(); };
+  });
+  el.querySelectorAll(".reflist li:not(.ref-none):not(.ref-nodoc)").forEach((li) => {
+    li.onclick = () => locateReference(refs[+li.dataset.ref]);
+  });
+}
+
+// scroll the center column to the first occurrence of a quote and flash it
+function locateReference(ref) {
+  const m = matchRef(ref);
+  if (!m.spans.length) return;
+  const start = m.spans[0].start;
+  const marks = Array.from($("guide").querySelectorAll("mark[data-s]"));
+  const target = marks.find((el) => +el.dataset.s + el.textContent.length > start);
+  if (!target) return;
+  target.scrollIntoView({ behavior: "smooth", block: "center" });
+  target.style.transition = "outline .2s";
+  target.style.outline = "2px solid var(--accent)";
+  setTimeout(() => { target.style.outline = ""; }, 1200);
+}
+
+// ---------- reference popover (click a highlight -> policy items quoting it) ----------
+function policiesForRef(ref) {
+  return state.policies.filter((p) => (p.references || []).includes(ref));
+}
+
+function hideRefPopover() {
+  const pop = $("refpop");
+  if (!pop.hidden) { pop.hidden = true; pop.innerHTML = ""; }
+}
+
+function showRefPopover(markEl) {
+  const idxAttr = markEl.dataset.refs;
+  if (!idxAttr) return;
+  const refs = idxAttr.split(",").map((n) => guideRefList[+n]).filter((r) => r != null);
+  if (!refs.length) return;
+
+  const pop = $("refpop");
+  let html = "";
+  for (const ref of refs) {
+    const pols = policiesForRef(ref);
+    html += `<div class="rp-refblock">` +
+      `<div class="rp-head">Policy items quoting<span class="rp-reftext">${esc(ref)}</span></div>`;
+    if (!pols.length) {
+      html += `<div class="rp-empty">No loaded policy item quotes this reference.</div>`;
+    } else {
+      for (const p of pols) {
+        html += `<div class="rp-row" data-key="${esc(p._key)}">` +
+          `<div class="rp-tool">${esc(p.tool_name)}</div>` +
+          `<div class="rp-name">${esc(p.name || p.id || "(unnamed item)")}</div>` +
+          `<div class="rp-id">${p.id ? esc(p.id) : "(no id)"}</div>` +
+          `</div>`;
+      }
+    }
+    html += `</div>`;
+  }
+  pop.innerHTML = html;
+  pop.hidden = false;
+
+  // position just below the clicked mark, clamped to the viewport
+  const r = markEl.getBoundingClientRect();
+  const maxLeft = window.scrollX + document.documentElement.clientWidth - pop.offsetWidth - 8;
+  const left = Math.max(window.scrollX + 8, Math.min(window.scrollX + r.left, maxLeft));
+  pop.style.left = left + "px";
+  pop.style.top = (window.scrollY + r.bottom + 6) + "px";
+
+  pop.querySelectorAll(".rp-row[data-key]").forEach((row) => {
+    row.onclick = (e) => {
+      e.stopPropagation();
+      state.selectedPolicy = row.dataset.key;
+      state.selectedConflict = null;
+      hideRefPopover();
+      render();
+    };
+  });
+}
+
+// ---------- wire up ----------
+$("pickFiles").onclick = (e) => { e.stopPropagation(); $("fileInput").click(); };
+$("pickFolder").onclick = (e) => { e.stopPropagation(); $("folderInput").click(); };
+$("drop").onclick = () => $("fileInput").click();
+$("fileInput").onchange = (e) => handleFiles(e.target.files);
+$("folderInput").onchange = (e) => handleFiles(e.target.files);
+
+$("docSelect").onchange = (e) => {
+  state.activeDoc = e.target.value;
+  state.docPinned = true;
+  render();
+};
+
+const drop = $("drop");
+["dragenter", "dragover"].forEach((ev) =>
+  drop.addEventListener(ev, (e) => { e.preventDefault(); e.stopPropagation(); drop.classList.add("over"); })
+);
+["dragleave", "drop"].forEach((ev) =>
+  drop.addEventListener(ev, (e) => { e.preventDefault(); e.stopPropagation(); drop.classList.remove("over"); })
+);
+drop.addEventListener("drop", (e) => handleDrop(e.dataTransfer));
+// dropping anywhere on the page works too, but never hijack a normal page drag
+["dragover", "drop"].forEach((ev) => document.addEventListener(ev, (e) => e.preventDefault()));
+document.addEventListener("drop", (e) => { if (!e.target.closest("#drop")) handleDrop(e.dataTransfer); });
+
+// segmented filters
+document.querySelectorAll(".segmented").forEach((seg) => {
+  const key = seg.dataset.filter;
+  seg.querySelectorAll("button").forEach((b) => {
+    b.onclick = () => {
+      seg.querySelectorAll("button").forEach((x) => x.classList.remove("on"));
+      b.classList.add("on");
+      state.filters[key] = b.dataset.val;
+      render();
+    };
+  });
+});
+$("clearVars").onclick = () => { state.filters.vars.clear(); render(); };
+$("clearPendingTypes").onclick = () => { state.filters.pendingType.clear(); render(); };
+$("resetFilters").onclick = () => {
+  state.filters.questions = "all";
+  state.filters.refs = "all";
+  state.filters.skip = "all";
+  state.filters.msg = "all";
+  state.filters.tool = "all";
+  state.filters.trigger = "all";
+  state.filters.vars.clear();
+  state.filters.pendingType.clear();
+  document.querySelectorAll(".segmented").forEach((seg) => {
+    seg.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b.dataset.val === "all"));
+  });
+  render();
+};
+
+// reference popover: open on highlight click, dismiss on outside click / Esc / scroll / resize
+$("guide").addEventListener("click", (e) => {
+  const mark = e.target.closest("mark[data-refs]");
+  if (mark) { e.stopPropagation(); showRefPopover(mark); }
+});
+document.addEventListener("click", (e) => {
+  if (e.target.closest("#refpop") || e.target.closest("mark[data-refs]")) return;
+  hideRefPopover();
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") hideRefPopover(); });
+// dismiss on page scroll (stale positioning), but NOT when scrolling inside the popover itself
+window.addEventListener("scroll", (e) => {
+  if (e.target && e.target.nodeType === 1 && e.target.closest && e.target.closest("#refpop")) return;
+  hideRefPopover();
+}, true);
+window.addEventListener("resize", hideRefPopover);
+</script>
+</body>
+</html>

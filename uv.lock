@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.10, <3.15"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
@@ -3453,7 +3453,6 @@ dependencies = [
     { name = "langchain-core" },
     { name = "litellm" },
     { name = "loguru" },
-    { name = "markdown" },
     { name = "pydantic" },
     { name = "pyright" },
     { name = "pytest" },
@@ -3465,6 +3464,8 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "dotenv" },
+    { name = "jsonschema" },
+    { name = "markdown" },
     { name = "pre-commit" },
     { name = "tau2", marker = "python_full_version >= '3.12'" },
 ]
@@ -3476,7 +3477,6 @@ requires-dist = [
     { name = "langchain-core", specifier = ">=0.3.72" },
     { name = "litellm", specifier = ">=1.82.6,!=1.82.7,!=1.82.8" },
     { name = "loguru" },
-    { name = "markdown", specifier = ">=3.7" },
     { name = "pydantic", specifier = ">=2.11.0" },
     { name = "pyright", specifier = ">=1.1.408" },
     { name = "pytest", specifier = ">=8.3.3" },
@@ -3488,6 +3488,8 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "dotenv" },
+    { name = "jsonschema", specifier = ">=4.20.0" },
+    { name = "markdown", specifier = ">=3.7" },
     { name = "pre-commit", specifier = ">=4.2.0" },
     { name = "tau2", marker = "python_full_version >= '3.12'", git = "https://github.com/sierra-research/tau2-bench.git?rev=main" },
 ]

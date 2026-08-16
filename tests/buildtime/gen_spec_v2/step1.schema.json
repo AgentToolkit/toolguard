@@ -1,0 +1,299 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/evaluate-tool-guard/schemas/step1-spec.schema.json",
+  "title": "ToolGuard step1 per-tool guard spec",
+  "description": "Shape of one <tool_name>.json file under a benchmark's ground_truth/step1/ directory. Derived from the 26 employee-benchmark specs. Every spec belongs to exactly one real tool: there is no cross-tool 'global' spec, so a rule with no tool to attach to is simply absent, and orphan guidance is detected by finding policy-document text that no reference quotes. A spec carries only enforceable content: tool metadata lives in inputs/tool_enrichment.json, and a rule that was considered and rejected leaves no trace beyond the absence of the rule (or, for a wholly unconstrained tool, the absence of the spec file).",
+  "type": "object",
+  "required": ["tool_name", "source_doc", "policy_items"],
+  "additionalProperties": false,
+  "properties": {
+    "tool_name": {
+      "description": "Name of the guarded tool. Must equal the file's basename without .json.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "source_doc": {
+      "description": "Path to the policy document the references are quoted from.",
+      "type": "string",
+      "minLength": 1
+    },
+    "policy_items": {
+      "description": "Active guard rules for this tool, ANDed together at enforcement time. May be empty when every candidate rule was archived.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/policyItem" }
+    },
+    "conflicts": {
+      "description": "Open (unresolved) interactions between two or more of this tool's policy_items. A conflict exists only while it is pending: once decided, the entry is removed and the decision is recorded on the affected policy_items' resolved_by_user. Omitted entirely when there are none.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/conflict" }
+    }
+  },
+  "$defs": {
+    "policyItem": {
+      "description": "An active guard rule.",
+      "allOf": [{ "$ref": "#/$defs/policyItemBase" }],
+      "unevaluatedProperties": false
+    },
+    "policyItemBase": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "description",
+        "compliance_examples",
+        "violation_examples",
+        "references",
+        "trigger",
+        "requires"
+      ],
+      "properties": {
+        "id": {
+          "description": "Stable rule id, conventionally '<tool_name>.<rule_slug>'. Unique within the file (and, in practice, across the benchmark).",
+          "type": "string",
+          "pattern": "^[a-z0-9_]+\\.[a-z0-9_]+$"
+        },
+        "name": {
+          "description": "One-line human-readable rule title.",
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "description": "Full enforceable statement of the rule, including the deny condition and any not-applicable cases.",
+          "type": "string",
+          "minLength": 1
+        },
+        "compliance_examples": {
+          "description": "Concrete calls this rule allows.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "violation_examples": {
+          "description": "Concrete calls this rule denies.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "references": {
+          "description": "Verbatim quotes from source_doc that justify the rule. All 91 references in the employee specs are exact substrings of the policy document, so exact-quote is the intended contract.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "trigger": {
+          "description": "'pre_tool' evaluates before the call and can deny it; 'post_tool' evaluates after and describes a required side effect or result filtering.",
+          "type": "string",
+          "enum": ["pre_tool", "post_tool"]
+        },
+        "requires": { "$ref": "#/$defs/requires" },
+        "skip": {
+          "description": "Excludes the rule from reference scoring. Absent (i.e. false) throughout the ground truth; declared because the eval filters on it and generated specs emit it on every item.",
+          "type": "boolean"
+        },
+        "pending_for_user": {
+          "description": "Open questions that block full enforcement of this rule. Mutually exclusive with resolved_by_user in the observed data.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/pendingQuestion" }
+        },
+        "resolved_by_user": {
+          "description": "Questions that were raised and answered; the answer is baked into this rule.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/resolvedQuestion" }
+        }
+      }
+    },
+    "requires": {
+      "description": "The context a guard needs in order to evaluate this rule. All three keys are always present, and 'nothing needed' is always the empty/false value — never null.",
+      "type": "object",
+      "required": ["system_vars", "tool_history", "message_history"],
+      "additionalProperties": false,
+      "properties": {
+        "system_vars": {
+          "description": "Names of caller-context variables the rule reads. Must be declared in the benchmark's inputs/system_vars.json. Empty array means none needed.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" }
+        },
+        "tool_history": {
+          "description": "Prior read-only tool calls whose results the rule depends on. Empty array means none needed.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/toolHistoryEntry" }
+        },
+        "message_history": {
+          "description": "True when the rule must inspect the conversation (e.g. to find an explicit user 'yes'); false when it need not.",
+          "type": "boolean"
+        }
+      }
+    },
+    "toolHistoryEntry": {
+      "type": "object",
+      "required": ["tool", "params"],
+      "additionalProperties": false,
+      "properties": {
+        "tool": {
+          "description": "Name of the tool that must have been called.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "params": {
+          "description": "Argument bindings for that call, as parameter name -> expression over the guarded call. Observed expression forms: 'input.arguments.<field>', 'input.extensions.subject.<field>', and the function call 'year-of(input.arguments.<field>)'.",
+          "type": "object",
+          "propertyNames": { "pattern": "^[a-z][a-z0-9_]*$" },
+          "additionalProperties": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "pendingQuestion": {
+      "description": "An unanswered question for the policy owner.",
+      "allOf": [{ "$ref": "#/$defs/userQuestionBase" }],
+      "not": { "required": ["resolution"] },
+      "unevaluatedProperties": false
+    },
+    "resolvedQuestion": {
+      "description": "A question that has been answered.",
+      "allOf": [{ "$ref": "#/$defs/userQuestionBase" }],
+      "required": ["resolution"],
+      "properties": { "resolution": { "$ref": "#/$defs/resolution" } },
+      "unevaluatedProperties": false
+    },
+    "userQuestionBase": {
+      "type": "object",
+      "required": ["type", "detail", "question"],
+      "allOf": [
+        {
+          "if": {
+            "properties": { "type": { "const": "missing_variable" } },
+            "required": ["type"]
+          },
+          "then": {
+            "required": ["suggested_source"],
+            "not": { "required": ["suggested_tool"] }
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "missing_tool" } },
+            "required": ["type"]
+          },
+          "then": {
+            "required": ["suggested_tool"],
+            "not": { "required": ["suggested_source"] }
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "clarification" } },
+            "required": ["type"]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                { "required": ["suggested_source"] },
+                { "required": ["suggested_tool"] }
+              ]
+            }
+          }
+        }
+      ],
+      "properties": {
+        "type": {
+          "description": "'clarification' = the policy document is ambiguous; 'missing_variable' = a needed signal is not in system_vars; 'missing_tool' = a needed tool does not exist.",
+          "type": "string",
+          "enum": ["clarification", "missing_variable", "missing_tool"]
+        },
+        "detail": {
+          "description": "Why the question arises.",
+          "type": "string",
+          "minLength": 1
+        },
+        "question": {
+          "description": "The question posed to the policy owner.",
+          "type": "string",
+          "minLength": 1
+        },
+        "suggested_source": {
+          "description": "Where the missing signal could come from. Required when type is 'missing_variable', forbidden otherwise.",
+          "type": "string",
+          "minLength": 1
+        },
+        "suggested_tool": {
+          "description": "Tool that would need to exist. Required when type is 'missing_tool', forbidden otherwise.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "resolution": {
+      "type": "object",
+      "required": ["answer", "decided_by", "effect"],
+      "additionalProperties": false,
+      "properties": {
+        "answer": {
+          "description": "The decision.",
+          "type": "string",
+          "minLength": 1
+        },
+        "decided_by": {
+          "description": "Who decided. Only 'human' occurs in the observed data.",
+          "type": "string",
+          "enum": ["human"]
+        },
+        "effect": {
+          "description": "What changed in the spec as a result.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "conflict": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "conflicting_policies",
+        "description",
+        "question",
+        "resolution"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Conventionally 'conflict.<tool_name>.<slug>'.",
+          "type": "string",
+          "pattern": "^conflict\\.[a-z0-9_]+\\.[a-z0-9_]+$"
+        },
+        "name": { "type": "string", "minLength": 1 },
+        "kind": {
+          "description": "Conflict category: 'scope' = unclear which callers a rule binds; 'definition' = a term the rules share is undefined.",
+          "type": "string",
+          "enum": ["scope", "definition"]
+        },
+        "conflicting_policies": {
+          "description": "Ids of the policy_items that interact. Must resolve to ids in this file's policy_items — a conflict spanning several tools is recorded once per affected tool, each copy scoped to that tool's own items and correlated by a shared id slug.",
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z0-9_]+\\.[a-z0-9_]+$" }
+        },
+        "description": {
+          "description": "When the conflict applies and why it is ambiguous.",
+          "type": "string",
+          "minLength": 1
+        },
+        "question": {
+          "description": "The question that would settle it.",
+          "type": "string",
+          "minLength": 1
+        },
+        "resolution": {
+          "description": "Always null: a conflict entry only exists while pending. A resolved conflict is deleted from this array and its decision recorded as a resolved_by_user entry on the affected policy_items.",
+          "type": "null"
+        }
+      }
+    }
+  }
+}

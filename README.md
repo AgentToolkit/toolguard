@@ -51,6 +51,12 @@ ToolGuard provides two main APIs:
 1. **Buildtime API** (`toolguard.buildtime`): Generate guard specifications and code
 2. **Runtime API** (`toolguard.runtime`): Execute guards during tool invocation
 
+There are two spec formats. The examples below use v1. For the newer "step1" v2
+format — which adds a trigger, what each rule needs to be evaluated, open
+questions for the policy owner, and per-tool conflicts — see
+[docs/gen_spec_v2_usage.md](docs/gen_spec_v2_usage.md), which also covers handing
+v2 specs to the v1 code generator.
+
 ### Complete Example: Calculator with Policy Guards
 
 This example demonstrates how to enforce policies on calculator tools.
