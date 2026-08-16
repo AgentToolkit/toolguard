@@ -14,6 +14,13 @@ from toolguard.buildtime.gen_spec.spec_generator import (
     ToolGuardSpecGenerator,
     _tools_to_tool_infos,
 )
+from toolguard.buildtime.gen_spec_v2.data_types import ToolGuardSpecV2
+from toolguard.buildtime.gen_spec_v2.spec_generator import (
+    PHASE_ONE_STEPS,
+    SpecV2Options,
+    ToolGuardSpecGeneratorV2,
+    tools_to_tool_infos,
+)
 from toolguard.buildtime.llm import I_TG_LLM
 from toolguard.buildtime.utils.open_api import OpenAPI
 from toolguard.runtime.data_types import ToolGuardsCodeGenerationResult, ToolGuardSpec
@@ -153,3 +160,134 @@ async def generate_guard_examples(
         )
 
     return tool_specs
+
+
+# Step1 v2 only: the step1-schema spec format (trigger, requires, pending
+# questions, per-tool conflicts). Generation is two phases so policies and
+# examples can be produced and reviewed separately; a spec only satisfies the
+# step1 schema once examples exist, which is what `_full` guarantees.
+async def generate_guard_specs_v2(
+    policy_text: str,
+    tools: TOOLS,
+    llm: I_TG_LLM,
+    work_dir: str | Path,
+    *,
+    system_vars: str | Path | dict | None = None,
+    source_doc: str = "policy_document",
+    tools2guard: List[str] | None = None,
+    options: Optional[SpecV2Options] = None,
+) -> List[ToolGuardSpecV2]:
+    """Generate v2 guard specs WITHOUT examples (phase 1).
+
+    Args:
+        policy_text: The policy document as **markdown**. HTML yields no rules
+            and cannot be quoted verbatim, so it is warned about.
+        tools: The tools to guard (OpenAPI spec, or callables).
+        llm: The LLM instance to use for generation.
+        work_dir: Where the per-tool specs are written.
+        system_vars: The acting user's variables, as a mapping or a path to JSON.
+        source_doc: Path recorded in each spec, which its references quote.
+        tools2guard: Optional subset of tool names to generate for.
+        options: Stage/vote/concurrency overrides.
+
+    Returns:
+        One ToolGuardSpecV2 per tool that carries at least one policy item.
+        Written specs are NOT yet schema-valid: every policy item still needs
+        examples, added by generate_guard_examples_v2.
+    """
+    generator = _make_v2_generator(
+        policy_text,
+        tools,
+        llm,
+        work_dir,
+        system_vars,
+        source_doc,
+        options,
+        steps=PHASE_ONE_STEPS,
+    )
+    result = await generator.generate_all(tools2guard=tools2guard)
+    return list(result.specs.values())
+
+
+async def generate_guard_specs_v2_full(
+    policy_text: str,
+    tools: TOOLS,
+    llm: I_TG_LLM,
+    work_dir: str | Path,
+    *,
+    system_vars: str | Path | dict | None = None,
+    source_doc: str = "policy_document",
+    tools2guard: List[str] | None = None,
+    options: Optional[SpecV2Options] = None,
+) -> List[ToolGuardSpecV2]:
+    """Generate v2 guard specs WITH examples: both phases in one call.
+
+    Same arguments as generate_guard_specs_v2. The written specs satisfy the
+    step1 schema.
+    """
+    generator = _make_v2_generator(
+        policy_text, tools, llm, work_dir, system_vars, source_doc, options
+    )
+    result = await generator.generate_all(tools2guard=tools2guard)
+    return list(result.specs.values())
+
+
+async def generate_guard_examples_v2(
+    tools: TOOLS,
+    specs: List[ToolGuardSpecV2] | str | Path,
+    llm: I_TG_LLM,
+    work_dir: str | Path,
+    *,
+    policy_text: str = "",
+    system_vars: str | Path | dict | None = None,
+    options: Optional[SpecV2Options] = None,
+) -> List[ToolGuardSpecV2]:
+    """Add compliance/violation examples to existing v2 specs (phase 2).
+
+    Args:
+        tools: The tools the specs guard (OpenAPI spec, or callables).
+        specs: Specs to complete, or a directory to load them from.
+        llm: The LLM instance to use for generation.
+        work_dir: Where the completed specs are written.
+        policy_text: Optional; unused by this phase beyond prompt context.
+        system_vars: The acting user's variables, so examples use real values.
+        options: Stage/vote/concurrency overrides.
+
+    Returns:
+        One ToolGuardSpecV2 per spec that ended up with examples on every item.
+        An item left without them is rejected rather than written invalid.
+    """
+    generator = _make_v2_generator(
+        policy_text, tools, llm, work_dir, system_vars, "policy_document", options
+    )
+    to_complete = (
+        generator.load_specs() if isinstance(specs, (str, Path)) else list(specs)
+    )
+    result = await generator.add_examples(to_complete)
+    return list(result.specs.values())
+
+
+def _make_v2_generator(
+    policy_text: str,
+    tools: TOOLS,
+    llm: I_TG_LLM,
+    work_dir: str | Path,
+    system_vars: str | Path | dict | None,
+    source_doc: str,
+    options: Optional[SpecV2Options],
+    steps: set | None = None,
+) -> ToolGuardSpecGeneratorV2:
+    work_dir = Path(work_dir)
+    work_dir.mkdir(parents=True, exist_ok=True)
+    options = options or SpecV2Options()
+    if steps is not None:
+        options = options.model_copy(update={"steps": options.steps & steps})
+    return ToolGuardSpecGeneratorV2(
+        llm=llm,
+        policy_document=policy_text,
+        tools=tools_to_tool_infos(tools),
+        out_dir=work_dir,
+        sys_var=system_vars,
+        options=options,
+        source_doc=source_doc,
+    )

@@ -19,7 +19,6 @@ dependencies = [
     "datamodel-code-generator>=0.52.2",
     "langchain-core>=0.3.72",
     "litellm>=1.82.6,!=1.82.7,!=1.82.8", # https://github.com/BerriAI/litellm/issues/24512
-    "markdown>=3.7",
     "pydantic>=2.11.0",
     "pytest>=8.3.3",
     "pytest-asyncio>=1.3.0",
@@ -42,6 +41,8 @@ allow-direct-references = true
 [dependency-groups]
 dev = [
     "dotenv",
+    "jsonschema>=4.20.0",
+    "markdown>=3.7", # tests only: builds HTML to prove it is rejected as policy input
     "pre-commit>=4.2.0",
     "tau2 @ git+https://github.com/sierra-research/tau2-bench.git@main ; python_version >= '3.12'",
 ]
