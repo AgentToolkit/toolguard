@@ -202,7 +202,7 @@ class ToolguardRuntime:
 
 
 def _file_to_module_name(file_path: str | Path):
-    return str(file_path).removesuffix(".py").replace("/", ".")
+    return str(file_path).removesuffix(".py").replace("\\", ".").replace("/", ".")
 
 
 def _find_function_in_module(module: ModuleType, function_name: str):

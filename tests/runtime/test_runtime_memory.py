@@ -1,8 +1,10 @@
 """Unit tests for ToolguardRuntime with in-memory FileTwin objects."""
 
-import pytest
+import sys
 from pathlib import Path
 from typing import Any, Dict, Type
+
+import pytest
 
 from toolguard.runtime import (
     load_toolguards_from_memory,
@@ -17,6 +19,7 @@ from toolguard.runtime.data_types import (
     ToolGuardSpecItem,
     RuntimeDomain,
 )
+from toolguard.runtime.runtime import _file_to_module_name
 
 
 class MockToolInvoker(IToolInvoker):
@@ -344,6 +347,114 @@ async def test_guard_toolcall_no_guard(
     with load_toolguards_from_memory(sample_result) as runtime:
         # Call a tool that doesn't exist (should not raise)
         await runtime.guard_toolcall("nonexistent_tool", {"a": 5, "b": 3}, mock_invoker)
+
+
+def test_file_to_module_name_normalizes_windows_separators():
+    """Windows paths should map to the same dotted module name as POSIX paths."""
+    assert (
+        _file_to_module_name(r"travel\book_trip\guard_book_trip.py")
+        == "travel.book_trip.guard_book_trip"
+    )
+
+
+@pytest.mark.asyncio
+async def test_guard_toolcall_with_windows_generated_paths():
+    """Load and invoke generated modules whose FileTwin paths use backslashes."""
+    domain = RuntimeDomain(
+        app_name="travel",
+        app_types=FileTwin(
+            file_name=Path(r"travel\travel_types.py"),
+            content="""
+from pydantic import BaseModel
+
+class BookingArgs(BaseModel):
+    destination: str
+""",
+        ),
+        app_api_class_name="ITravelApi",
+        app_api=FileTwin(
+            file_name=Path(r"travel\i_travel.py"),
+            content="""
+from travel.travel_types import BookingArgs
+
+class ITravelApi:
+    pass
+""",
+        ),
+        app_api_size=1,
+        app_api_impl_class_name="TravelApiImpl",
+        app_api_impl=FileTwin(
+            file_name=Path(r"travel\travel_impl.py"),
+            content="""
+from travel.i_travel import ITravelApi
+
+class TravelApiImpl(ITravelApi):
+    def __init__(self, delegate):
+        self.delegate = delegate
+""",
+        ),
+    )
+    guard_file = FileTwin(
+        file_name=Path(r"travel\book_trip\guard_book_trip.py"),
+        content="""
+from travel.travel_types import BookingArgs
+from toolguard.runtime import PolicyViolationException
+
+async def guard_book_trip(args: BookingArgs):
+    if args.destination == "Atlantis":
+        raise PolicyViolationException("Destination is not allowed")
+""",
+    )
+    result = ToolGuardsCodeGenerationResult(
+        out_dir=Path("/tmp/test"),
+        domain=domain,
+        tools={
+            "book_trip": ToolGuardCodeResult(
+                tool=ToolGuardSpec(tool_name="book_trip", policy_items=[]),
+                guard_fn_name="guard_book_trip",
+                guard_file=guard_file,
+                item_guard_files=[],
+                test_files=[],
+            )
+        },
+    )
+    dotted_module_names = {
+        "travel.travel_types",
+        "travel.i_travel",
+        "travel.travel_impl",
+        "travel.book_trip.guard_book_trip",
+    }
+    raw_module_names = {
+        str(file_twin.file_name).removesuffix(".py")
+        for file_twin in [
+            domain.app_types,
+            domain.app_api,
+            domain.app_api_impl,
+            guard_file,
+        ]
+    }
+    module_names = dotted_module_names | raw_module_names
+    missing = object()
+    previous_modules = {
+        module_name: sys.modules.get(module_name, missing)
+        for module_name in module_names
+    }
+
+    try:
+        with load_toolguards_from_memory(result) as runtime:
+            await runtime.guard_toolcall(
+                "book_trip", {"destination": "Paris"}, MockToolInvoker()
+            )
+            with pytest.raises(PolicyViolationException, match="not allowed"):
+                await runtime.guard_toolcall(
+                    "book_trip", {"destination": "Atlantis"}, MockToolInvoker()
+                )
+    finally:
+        for module_name, previous_module in previous_modules.items():
+            if previous_module is missing:
+                sys.modules.pop(module_name, None)
+            else:
+                sys.modules[module_name] = previous_module
 
 
 def test_runtime_init_validation():
